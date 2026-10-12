@@ -48,7 +48,7 @@ final class FestivalScene: SKScene {
         button(UserDefaults.standard.bool(forKey: "muted") ? "Muted" : "Sound", name: "sound", x: 340, y: 80)
         level = min(4, max(0, UserDefaults.standard.integer(forKey: "unlockedLevel")))
         startLevel()
-        showLevels()
+        if !ProcessInfo.processInfo.arguments.contains("--gameplay-preview") { showLevels() }
     }
 
     private func label(_ text: String, size: CGFloat, point: CGPoint, parent: SKNode? = nil) {

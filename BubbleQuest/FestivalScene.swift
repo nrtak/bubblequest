@@ -390,6 +390,12 @@ final class FestivalScene: SKScene {
         menuButton("‹", name: "area-prev", point: CGPoint(x: 39, y: 738), parent: overlay, width: 42)
         menuButton("›", name: "area-next", point: CGPoint(x: 351, y: 738), parent: overlay, width: 42)
         menuButton("Meet \(FestivalHost.all[mapArea].name)", name: "meet-host", point: CGPoint(x: 195, y: 174), parent: overlay, width: 230)
+        let host = SKSpriteNode(texture: atlasTexture("festival-hosts", index: mapArea), size: CGSize(width: 78, height: 78))
+        host.position = CGPoint(x: 42, y: 175)
+        host.name = "meet-host"
+        host.alpha = progress.hostIsAvailable(FestivalHost.all[mapArea]) ? 1 : 0.35
+        overlay.addChild(host)
+        host.run(.repeatForever(.sequence([.moveBy(x: 0, y: 3, duration: 1.6), .moveBy(x: 0, y: -3, duration: 1.6)])))
         label(area.subtitle, size: 13, point: CGPoint(x: 195, y: 126), parent: overlay)
         menuButton("Home", name: "home", point: CGPoint(x: 70, y: 75), parent: overlay, width: 108)
         menuButton("Friends", name: "friends", point: CGPoint(x: 195, y: 75), parent: overlay, width: 112)
@@ -587,6 +593,7 @@ final class FestivalScene: SKScene {
         nextNode?.removeFromParent()
         if success {
             score += shots * 25
+            status.text = "Beautiful popping!"
             let unlocked = progress.recordVictory(index: level, score: score,
                                                    stars: LevelCatalog.level(level).stars(shotsRemaining: shots))
             if !unlocked.isEmpty { status.text = "New friend: \(unlocked.map { $0.name }.joined(separator: ", "))" }

@@ -30,8 +30,8 @@ enum LevelCatalog {
     static let areas = [
         FestivalArea(name: "Sunlit Market", subtitle: "A bright beginning", background: "festival-day", nightTint: false),
         FestivalArea(name: "Summer Courtyard", subtitle: "A playful afternoon", background: "festival-courtyard", nightTint: false),
-        FestivalArea(name: "Lantern Street", subtitle: "The evening lights up", background: "festival-dusk", nightTint: false),
-        FestivalArea(name: "Riverside Festival", subtitle: "Bubbles by the water", background: "festival-dusk", nightTint: true),
+        FestivalArea(name: "Lantern Street", subtitle: "The evening lights up", background: "festival-lantern", nightTint: false),
+        FestivalArea(name: "Riverside Festival", subtitle: "Bubbles by the water", background: "festival-riverside", nightTint: false),
         FestivalArea(name: "Firework Night", subtitle: "One last festival cheer", background: "festival-dusk", nightTint: true)
     ]
     static let levels: [GameLevel] = (0..<50).map { index in

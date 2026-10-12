@@ -20,6 +20,7 @@ jobs:
         run: |
           brew install xcodegen
           python3 scripts/prepare_assets.py
+          sips -z 1024 1024 BubbleQuest/icon-shiba-source.png --out BubbleQuest/Assets.xcassets/AppIcon.appiconset/AppIcon.png
           xcodegen generate
       - name: Select simulator
         id: simulator
@@ -48,6 +49,12 @@ jobs:
           xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --map-preview
           sleep 3
           xcrun simctl io "$DEVICE" screenshot build/map-iphone.png
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --map-preview --dusk-preview
+          sleep 3
+          xcrun simctl io "$DEVICE" screenshot build/map-night-iphone.png
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --cancel-preview
+          sleep 3
+          xcrun simctl io "$DEVICE" screenshot build/cancel-iphone.png
           xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app
           sleep 3
           xcrun simctl io "$DEVICE" screenshot build/title-iphone.png
@@ -103,6 +110,7 @@ jobs:
         run: |
           brew install xcodegen
           python3 scripts/prepare_assets.py
+          sips -z 1024 1024 BubbleQuest/icon-shiba-source.png --out BubbleQuest/Assets.xcassets/AppIcon.appiconset/AppIcon.png
           xcodegen generate
       - uses: Apple-Actions/import-codesign-certs@v4
         with:

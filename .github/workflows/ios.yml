@@ -32,6 +32,20 @@ jobs:
           -destination 'platform=iOS Simulator,id=${{ steps.simulator.outputs.id }}'
           -derivedDataPath build/DerivedData -resultBundlePath build/Tests.xcresult
           CODE_SIGNING_ALLOWED=NO
+      - name: Capture iPhone gameplay
+        env:
+          DEVICE: ${{ steps.simulator.outputs.id }}
+        run: |
+          xcrun simctl bootstatus "$DEVICE" -b
+          xcrun simctl status_bar "$DEVICE" override --time '9:41' --batteryState charged --batteryLevel 100
+          xcrun simctl install "$DEVICE" build/DerivedData/Build/Products/Debug-iphonesimulator/BubbleQuest.app
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --gameplay-preview
+          sleep 3
+          xcrun simctl io "$DEVICE" screenshot build/gameplay-iphone.png
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gameplay-iphone
+          path: build/gameplay-iphone.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:

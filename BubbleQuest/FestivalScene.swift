@@ -28,6 +28,8 @@ final class FestivalScene: SKScene {
     private var finished = false
     private var won = false
     private var aiming = false
+    private var levelMenu: SKNode?
+    private let levelNames = ["Lantern Street", "Lantern Lane", "Summer Courtyard", "Festival Square", "Firework Night"]
 
     override func didMove(to view: SKView) {
         guard children.isEmpty else { return }
@@ -46,6 +48,7 @@ final class FestivalScene: SKScene {
         button(UserDefaults.standard.bool(forKey: "muted") ? "Muted" : "Sound", name: "sound", x: 340, y: 80)
         level = min(4, max(0, UserDefaults.standard.integer(forKey: "unlockedLevel")))
         startLevel()
+        showLevels()
     }
 
     private func label(_ text: String, size: CGFloat, point: CGPoint, parent: SKNode? = nil) {
@@ -71,9 +74,20 @@ final class FestivalScene: SKScene {
             lantern.zPosition = -1
             addChild(lantern)
         }
-        label("🐕", size: 56, point: CGPoint(x: 74, y: 151))
-        label("👩🏻", size: 48, point: CGPoint(x: 319, y: 161))
-        label("🏮  Lantern Street  🏮", size: 15, point: CGPoint(x: 195, y: 115))
+        let companionSheet = SKTexture(imageNamed: "festival-companions")
+        for (index, x) in [CGFloat(74), CGFloat(319)].enumerated() {
+            let texture = SKTexture(rect: CGRect(x: CGFloat(index) * 0.5, y: 0, width: 0.5, height: 1), in: companionSheet)
+            let companion = SKSpriteNode(texture: texture, size: CGSize(width: 74, height: 148))
+            companion.position = CGPoint(x: x, y: 207)
+            companion.name = "companion-\(index)"
+            addChild(companion)
+        }
+        let place = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        place.name = "place"
+        place.fontSize = 15
+        place.position = CGPoint(x: 195, y: 115)
+        addChild(place)
+        button("Levels", name: "levels", x: 340, y: 785)
         let cannon = SKShapeNode(rectOf: CGSize(width: 65, height: 48), cornerRadius: 12)
         cannon.position = CGPoint(x: origin.x, y: origin.y - 18)
         cannon.fillColor = UIColor(red: 0.45, green: 0.28, blue: 0.24, alpha: 1)
@@ -136,6 +150,40 @@ final class FestivalScene: SKScene {
         nextColor = availableColor()
         reload()
         refreshHUD()
+        (childNode(withName: "place") as? SKLabelNode)?.text = levelNames[level]
+    }
+
+    private func showLevels() {
+        guard levelMenu == nil else { return }
+        aiming = false
+        guide.removeAllChildren()
+        let overlay = SKShapeNode(rectOf: size)
+        overlay.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.fillColor = UIColor(red: 0.12, green: 0.14, blue: 0.28, alpha: 0.98)
+        overlay.strokeColor = .clear
+        overlay.zPosition = 40
+        addChild(overlay)
+        levelMenu = overlay
+        label("Festival adventures", size: 27, point: CGPoint(x: 0, y: 235), parent: overlay)
+        label("Pick a stop and clear its bubbles", size: 15, point: CGPoint(x: 0, y: 203), parent: overlay)
+        let unlocked = min(4, max(0, UserDefaults.standard.integer(forKey: "unlockedLevel")))
+        for index in 0..<5 {
+            let entry = SKShapeNode(rectOf: CGSize(width: 320, height: 66), cornerRadius: 18)
+            entry.position = CGPoint(x: 0, y: 135 - CGFloat(index) * 82)
+            entry.fillColor = index <= unlocked ? UIColor.systemTeal.withAlphaComponent(0.2) : UIColor.white.withAlphaComponent(0.04)
+            entry.strokeColor = index <= unlocked ? .systemTeal : .darkGray
+            entry.name = index <= unlocked ? "level-\(index)" : "locked"
+            overlay.addChild(entry)
+            label("\(index + 1) · \(levelNames[index])", size: 19, point: CGPoint(x: 0, y: 5), parent: entry)
+            let best = UserDefaults.standard.integer(forKey: "bestScore-\(index)")
+            label(index > unlocked ? "Clear the previous stop to unlock" : best > 0 ? "Best score: \(best)" : "Ready to play", size: 12, point: CGPoint(x: 0, y: -18), parent: entry)
+        }
+        let close = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+        close.text = "Back to game"
+        close.name = "close-levels"
+        close.fontSize = 19
+        close.position = CGPoint(x: 0, y: -285)
+        overlay.addChild(close)
     }
 
     private func availableColor() -> Int {
@@ -189,6 +237,19 @@ final class FestivalScene: SKScene {
     override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let location = touches.first?.location(in: self) else { return }
         let names = nodes(at: location).compactMap { $0.name ?? $0.parent?.name }
+        if levelMenu != nil {
+            if names.contains("close-levels") {
+                levelMenu?.removeFromParent()
+                levelMenu = nil
+            } else if let name = names.first(where: { $0.hasPrefix("level-") }), let selected = Int(name.dropFirst(6)) {
+                levelMenu?.removeFromParent()
+                levelMenu = nil
+                level = selected
+                startLevel()
+            }
+            return
+        }
+        if names.contains("levels") { showLevels(); return }
         if names.contains("retry") { startLevel(); return }
         if names.contains("sound") {
             let muted = !UserDefaults.standard.bool(forKey: "muted")
@@ -236,7 +297,7 @@ final class FestivalScene: SKScene {
     override func update(_ currentTime: TimeInterval) {
         let delta = previousTime == 0 ? 0 : min(currentTime - previousTime, 1.0 / 30)
         previousTime = currentTime
-        guard let shot = projectile else { return }
+        guard levelMenu == nil, let shot = projectile else { return }
         // Small steps keep fast shots from tunneling through the grid.
         let steps = max(1, Int(ceil(delta * 620 / 5)))
         for _ in 0..<steps {
@@ -279,6 +340,9 @@ final class FestivalScene: SKScene {
         }
         score += result.matched.count * 10 + result.dropped.count * 20
         if !result.matched.isEmpty {
+            for index in 0..<2 {
+                childNode(withName: "companion-\(index)")?.run(.sequence([.moveBy(x: 0, y: 7, duration: 0.12), .moveBy(x: 0, y: -7, duration: 0.12)]))
+            }
             UIImpactFeedbackGenerator(style: .light).impactOccurred()
             if !UserDefaults.standard.bool(forKey: "muted") { run(.playSoundFileNamed("pop.wav", waitForCompletion: false)) }
         }
@@ -298,6 +362,8 @@ final class FestivalScene: SKScene {
         loaded?.removeFromParent()
         nextNode?.removeFromParent()
         if success {
+            let bestKey = "bestScore-\(level)"
+            UserDefaults.standard.set(max(score, UserDefaults.standard.integer(forKey: bestKey)), forKey: bestKey)
             let unlocked = max(UserDefaults.standard.integer(forKey: "unlockedLevel"), min(4, level + 1))
             UserDefaults.standard.set(unlocked, forKey: "unlockedLevel")
             UINotificationFeedbackGenerator().notificationOccurred(.success)

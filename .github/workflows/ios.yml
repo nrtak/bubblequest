@@ -65,7 +65,7 @@ jobs:
           name: test-results
           path: build/Tests.xcresult
   testflight:
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.upload_testflight)
+    if: github.event_name == 'workflow_dispatch' && inputs.upload_testflight
     needs: test
     runs-on: macos-26
     environment: testflight

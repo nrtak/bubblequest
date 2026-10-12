@@ -15,7 +15,7 @@ targets:
     sources: [BubbleQuest]
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: com.bubblequest.app
+        PRODUCT_BUNDLE_IDENTIFIER: com.bubbleadventure.app
         TARGETED_DEVICE_FAMILY: '1,2'
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         GENERATE_INFOPLIST_FILE: YES

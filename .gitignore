@@ -6,3 +6,7 @@ build/
 *.mobileprovision
 AuthKey_*.p8
 __pycache__/
+BubbleQuest/music-*.wav
+BubbleQuest/launch.wav
+BubbleQuest/bomb.wav
+BubbleQuest/victory.wav

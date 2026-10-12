@@ -13,7 +13,7 @@ permissions:
   contents: read
 jobs:
   test:
-    runs-on: macos-15
+    runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
       - name: Prepare project
@@ -40,7 +40,7 @@ jobs:
   testflight:
     if: github.event_name == 'workflow_dispatch' && inputs.upload_testflight
     needs: test
-    runs-on: macos-15
+    runs-on: macos-26
     environment: testflight
     env:
       BUNDLE_ID: ${{ vars.APP_BUNDLE_ID || 'com.bubbleadventure.app' }}

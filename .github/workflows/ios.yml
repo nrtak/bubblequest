@@ -54,6 +54,12 @@ jobs:
           xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --gameplay-preview --courtyard-preview
           sleep 3
           xcrun simctl io "$DEVICE" screenshot build/courtyard-iphone.png
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --gameplay-preview --water-preview
+          sleep 3
+          xcrun simctl io "$DEVICE" screenshot build/water-iphone.png
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --gameplay-preview --tea-preview
+          sleep 3
+          xcrun simctl io "$DEVICE" screenshot build/tea-iphone.png
           xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --host-preview
           sleep 3
           xcrun simctl io "$DEVICE" screenshot build/host-iphone.png

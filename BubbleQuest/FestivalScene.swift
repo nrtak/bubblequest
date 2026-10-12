@@ -95,8 +95,7 @@ final class FestivalScene: SKScene {
         place.fontSize = 15
         place.position = CGPoint(x: 195, y: 115)
         addChild(place)
-        button("Map", name: "levels", x: 340, y: 801)
-        label("Bubble Quest", size: 16, point: CGPoint(x: 115, y: 797))
+        button("Map", name: "levels", x: 195, y: 759, width: 60)
         let base = SKShapeNode(rectOf: CGSize(width: 91, height: 20), cornerRadius: 7)
         base.position = CGPoint(x: origin.x, y: 128)
         base.fillColor = UIColor(red: 0.43, green: 0.23, blue: 0.13, alpha: 1)
@@ -130,8 +129,8 @@ final class FestivalScene: SKScene {
         return node
     }
 
-    private func button(_ title: String, name: String, x: CGFloat, y: CGFloat) {
-        let box = SKShapeNode(rectOf: CGSize(width: 82, height: 42), cornerRadius: 18)
+    private func button(_ title: String, name: String, x: CGFloat, y: CGFloat, width: CGFloat = 82) {
+        let box = SKShapeNode(rectOf: CGSize(width: width, height: 42), cornerRadius: 18)
         box.fillColor = UIColor(red: 0.23, green: 0.28, blue: 0.47, alpha: 0.9)
         box.strokeColor = UIColor(red: 1, green: 0.85, blue: 0.60, alpha: 1)
         box.lineWidth = 2

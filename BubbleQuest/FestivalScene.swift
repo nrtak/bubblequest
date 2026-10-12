@@ -85,14 +85,15 @@ final class FestivalScene: SKScene {
         for (index, x) in [CGFloat(74), CGFloat(319)].enumerated() {
             let texture = SKTexture(rect: CGRect(x: CGFloat(index) * 0.5, y: 0, width: 0.5, height: 1), in: companionSheet)
             let companion = SKSpriteNode(texture: texture, size: CGSize(width: 105, height: 210))
-            companion.position = CGPoint(x: x, y: 210)
+            companion.position = CGPoint(x: x, y: 185)
             companion.name = "companion-\(index)"
             addChild(companion)
         }
         let place = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
         place.name = "place"
         place.fontSize = 15
-        place.position = CGPoint(x: 195, y: 115)
+        place.position = CGPoint(x: 195, y: 31)
+        panel(width: 230, height: 24, point: CGPoint(x: 195, y: 36), parent: self)
         addChild(place)
         button("Map", name: "levels", x: 195, y: 759, width: 60)
         let base = SKShapeNode(rectOf: CGSize(width: 91, height: 20), cornerRadius: 7)
@@ -320,7 +321,7 @@ final class FestivalScene: SKScene {
                 label(String(repeating: "★", count: max(1, stars)), size: 16, point: CGPoint(x: 0, y: -45), parent: entry)
                 (entry.children.last as? SKLabelNode)?.fontColor = .systemYellow
             }
-            let sign = panel(width: 138, height: 25, point: CGPoint(x: position.x > 275 ? position.x - 47 : position.x, y: position.y - 65), parent: overlay)
+            let sign = panel(width: 138, height: 25, point: CGPoint(x: position.x > 275 ? position.x - 47 : position.x, y: position.y - (index == 0 ? 40 : 65)), parent: overlay)
             label(index > unlocked ? "Unlock next" : levelNames[index], size: 11, point: CGPoint(x: 0, y: -4), parent: sign)
         }
         menuButton("Home", name: "home", point: CGPoint(x: 77, y: 59), parent: overlay, width: 104)

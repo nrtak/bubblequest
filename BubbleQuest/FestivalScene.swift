@@ -3,7 +3,6 @@ import UIKit
 
 final class FestivalScene: SKScene {
     private let palette: [UIColor] = [UIColor(red: 1, green: 0.36, blue: 0.53, alpha: 1), .systemYellow, .systemBlue, .systemGreen, .systemPurple]
-    private let symbols = ["✿", "★", "♦", "❧", "✿"]
     private let radius: CGFloat = 21
     private let left: CGFloat = 48
     private let ceiling: CGFloat = 688
@@ -162,13 +161,61 @@ final class FestivalScene: SKScene {
         glow.fillColor = .white.withAlphaComponent(0.75)
         glow.strokeColor = .clear
         node.addChild(glow)
-        let symbol = SKLabelNode(fontNamed: "AvenirNext-Bold")
-        symbol.text = symbols[color]
-        symbol.fontSize = 23
-        symbol.fontColor = UIColor.white.withAlphaComponent(0.94)
-        symbol.verticalAlignmentMode = .center
-        node.addChild(symbol)
+        node.addChild(bubbleIcon(color))
         return node
+    }
+
+    private func bubbleIcon(_ color: Int) -> SKNode {
+        let icon = SKNode()
+        func shape(_ path: CGPath) -> SKShapeNode {
+            let piece = SKShapeNode(path: path)
+            piece.fillColor = UIColor.white.withAlphaComponent(0.66)
+            piece.strokeColor = UIColor.white.withAlphaComponent(0.9)
+            piece.lineWidth = 1
+            icon.addChild(piece)
+            return piece
+        }
+        switch color {
+        case 0:
+            for petal in 0..<5 {
+                let angle = CGFloat(petal) * .pi * 2 / 5
+                let piece = shape(CGPath(ellipseIn: CGRect(x: -3.5, y: -5.5, width: 7, height: 11), transform: nil))
+                piece.position = CGPoint(x: sin(angle) * 5.5, y: cos(angle) * 5.5)
+                piece.zRotation = -angle
+            }
+        case 1:
+            let star = CGMutablePath()
+            for point in 0..<10 {
+                let angle = CGFloat(point) * .pi / 5 + .pi / 2
+                let length: CGFloat = point % 2 == 0 ? 12 : 5.5
+                let vertex = CGPoint(x: cos(angle) * length, y: sin(angle) * length)
+                if point == 0 { star.move(to: vertex) } else { star.addLine(to: vertex) }
+            }
+            star.closeSubpath()
+            _ = shape(star)
+        case 2:
+            let drop = CGMutablePath()
+            drop.move(to: CGPoint(x: 0, y: 12))
+            drop.addCurve(to: CGPoint(x: 0, y: -11), control1: CGPoint(x: -18, y: -6), control2: CGPoint(x: -10, y: -11))
+            drop.addCurve(to: CGPoint(x: 0, y: 12), control1: CGPoint(x: 10, y: -11), control2: CGPoint(x: 18, y: -6))
+            _ = shape(drop)
+        case 3:
+            let leaf = shape(CGPath(ellipseIn: CGRect(x: -7, y: -11, width: 14, height: 22), transform: nil))
+            leaf.zRotation = -0.5
+            let vein = CGMutablePath()
+            vein.move(to: CGPoint(x: -4, y: -8))
+            vein.addLine(to: CGPoint(x: 4, y: 8))
+            let line = SKShapeNode(path: vein)
+            line.strokeColor = UIColor(red: 0.17, green: 0.47, blue: 0.21, alpha: 1)
+            line.lineWidth = 1.5
+            icon.addChild(line)
+        default:
+            for position in [CGPoint(x: -5, y: 5), CGPoint(x: 5, y: 5), CGPoint(x: 0, y: -3), CGPoint(x: 0, y: -10)] {
+                let grape = shape(CGPath(ellipseIn: CGRect(x: -4, y: -4, width: 8, height: 8), transform: nil))
+                grape.position = position
+            }
+        }
+        return icon
     }
 
     private func point(_ cell: Cell) -> CGPoint {

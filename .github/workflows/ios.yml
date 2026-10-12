@@ -91,6 +91,7 @@ jobs:
           path: build/export/BubbleQuest.ipa
       - uses: Apple-Actions/upload-testflight-build@v5
         with:
+          backend: altool
           app-path: build/export/BubbleQuest.ipa
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}

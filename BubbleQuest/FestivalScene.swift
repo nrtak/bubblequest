@@ -2,8 +2,8 @@ import SpriteKit
 import UIKit
 
 final class FestivalScene: SKScene {
-    private let palette: [UIColor] = [.systemPink, .systemTeal, .systemYellow, .systemPurple, .systemOrange]
-    private let symbols = ["✿", "◆", "★", "●", "♥"]
+    private let palette: [UIColor] = [UIColor(red: 1, green: 0.36, blue: 0.53, alpha: 1), .systemYellow, .systemBlue, .systemGreen, .systemPurple]
+    private let symbols = ["✿", "★", "♦", "❧", "✿"]
     private let radius: CGFloat = 21
     private let left: CGFloat = 48
     private let ceiling: CGFloat = 688
@@ -13,6 +13,8 @@ final class FestivalScene: SKScene {
     private let playfield = SKNode()
     private let guide = SKNode()
     private let hud = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
+    private let shotsLabel = SKLabelNode(fontNamed: "AvenirNext-Bold")
+    private let scoreLabel = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
     private let status = SKLabelNode(fontNamed: "AvenirNext-Medium")
     private var loaded: SKNode?
     private var nextNode: SKNode?
@@ -29,6 +31,7 @@ final class FestivalScene: SKScene {
     private var won = false
     private var aiming = false
     private var levelMenu: SKNode?
+    private var backdrop: SKSpriteNode?
     private let levelNames = ["Lantern Street", "Lantern Lane", "Summer Courtyard", "Festival Square", "Firework Night"]
 
     override func didMove(to view: SKView) {
@@ -37,18 +40,27 @@ final class FestivalScene: SKScene {
         decorate()
         addChild(playfield)
         addChild(guide)
-        hud.fontSize = 19
-        hud.position = CGPoint(x: 195, y: 735)
+        hud.fontSize = 21
+        hud.position = CGPoint(x: 88, y: 752)
         addChild(hud)
-        status.fontSize = 14
+        shotsLabel.fontSize = 21
+        shotsLabel.position = CGPoint(x: 291, y: 752)
+        addChild(shotsLabel)
+        scoreLabel.fontSize = 15
+        scoreLabel.position = CGPoint(x: 195, y: 317)
+        addChild(scoreLabel)
+        status.fontSize = 13
         status.position = CGPoint(x: 195, y: 279)
         addChild(status)
         button("↻", name: "retry", x: 50, y: 80)
         button("Swap", name: "swap", x: 195, y: 80)
         button(UserDefaults.standard.bool(forKey: "muted") ? "Muted" : "Sound", name: "sound", x: 340, y: 80)
         level = min(4, max(0, UserDefaults.standard.integer(forKey: "unlockedLevel")))
+        if ProcessInfo.processInfo.arguments.contains("--dusk-preview") { level = 4 }
         startLevel()
-        if !ProcessInfo.processInfo.arguments.contains("--gameplay-preview") { showLevels() }
+        if ProcessInfo.processInfo.arguments.contains("--map-preview") { showLevels() }
+        else if ProcessInfo.processInfo.arguments.contains("--gameplay-preview") { updateAim(CGPoint(x: 242, y: 600)) }
+        else { showTitle() }
     }
 
     private func label(_ text: String, size: CGFloat, point: CGPoint, parent: SKNode? = nil) {
@@ -60,25 +72,21 @@ final class FestivalScene: SKScene {
     }
 
     private func decorate() {
-        label("Bubble Quest", size: 29, point: CGPoint(x: 195, y: 785))
-        let line = SKShapeNode(rectOf: CGSize(width: 342, height: 2))
-        line.fillColor = UIColor.white.withAlphaComponent(0.15)
-        line.position = CGPoint(x: 195, y: ceiling + radius + 4)
-        addChild(line)
-        for x in stride(from: 30, through: 370, by: 68) {
-            let lantern = SKShapeNode(rectOf: CGSize(width: 23, height: 31), cornerRadius: 9)
-            lantern.position = CGPoint(x: x, y: 760)
-            lantern.fillColor = .systemOrange
-            lantern.strokeColor = .systemYellow
-            lantern.alpha = 0.45
-            lantern.zPosition = -1
-            addChild(lantern)
-        }
+        let background = SKSpriteNode(imageNamed: "festival-day")
+        background.size = size
+        background.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        background.zPosition = -10
+        addChild(background)
+        backdrop = background
+        panel(width: 132, height: 47, point: CGPoint(x: 88, y: 759), parent: self)
+        panel(width: 132, height: 47, point: CGPoint(x: 291, y: 759), parent: self)
+        panel(width: 256, height: 31, point: CGPoint(x: 195, y: 322), parent: self)
+        panel(width: 278, height: 28, point: CGPoint(x: 195, y: 284), parent: self)
         let companionSheet = SKTexture(imageNamed: "festival-companions")
         for (index, x) in [CGFloat(74), CGFloat(319)].enumerated() {
             let texture = SKTexture(rect: CGRect(x: CGFloat(index) * 0.5, y: 0, width: 0.5, height: 1), in: companionSheet)
-            let companion = SKSpriteNode(texture: texture, size: CGSize(width: 74, height: 148))
-            companion.position = CGPoint(x: x, y: 207)
+            let companion = SKSpriteNode(texture: texture, size: CGSize(width: 105, height: 210))
+            companion.position = CGPoint(x: x, y: 210)
             companion.name = "companion-\(index)"
             addChild(companion)
         }
@@ -87,18 +95,46 @@ final class FestivalScene: SKScene {
         place.fontSize = 15
         place.position = CGPoint(x: 195, y: 115)
         addChild(place)
-        button("Levels", name: "levels", x: 340, y: 785)
-        let cannon = SKShapeNode(rectOf: CGSize(width: 65, height: 48), cornerRadius: 12)
-        cannon.position = CGPoint(x: origin.x, y: origin.y - 18)
-        cannon.fillColor = UIColor(red: 0.45, green: 0.28, blue: 0.24, alpha: 1)
-        cannon.strokeColor = .systemOrange
+        button("Map", name: "levels", x: 340, y: 801)
+        label("Bubble Quest", size: 16, point: CGPoint(x: 115, y: 797))
+        let base = SKShapeNode(rectOf: CGSize(width: 91, height: 20), cornerRadius: 7)
+        base.position = CGPoint(x: origin.x, y: 128)
+        base.fillColor = UIColor(red: 0.43, green: 0.23, blue: 0.13, alpha: 1)
+        base.strokeColor = UIColor(red: 1, green: 0.77, blue: 0.42, alpha: 1)
+        base.lineWidth = 3
+        addChild(base)
+        let barrelPath = CGMutablePath()
+        barrelPath.move(to: CGPoint(x: -31, y: -39))
+        barrelPath.addLine(to: CGPoint(x: -23, y: 16))
+        barrelPath.addQuadCurve(to: CGPoint(x: 23, y: 16), control: CGPoint(x: 0, y: 25))
+        barrelPath.addLine(to: CGPoint(x: 31, y: -39))
+        barrelPath.closeSubpath()
+        let cannon = SKShapeNode(path: barrelPath)
+        cannon.position = origin
+        cannon.fillColor = UIColor(red: 0.60, green: 0.33, blue: 0.16, alpha: 1)
+        cannon.strokeColor = UIColor(red: 1, green: 0.79, blue: 0.43, alpha: 1)
+        cannon.lineWidth = 3
         addChild(cannon)
+        label("✿", size: 21, point: CGPoint(x: 0, y: -31), parent: cannon)
+        label("Next", size: 12, point: CGPoint(x: 252, y: 127))
+    }
+
+    @discardableResult
+    private func panel(width: CGFloat, height: CGFloat, point: CGPoint, parent: SKNode) -> SKShapeNode {
+        let node = SKShapeNode(rectOf: CGSize(width: width, height: height), cornerRadius: min(20, height / 2))
+        node.position = point
+        node.fillColor = UIColor(red: 0.19, green: 0.22, blue: 0.39, alpha: 0.86)
+        node.strokeColor = UIColor(red: 1, green: 0.90, blue: 0.73, alpha: 0.8)
+        node.lineWidth = 1.5
+        parent.addChild(node)
+        return node
     }
 
     private func button(_ title: String, name: String, x: CGFloat, y: CGFloat) {
         let box = SKShapeNode(rectOf: CGSize(width: 82, height: 42), cornerRadius: 18)
-        box.fillColor = UIColor.white.withAlphaComponent(0.1)
-        box.strokeColor = UIColor.white.withAlphaComponent(0.25)
+        box.fillColor = UIColor(red: 0.23, green: 0.28, blue: 0.47, alpha: 0.9)
+        box.strokeColor = UIColor(red: 1, green: 0.85, blue: 0.60, alpha: 1)
+        box.lineWidth = 2
         box.position = CGPoint(x: x, y: y)
         box.name = name
         let titleNode = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
@@ -110,14 +146,27 @@ final class FestivalScene: SKScene {
     }
 
     private func bubble(_ color: Int) -> SKNode {
-        let node = SKShapeNode(circleOfRadius: radius - 1)
-        node.fillColor = palette[color]
-        node.strokeColor = .white.withAlphaComponent(0.7)
-        node.lineWidth = 2
+        let node = SKNode()
+        let shadow = SKShapeNode(circleOfRadius: radius - 1)
+        shadow.fillColor = palette[color].withAlphaComponent(0.45)
+        shadow.strokeColor = .clear
+        shadow.position = CGPoint(x: 0, y: -2)
+        node.addChild(shadow)
+        let body = SKShapeNode(circleOfRadius: radius - 1)
+        body.fillColor = palette[color]
+        body.strokeColor = UIColor.white.withAlphaComponent(0.9)
+        body.lineWidth = 1.8
+        node.addChild(body)
+        let glow = SKShapeNode(ellipseOf: CGSize(width: 13, height: 6))
+        glow.position = CGPoint(x: -7, y: 11)
+        glow.zRotation = 0.5
+        glow.fillColor = .white.withAlphaComponent(0.75)
+        glow.strokeColor = .clear
+        node.addChild(glow)
         let symbol = SKLabelNode(fontNamed: "AvenirNext-Bold")
         symbol.text = symbols[color]
-        symbol.fontSize = 22
-        symbol.fontColor = .white
+        symbol.fontSize = 23
+        symbol.fontColor = UIColor.white.withAlphaComponent(0.94)
         symbol.verticalAlignmentMode = .center
         node.addChild(symbol)
         return node
@@ -140,6 +189,7 @@ final class FestivalScene: SKScene {
         score = 0
         finished = false
         aiming = false
+        backdrop?.texture = SKTexture(imageNamed: level < 2 ? "festival-day" : "festival-dusk")
         for (cell, color) in board.bubbles {
             let node = bubble(color)
             node.position = point(cell)
@@ -153,37 +203,83 @@ final class FestivalScene: SKScene {
         (childNode(withName: "place") as? SKLabelNode)?.text = levelNames[level]
     }
 
-    private func showLevels() {
-        guard levelMenu == nil else { return }
+    private func makeMenu(background: String) -> SKNode {
+        levelMenu?.removeFromParent()
         aiming = false
         guide.removeAllChildren()
-        let overlay = SKShapeNode(rectOf: size)
-        overlay.position = CGPoint(x: size.width / 2, y: size.height / 2)
-        overlay.fillColor = UIColor(red: 0.12, green: 0.14, blue: 0.28, alpha: 0.98)
-        overlay.strokeColor = .clear
+        let overlay = SKNode()
         overlay.zPosition = 40
         addChild(overlay)
         levelMenu = overlay
-        label("Festival adventures", size: 27, point: CGPoint(x: 0, y: 235), parent: overlay)
-        label("Pick a stop and clear its bubbles", size: 15, point: CGPoint(x: 0, y: 203), parent: overlay)
+        let art = SKSpriteNode(imageNamed: background)
+        art.size = size
+        art.position = CGPoint(x: size.width / 2, y: size.height / 2)
+        overlay.addChild(art)
+        return overlay
+    }
+
+    private func menuButton(_ title: String, name: String, point: CGPoint, parent: SKNode, width: CGFloat = 270) {
+        let button = SKShapeNode(rectOf: CGSize(width: width, height: 60), cornerRadius: 28)
+        button.position = point
+        button.name = name
+        button.fillColor = UIColor(red: 1, green: 0.44, blue: 0.39, alpha: 1)
+        button.strokeColor = UIColor(red: 1, green: 0.94, blue: 0.81, alpha: 1)
+        button.lineWidth = 3
+        parent.addChild(button)
+        label(title, size: 23, point: CGPoint(x: 0, y: -8), parent: button)
+    }
+
+    private func showTitle() {
+        let overlay = makeMenu(background: "festival-dusk")
+        let shade = SKShapeNode(rectOf: size)
+        shade.position = CGPoint(x: 195, y: 422)
+        shade.fillColor = UIColor(red: 0.12, green: 0.14, blue: 0.28, alpha: 0.13)
+        shade.strokeColor = .clear
+        overlay.addChild(shade)
+        for (text, y, fontSize, color) in [("Bubble", CGFloat(673), CGFloat(72), UIColor(red: 1, green: 0.53, blue: 0.45, alpha: 1)), ("Quest", CGFloat(603), CGFloat(70), UIColor(red: 1, green: 0.96, blue: 0.80, alpha: 1))] {
+            label(text, size: fontSize, point: CGPoint(x: 198, y: y - 4), parent: overlay)
+            (overlay.children.last as? SKLabelNode)?.fontColor = UIColor(red: 0.14, green: 0.18, blue: 0.34, alpha: 1)
+            label(text, size: fontSize, point: CGPoint(x: 195, y: y), parent: overlay)
+            (overlay.children.last as? SKLabelNode)?.fontColor = color
+        }
+        panel(width: 228, height: 30, point: CGPoint(x: 195, y: 577), parent: overlay)
+        label("Festival Pop", size: 16, point: CGPoint(x: 195, y: 571), parent: overlay)
+        let cast = SKSpriteNode(imageNamed: "festival-title-cast")
+        cast.size = CGSize(width: 382, height: 382)
+        cast.position = CGPoint(x: 195, y: 365)
+        overlay.addChild(cast)
+        menuButton("Let's play  ✿", name: "start-adventure", point: CGPoint(x: 195, y: 159), parent: overlay)
+        panel(width: 314, height: 31, point: CGPoint(x: 195, y: 99), parent: overlay)
+        label("A little sunshine. A little festival magic.", size: 13, point: CGPoint(x: 195, y: 94), parent: overlay)
+    }
+
+    private func showLevels() {
+        let overlay = makeMenu(background: "festival-map")
+        panel(width: 306, height: 53, point: CGPoint(x: 195, y: 764), parent: overlay)
+        label("Festival adventure", size: 23, point: CGPoint(x: 195, y: 756), parent: overlay)
         let unlocked = min(4, max(0, UserDefaults.standard.integer(forKey: "unlockedLevel")))
-        for index in 0..<5 {
-            let entry = SKShapeNode(rectOf: CGSize(width: 320, height: 66), cornerRadius: 18)
-            entry.position = CGPoint(x: 0, y: 135 - CGFloat(index) * 82)
-            entry.fillColor = index <= unlocked ? UIColor.systemTeal.withAlphaComponent(0.2) : UIColor.white.withAlphaComponent(0.04)
-            entry.strokeColor = index <= unlocked ? .systemTeal : .darkGray
+        let positions = [CGPoint(x: 195, y: 145), CGPoint(x: 250, y: 260), CGPoint(x: 175, y: 380), CGPoint(x: 302, y: 489), CGPoint(x: 312, y: 612)]
+        for (index, position) in positions.enumerated() {
+            let entry = SKShapeNode(circleOfRadius: 27)
+            entry.position = position
+            entry.fillColor = index == unlocked ? .systemPink : index < unlocked ? UIColor(red: 0.99, green: 0.78, blue: 0.43, alpha: 1) : UIColor(red: 0.36, green: 0.40, blue: 0.53, alpha: 0.95)
+            entry.strokeColor = UIColor(red: 1, green: 0.95, blue: 0.77, alpha: 1)
+            entry.lineWidth = index == unlocked ? 4 : 2
             entry.name = index <= unlocked ? "level-\(index)" : "locked"
             overlay.addChild(entry)
-            label("\(index + 1) · \(levelNames[index])", size: 19, point: CGPoint(x: 0, y: 5), parent: entry)
+            label("\(index + 1)", size: 25, point: CGPoint(x: 0, y: -9), parent: entry)
+            let stars = UserDefaults.standard.integer(forKey: "stars-\(index)")
             let best = UserDefaults.standard.integer(forKey: "bestScore-\(index)")
-            label(index > unlocked ? "Clear the previous stop to unlock" : best > 0 ? "Best score: \(best)" : "Ready to play", size: 12, point: CGPoint(x: 0, y: -18), parent: entry)
+            if best > 0 {
+                label(String(repeating: "★", count: max(1, stars)), size: 16, point: CGPoint(x: 0, y: -45), parent: entry)
+                (entry.children.last as? SKLabelNode)?.fontColor = .systemYellow
+            }
+            let sign = panel(width: 138, height: 25, point: CGPoint(x: position.x > 275 ? position.x - 47 : position.x, y: position.y - 65), parent: overlay)
+            label(index > unlocked ? "Unlock next" : levelNames[index], size: 11, point: CGPoint(x: 0, y: -4), parent: sign)
         }
-        let close = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
-        close.text = "Back to game"
-        close.name = "close-levels"
-        close.fontSize = 19
-        close.position = CGPoint(x: 0, y: -285)
-        overlay.addChild(close)
+        menuButton("Home", name: "home", point: CGPoint(x: 77, y: 59), parent: overlay, width: 104)
+        panel(width: 213, height: 32, point: CGPoint(x: 260, y: 59), parent: overlay)
+        label("Clear a stop to open the next", size: 11, point: CGPoint(x: 260, y: 54), parent: overlay)
     }
 
     private func availableColor() -> Int {
@@ -205,7 +301,9 @@ final class FestivalScene: SKScene {
     }
 
     private func refreshHUD() {
-        hud.text = "Level \(level + 1)    •    Shots \(shots)    •    \(score)"
+        hud.text = "Level \(level + 1)"
+        shotsLabel.text = "Shots \(shots)"
+        scoreLabel.text = "Score \(score)"
         status.text = "Drag to aim • Release to pop"
     }
 
@@ -238,10 +336,9 @@ final class FestivalScene: SKScene {
         guard let location = touches.first?.location(in: self) else { return }
         let names = nodes(at: location).compactMap { $0.name ?? $0.parent?.name }
         if levelMenu != nil {
-            if names.contains("close-levels") {
-                levelMenu?.removeFromParent()
-                levelMenu = nil
-            } else if let name = names.first(where: { $0.hasPrefix("level-") }), let selected = Int(name.dropFirst(6)) {
+            if names.contains("start-adventure") { showLevels() }
+            else if names.contains("home") { showTitle() }
+            else if let name = names.first(where: { $0.hasPrefix("level-") }), let selected = Int(name.dropFirst(6)) {
                 levelMenu?.removeFromParent()
                 levelMenu = nil
                 level = selected
@@ -333,12 +430,32 @@ final class FestivalScene: SKScene {
         projectile = nil
         let result = board.place(currentColor, at: cell)
         for match in result.matched {
+            for index in 0..<6 {
+                let sparkle = SKShapeNode(circleOfRadius: 2.5)
+                sparkle.position = point(match)
+                sparkle.fillColor = palette[currentColor]
+                sparkle.strokeColor = .white.withAlphaComponent(0.6)
+                sparkle.zPosition = 12
+                addChild(sparkle)
+                let angle = CGFloat(index) * .pi / 3
+                sparkle.run(.sequence([.group([.moveBy(x: cos(angle) * 30, y: sin(angle) * 30, duration: 0.28), .fadeOut(withDuration: 0.28)]), .removeFromParent()]))
+            }
             nodes.removeValue(forKey: match)?.run(.sequence([.group([.scale(to: 1.4, duration: 0.12), .fadeOut(withDuration: 0.12)]), .removeFromParent()]))
         }
         for dropped in result.dropped {
             nodes.removeValue(forKey: dropped)?.run(.sequence([.group([.moveBy(x: 0, y: -650, duration: 0.65), .rotate(byAngle: 2, duration: 0.65), .fadeOut(withDuration: 0.65)]), .removeFromParent()]))
         }
         score += result.matched.count * 10 + result.dropped.count * 20
+        if !result.dropped.isEmpty {
+            let cheers = SKLabelNode(fontNamed: "AvenirNext-Bold")
+            cheers.text = "Nice drop! +\(result.dropped.count * 20)"
+            cheers.fontSize = 23
+            cheers.fontColor = .systemYellow
+            cheers.position = CGPoint(x: 195, y: 385)
+            cheers.zPosition = 12
+            addChild(cheers)
+            cheers.run(.sequence([.group([.moveBy(x: 0, y: 35, duration: 0.9), .sequence([.wait(forDuration: 0.55), .fadeOut(withDuration: 0.35)])]), .removeFromParent()]))
+        }
         if !result.matched.isEmpty {
             for index in 0..<2 {
                 childNode(withName: "companion-\(index)")?.run(.sequence([.moveBy(x: 0, y: 7, duration: 0.12), .moveBy(x: 0, y: -7, duration: 0.12)]))
@@ -364,6 +481,9 @@ final class FestivalScene: SKScene {
         if success {
             let bestKey = "bestScore-\(level)"
             UserDefaults.standard.set(max(score, UserDefaults.standard.integer(forKey: bestKey)), forKey: bestKey)
+            let initialShots = [24, 28, 30, 34, 38][level]
+            let stars = shots >= initialShots / 2 ? 3 : shots >= initialShots / 4 ? 2 : 1
+            UserDefaults.standard.set(max(stars, UserDefaults.standard.integer(forKey: "stars-\(level)")), forKey: "stars-\(level)")
             let unlocked = max(UserDefaults.standard.integer(forKey: "unlockedLevel"), min(4, level + 1))
             UserDefaults.standard.set(unlocked, forKey: "unlockedLevel")
             UINotificationFeedbackGenerator().notificationOccurred(.success)
@@ -378,7 +498,9 @@ final class FestivalScene: SKScene {
         label(success ? "Festival cheers! 🎉" : "Try another angle", size: 23, point: CGPoint(x: 0, y: 24), parent: panel)
         label("Score \(score)", size: 18, point: CGPoint(x: 0, y: -8), parent: panel)
         label(success ? (level == 4 ? "Tap to play again" : "Tap for the next level") : "Tap to retry", size: 16, point: CGPoint(x: 0, y: -43), parent: panel)
-        hud.text = "Level \(level + 1)    •    Shots \(shots)    •    \(score)"
+        hud.text = "Level \(level + 1)"
+        shotsLabel.text = "Shots \(shots)"
+        scoreLabel.text = "Score \(score)"
         status.text = success ? "Beautiful popping!" : "You can do it!"
     }
 }

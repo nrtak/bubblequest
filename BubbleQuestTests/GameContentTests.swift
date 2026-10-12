@@ -5,10 +5,11 @@ import UIKit
 final class GameContentTests: XCTestCase {
     func testEveryRuntimeImageAndAudioCueIsBundled() {
         let images = Set(LevelCatalog.levels.map(\.background)).union([
-            "festival-title-cast", "festival-hosts", "festival-companion-atlas"
+            "festival-title-cast", "festival-hosts", "festival-companion-atlas",
+            "festival-companion-motion", "festival-logo", "festival-bubbles", "festival-map", "festival-map-day"
         ])
         for name in images { XCTAssertNotNil(UIImage(named: name), "Missing image \(name)") }
-        for name in ["pop", "launch", "bomb", "victory", "music-day", "music-evening"] {
+        for name in ["pop", "launch", "load", "bomb", "victory", "music-day", "music-evening"] {
             XCTAssertNotNil(Bundle.main.url(forResource: name, withExtension: "wav"), "Missing audio \(name)")
         }
     }

@@ -82,7 +82,9 @@ enum LevelCatalog {
                 }
             }
         }
-        let shots = max(24, cells.count * 2 / 3 + colors * 2 + 5 - local % 3)
+        // A new station starts gently before its denser puzzles.
+        let welcomeAllowance = local < 2 ? 4 : 0
+        let shots = max(24, cells.count * 2 / 3 + colors * 2 + 5 - local % 3 + welcomeAllowance)
         return GameLevel(index: index, area: area, shots: shots, initialBubbles: cells)
     }
 

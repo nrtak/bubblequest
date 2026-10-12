@@ -40,10 +40,37 @@ struct BubbleBoard {
     }
 
     mutating func place(_ color: Int, at cell: Cell) -> (matched: Set<Cell>, dropped: Set<Cell>) {
+        place(.color(color), at: cell)
+    }
+
+    mutating func place(_ shot: BubbleShot, at cell: Cell) -> (matched: Set<Cell>, dropped: Set<Cell>) {
         guard Self.valid(cell), bubbles[cell] == nil else { return ([], []) }
-        bubbles[cell] = color
-        let group = connected(from: cell, matchingColor: true)
-        guard group.count >= 3 else { return ([], []) }
+        var group = Set<Cell>()
+        switch shot {
+        case .color(let color):
+            guard (0..<5).contains(color) else { return ([], []) }
+            bubbles[cell] = color
+            group = connected(from: cell, matchingColor: true)
+            guard group.count >= 3 else { return ([], []) }
+        case .rainbow:
+            var bestColor = 0
+            for color in Set(bubbles.values).sorted() {
+                bubbles[cell] = color
+                let candidate = connected(from: cell, matchingColor: true)
+                if candidate.count > group.count { group = candidate; bestColor = color }
+            }
+            bubbles[cell] = bestColor
+            if group.isEmpty { group = [cell] }
+        case .bomb:
+            bubbles[cell] = 0
+            var affected: Set<Cell> = [cell]
+            var frontier: Set<Cell> = [cell]
+            for _ in 0..<2 {
+                frontier = Set(frontier.flatMap { Self.neighbors(of: $0) }).subtracting(affected)
+                affected.formUnion(frontier)
+            }
+            group = affected.intersection(Set(bubbles.keys))
+        }
         for match in group { bubbles.removeValue(forKey: match) }
         var anchored = Set<Cell>()
         for ceiling in bubbles.keys where ceiling.row == 0 {
@@ -55,15 +82,6 @@ struct BubbleBoard {
     }
 
     static func level(_ index: Int) -> BubbleBoard {
-        var board = BubbleBoard()
-        let heights = [3, 4, 4, 5, 6]
-        let colors = [3, 3, 4, 4, 5]
-        for row in 0..<heights[index] {
-            for column in 0..<(columns - row % 2) {
-                let color = (column / 2 + row / 2 + index) % colors[index]
-                board.bubbles[Cell(row: row, column: column)] = color
-            }
-        }
-        return board
+        LevelCatalog.level(index).board
     }
 }

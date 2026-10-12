@@ -1,7 +1,18 @@
 import XCTest
+import UIKit
 @testable import BubbleQuest
 
 final class GameContentTests: XCTestCase {
+    func testEveryRuntimeImageAndAudioCueIsBundled() {
+        let images = Set(LevelCatalog.levels.map(\.background)).union([
+            "festival-title-cast", "festival-hosts", "festival-companion-atlas"
+        ])
+        for name in images { XCTAssertNotNil(UIImage(named: name), "Missing image \(name)") }
+        for name in ["pop", "launch", "bomb", "victory", "music-day", "music-evening"] {
+            XCTAssertNotNil(Bundle.main.url(forResource: name, withExtension: "wav"), "Missing audio \(name)")
+        }
+    }
+
     func testAllLevelsHaveLegalAnchoredBoardsAndSafeStartingHeight() {
         XCTAssertEqual(LevelCatalog.levels.count, 50)
         XCTAssertEqual(Set(LevelCatalog.levels.map(\.area)), Set(0..<5))

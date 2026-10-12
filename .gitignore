@@ -1,0 +1,8 @@
+.DS_Store
+build/
+*.xcodeproj/
+*.xcworkspace/
+*.p12
+*.mobileprovision
+AuthKey_*.p8
+__pycache__/

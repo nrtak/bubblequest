@@ -43,7 +43,7 @@ jobs:
     runs-on: macos-15
     environment: testflight
     env:
-      BUNDLE_ID: ${{ vars.APP_BUNDLE_ID || 'com.nrtak.bubblequest' }}
+      BUNDLE_ID: ${{ vars.APP_BUNDLE_ID || 'com.bubblequest.app' }}
     steps:
       - uses: actions/checkout@v4
       - name: Validate signing credentials

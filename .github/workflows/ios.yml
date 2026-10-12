@@ -42,10 +42,23 @@ jobs:
           xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --gameplay-preview
           sleep 3
           xcrun simctl io "$DEVICE" screenshot build/gameplay-iphone.png
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --gameplay-preview --dusk-preview
+          sleep 3
+          xcrun simctl io "$DEVICE" screenshot build/gameplay-dusk-iphone.png
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --map-preview
+          sleep 3
+          xcrun simctl io "$DEVICE" screenshot build/map-iphone.png
+          xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app
+          sleep 3
+          xcrun simctl io "$DEVICE" screenshot build/title-iphone.png
       - uses: actions/upload-artifact@v4
         with:
           name: gameplay-iphone
-          path: build/gameplay-iphone.png
+          path: |
+            build/gameplay-iphone.png
+            build/gameplay-dusk-iphone.png
+            build/map-iphone.png
+            build/title-iphone.png
       - uses: actions/upload-artifact@v4
         if: always()
         with:

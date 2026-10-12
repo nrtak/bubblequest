@@ -20,6 +20,25 @@ struct GameLevel {
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
     var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles) }
+    var background: String {
+        if area == 0 && index % 10 >= 5 { return "festival-summer-water" }
+        if area == 1 && index % 10 >= 4 { return "festival-tea-fields" }
+        return LevelCatalog.areas[area].background
+    }
+    var hint: String {
+        if index < 5 {
+            return ["Match three bubbles of the same color and symbol.",
+                    "Swap freely to choose your next shot.",
+                    "Pop a support to drop the bubbles below it.",
+                    "The wall can help you reach another angle.",
+                    "Try a booster, or save shots for three stars."][index]
+        }
+        return ["Look for a group you can pop in one shot.",
+                "Clear the edges to open a new angle.",
+                "Use the gap to reach a supporting group.",
+                "Look for a wall bounce around the arch.",
+                "Plan your next color before you shoot."][index % 5]
+    }
 
     func stars(shotsRemaining: Int) -> Int {
         shotsRemaining >= shots / 2 ? 3 : shotsRemaining >= shots / 4 ? 2 : 1
@@ -37,8 +56,8 @@ enum LevelCatalog {
     static let levels: [GameLevel] = (0..<50).map { index in
         let area = index / 10
         let local = index % 10
-        let height = min(8, 3 + area / 2 + local / 3)
-        let colors = min(5, 3 + (area + local / 8) / 2)
+        let height = index < 5 ? [2, 2, 3, 3, 3][index] : min(8, 3 + area / 2 + local / 3)
+        let colors = index < 5 ? [2, 2, 3, 3, 3][index] : min(5, 3 + (area + local / 8) / 2)
         var cells: [Cell: Int] = [:]
         for row in 0..<height {
             let width = BubbleBoard.columns - row % 2

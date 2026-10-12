@@ -63,7 +63,10 @@ final class FestivalScene: SKScene {
         scoreLabel.position = CGPoint(x: 195, y: 317)
         gameRoot.addChild(scoreLabel)
         status.fontSize = 13
-        status.position = CGPoint(x: 195, y: 279)
+        status.numberOfLines = 2
+        status.preferredMaxLayoutWidth = 260
+        status.verticalAlignmentMode = .center
+        status.position = CGPoint(x: 195, y: 284)
         gameRoot.addChild(status)
         button("Retry", name: "retry", x: 50, y: 56)
         button("Swap", name: "swap", x: 195, y: 56)
@@ -73,6 +76,8 @@ final class FestivalScene: SKScene {
         level = progress.unlockedLevel
         if ProcessInfo.processInfo.arguments.contains("--dusk-preview") { level = 49 }
         if ProcessInfo.processInfo.arguments.contains("--courtyard-preview") { level = 10 }
+        if ProcessInfo.processInfo.arguments.contains("--water-preview") { level = 5 }
+        if ProcessInfo.processInfo.arguments.contains("--tea-preview") { level = 14 }
         mapArea = level / 10
         startLevel()
         if ProcessInfo.processInfo.arguments.contains("--ending-preview") { showEnding() }
@@ -119,7 +124,7 @@ final class FestivalScene: SKScene {
         panel(width: 132, height: 47, point: CGPoint(x: 88, y: 759), parent: gameRoot)
         panel(width: 132, height: 47, point: CGPoint(x: 291, y: 759), parent: gameRoot)
         panel(width: 256, height: 31, point: CGPoint(x: 195, y: 322), parent: gameRoot)
-        panel(width: 278, height: 28, point: CGPoint(x: 195, y: 284), parent: gameRoot)
+        panel(width: 278, height: 38, point: CGPoint(x: 195, y: 284), parent: gameRoot)
         for (index, x) in [CGFloat(74), CGFloat(319)].enumerated() {
             let friend = progress.selected(index == 0 ? .animal : .human)
             let companion = SKSpriteNode(texture: atlasTexture("festival-companion-atlas", index: friend.atlasIndex), size: CGSize(width: 105, height: 105))
@@ -286,7 +291,7 @@ final class FestivalScene: SKScene {
         finished = false
         aiming = false
         let area = LevelCatalog.areas[level / 10]
-        backdrop?.texture = SKTexture(imageNamed: area.background)
+        backdrop?.texture = SKTexture(imageNamed: LevelCatalog.level(level).background)
         backdrop?.color = UIColor(red: 0.25, green: 0.27, blue: 0.55, alpha: 1)
         backdrop?.colorBlendFactor = area.nightTint ? 0.18 : 0
         audio.update(area: level / 10, enabled: progress.enabled(.music))
@@ -426,8 +431,8 @@ final class FestivalScene: SKScene {
     private func refreshHUD() {
         hud.text = "Level \(level + 1)"
         shotsLabel.text = "Shots \(shots)"
-        scoreLabel.text = "Score \(score)"
-        status.text = armed == nil ? "Drag to aim • Release to pop" : "Booster ready • Release to use"
+        scoreLabel.text = "Score \(score) • Best \(progress.bestScore(level))"
+        status.text = armed == nil ? (score == 0 ? LevelCatalog.level(level).hint : "Drag to aim • Release to pop") : "Booster ready • Release to use"
         for (name, count) in [("rainbow", rainbowLeft), ("bomb", bombLeft)] {
             let box = gameRoot.childNode(withName: name) as? SKShapeNode
             (box?.children.first as? SKLabelNode)?.text = "\(name.capitalized) \(count)"
@@ -593,7 +598,7 @@ final class FestivalScene: SKScene {
         nextNode?.removeFromParent()
         if success {
             score += shots * 25
-            status.text = "Beautiful popping!"
+            status.text = level % 3 == 0 ? FestivalHost.all[level / 10].encouragement : "Beautiful popping!"
             let unlocked = progress.recordVictory(index: level, score: score,
                                                    stars: LevelCatalog.level(level).stars(shotsRemaining: shots))
             if !unlocked.isEmpty { status.text = "New friend: \(unlocked.map { $0.name }.joined(separator: ", "))" }

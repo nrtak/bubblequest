@@ -76,6 +76,31 @@ jobs:
           xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --ending-preview
           sleep 3
           xcrun simctl io "$DEVICE" screenshot build/ending-iphone.png
+          for SCENE in friends quest quest-detail quest-reward wheel lantern pearl spark; do
+            xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --gameplay-preview "--${SCENE}-preview"
+            sleep 3
+            xcrun simctl io "$DEVICE" screenshot "build/${SCENE}-iphone.png"
+          done
+      - name: Capture compact iPhone screens
+        env:
+          DEVICE: ${{ steps.simulator.outputs.id }}
+        run: |
+          RUNTIME=$(xcrun simctl list devices available -j | python3 -c 'import json,os,sys; d=json.load(sys.stdin); print(next(k for k,v in d["devices"].items() if any(x["udid"] == os.environ["DEVICE"] for x in v)))')
+          TYPE=$(xcrun simctl list devicetypes -j | python3 -c 'import json,sys; d=json.load(sys.stdin); print(next(x["identifier"] for x in d["devicetypes"] if x["name"] == "iPhone SE (3rd generation)"))')
+          xcrun simctl shutdown "$DEVICE"
+          COMPACT=$(xcrun simctl create BubbleQuestCompact "$TYPE" "$RUNTIME")
+          xcrun simctl boot "$COMPACT"
+          xcrun simctl bootstatus "$COMPACT" -b
+          xcrun simctl status_bar "$COMPACT" override --time '9:41' --batteryState charged --batteryLevel 100
+          xcrun simctl install "$COMPACT" build/DerivedData/Build/Products/Debug-iphonesimulator/BubbleQuest.app
+          for SCENE in gameplay map friends settings wheel; do
+            xcrun simctl launch --terminate-running-process "$COMPACT" com.bubbleadventure.app "--${SCENE}-preview"
+            sleep 3
+            xcrun simctl io "$COMPACT" screenshot "build/${SCENE}-compact-iphone.png"
+          done
+          xcrun simctl launch --terminate-running-process "$COMPACT" com.bubbleadventure.app
+          sleep 3
+          xcrun simctl io "$COMPACT" screenshot build/home-compact-iphone.png
       - uses: actions/upload-artifact@v4
         with:
           name: gameplay-iphone

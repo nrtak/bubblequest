@@ -18,10 +18,7 @@ final class LevelReplayTests: XCTestCase {
             var board = level.board
             var bag: [Int] = []
             func draw() -> Int {
-                let colors = Set(board.bubbles.values)
-                bag.removeAll { !colors.contains($0) }
-                if bag.isEmpty { bag = colors.sorted().shuffled(using: &random) }
-                return bag.popLast() ?? 0
+                BubbleColorQueue.draw(board: board, bag: &bag, using: &random)
             }
             var current = draw()
             var next = draw()

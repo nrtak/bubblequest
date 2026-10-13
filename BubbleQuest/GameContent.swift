@@ -19,13 +19,22 @@ struct GameLevel {
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
-    var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles) }
+    var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials) }
+    var initialSpecials: [Cell: SpecialBubble] {
+        guard index % 10 >= 2, area >= 2 else { return [:] }
+        let kind: SpecialBubble = area == 2 ? .lantern : area == 3 ? .riverPearl : .blossomSpark
+        let color = area == 2 ? 1 : area == 3 ? 2 : 0
+        let cell = initialBubbles.keys.filter { $0.row > 0 && initialBubbles[$0] == color }
+            .sorted { $0.row == $1.row ? $0.column < $1.column : $0.row > $1.row }.first
+        return cell.map { [$0: kind] } ?? [:]
+    }
     var background: String {
         if area == 0 && index % 10 >= 5 { return "festival-summer-water" }
         if area == 1 && index % 10 >= 4 { return "festival-tea-fields" }
         return LevelCatalog.areas[area].background
     }
     var hint: String {
+        if let special = initialSpecials.values.first { return special.explanation }
         if index < 5 {
             return ["Match three bubbles of the same color and symbol.",
                     "Swap freely to choose your next shot.",
@@ -42,6 +51,18 @@ struct GameLevel {
 
     func stars(shotsRemaining: Int) -> Int {
         shotsRemaining >= shots / 2 ? 3 : shotsRemaining >= shots / 4 ? 2 : 1
+    }
+}
+
+enum BubbleColorQueue {
+    static func draw<R: RandomNumberGenerator>(board: BubbleBoard, bag: inout [Int], using random: inout R) -> Int {
+        let colors = Set(board.bubbles.values)
+        bag.removeAll { !colors.contains($0) }
+        if bag.isEmpty { bag = colors.sorted().shuffled(using: &random) }
+        let useful = Set(board.bubbles.keys.filter { board.connected(from: $0, matchingColor: true).count >= 2 }
+            .compactMap { board.bubbles[$0] })
+        if let index = bag.lastIndex(where: useful.contains) { return bag.remove(at: index) }
+        return bag.popLast() ?? 0
     }
 }
 
@@ -82,9 +103,12 @@ enum LevelCatalog {
                 }
             }
         }
-        // A new station starts gently before its denser puzzles.
+        if let authored = AuthoredLayouts.bubbles(for: index) { cells = authored }
+        // New stations and the afternoon's middle stop leave room to recover.
         let welcomeAllowance = local < 2 ? 4 : 0
-        let shots = max(24, cells.count * 2 / 3 + colors * 2 + 5 - local % 3 + welcomeAllowance)
+        let recoveryAllowance = local == 5 ? 3 : 0
+        let budgetColors = max(colors, Set(cells.values).count)
+        let shots = max(24, cells.count * 2 / 3 + budgetColors * 2 + 5 - local % 3 + welcomeAllowance + recoveryAllowance)
         return GameLevel(index: index, area: area, shots: shots, initialBubbles: cells)
     }
 
@@ -100,6 +124,11 @@ struct Companion {
     let kind: Kind
     let atlasIndex: Int
     let unlockAfter: Int
+    var unlockQuest: String? = nil
+    var unlockDescription: String {
+        if let id = unlockQuest, let quest = FestivalQuest.all.first(where: { $0.id == id }) { return "Finish \(quest.title)" }
+        return "Clear \(unlockAfter) stops"
+    }
 
     static let all = [
         Companion(id: "shiba", name: "Shiba", kind: .animal, atlasIndex: 0, unlockAfter: 0),
@@ -107,7 +136,13 @@ struct Companion {
         Companion(id: "calico", name: "Calico Cat", kind: .animal, atlasIndex: 2, unlockAfter: 20),
         Companion(id: "rabbit", name: "Rabbit", kind: .animal, atlasIndex: 3, unlockAfter: 30),
         Companion(id: "guide", name: "Festival Guide", kind: .human, atlasIndex: 4, unlockAfter: 0),
-        Companion(id: "host", name: "Festival Host", kind: .human, atlasIndex: 5, unlockAfter: 40)
+        Companion(id: "host", name: "Festival Host", kind: .human, atlasIndex: 5, unlockAfter: 40),
+        Companion(id: "haru", name: "Haru", kind: .human, atlasIndex: 6, unlockAfter: 5),
+        Companion(id: "mei", name: "Mei", kind: .human, atlasIndex: 7, unlockAfter: 0, unlockQuest: "parcels"),
+        Companion(id: "daichi", name: "Daichi", kind: .human, atlasIndex: 8, unlockAfter: 15),
+        Companion(id: "nao", name: "Nao", kind: .human, atlasIndex: 9, unlockAfter: 0, unlockQuest: "pinwheels"),
+        Companion(id: "kaito", name: "Kaito", kind: .human, atlasIndex: 10, unlockAfter: 0, unlockQuest: "picnic"),
+        Companion(id: "emi", name: "Emi", kind: .human, atlasIndex: 11, unlockAfter: 35)
     ]
 }
 
@@ -116,6 +151,8 @@ enum GameSetting: String, CaseIterable {
     case effects = "effectsEnabled"
     case vibration = "vibrationEnabled"
     case guide = "aimGuideEnabled"
+    case contrast = "highContrastEnabled"
+    case leftHand = "leftHandedEnabled"
 
     var title: String {
         switch self {
@@ -123,15 +160,19 @@ enum GameSetting: String, CaseIterable {
         case .effects: return "Sounds"
         case .vibration: return "Vibration"
         case .guide: return "Aim guide"
+        case .contrast: return "High contrast"
+        case .leftHand: return "Left-hand controls"
         }
     }
 }
 
 final class GameProgress {
     private let defaults: UserDefaults
+    let adventure: AdventureProgress
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
+        adventure = AdventureProgress(defaults: defaults)
         if defaults.bool(forKey: "muted") {
             for setting in [GameSetting.music, .effects] where defaults.object(forKey: setting.rawValue) == nil {
                 defaults.set(false, forKey: setting.rawValue)
@@ -143,11 +184,58 @@ final class GameProgress {
         min(LevelCatalog.levels.count - 1, max(0, defaults.integer(forKey: "unlockedLevel")))
     }
     var completedCount: Int { LevelCatalog.levels.filter { stars($0.index) > 0 }.count }
+    var checkpoint: GameCheckpoint? {
+        guard let data = defaults.data(forKey: "unfinishedPuzzle"),
+              let value = try? JSONDecoder().decode(GameCheckpoint.self, from: data),
+              value.board != nil, value.level <= unlockedLevel else { return nil }
+        return value
+    }
+    func save(_ checkpoint: GameCheckpoint) {
+        guard checkpoint.board != nil, let data = try? JSONEncoder().encode(checkpoint) else { return }
+        defaults.set(data, forKey: "unfinishedPuzzle")
+        markSaved()
+    }
+    func clearCheckpoint() { defaults.removeObject(forKey: "unfinishedPuzzle") }
+    var lastSaved: Date? { defaults.object(forKey: "lastSaved") as? Date }
+    func markSaved() { defaults.set(Date(), forKey: "lastSaved") }
+    var pendingBuddy: Companion? {
+        Companion.all.first { ($0.unlockAfter > 0 || $0.unlockQuest != nil) && unlocked($0) && !defaults.bool(forKey: "buddyWelcomed-\($0.id)") }
+    }
+    func welcome(_ buddy: Companion) {
+        guard unlocked(buddy) else { return }
+        defaults.set(true, forKey: "buddyWelcomed-\(buddy.id)")
+        markSaved()
+    }
+    var soundMuted: Bool { !enabled(.music) && !enabled(.effects) }
+    func toggleSound() {
+        let mute = !soundMuted
+        defaults.set(!mute, forKey: GameSetting.music.rawValue)
+        defaults.set(!mute, forKey: GameSetting.effects.rawValue)
+    }
+    func attempts(_ index: Int) -> Int { max(0, defaults.integer(forKey: "attempts-\(index)")) }
+    func recordAttempt(_ index: Int) {
+        guard LevelCatalog.levels.indices.contains(index) else { return }
+        defaults.set(attempts(index) + 1, forKey: "attempts-\(index)")
+    }
+    func recordOutcome(index: Int, won: Bool, shotsRemaining: Int) {
+        guard LevelCatalog.levels.indices.contains(index) else { return }
+        defaults.set(won, forKey: "lastWon-\(index)")
+        defaults.set(max(0, shotsRemaining), forKey: "lastRemaining-\(index)")
+        markSaved()
+    }
     var totalStars: Int { LevelCatalog.levels.reduce(0) { $0 + stars($1.index) } }
     var tutorialSeen: Bool {
         get { defaults.bool(forKey: "tutorialSeen") }
         set { defaults.set(newValue, forKey: "tutorialSeen") }
     }
+    var practiceDone: Bool {
+        get { defaults.bool(forKey: "firstMatchLearned") }
+        set { defaults.set(newValue, forKey: "firstMatchLearned") }
+    }
+    func hasLearned(_ kind: SpecialBubble) -> Bool { defaults.bool(forKey: "learned-\(kind.rawValue)") }
+    func markLearned(_ kind: SpecialBubble) { defaults.set(true, forKey: "learned-\(kind.rawValue)") }
+    func challengeWon(_ area: Int) -> Bool { defaults.bool(forKey: "challenge-\(area)") }
+    func recordChallenge(_ area: Int) { if (0..<5).contains(area) { defaults.set(true, forKey: "challenge-\(area)") } }
 
     func stars(_ index: Int) -> Int {
         let saved = min(3, max(0, defaults.integer(forKey: "stars-\(index)")))
@@ -159,8 +247,12 @@ final class GameProgress {
     }
 
     func enabled(_ setting: GameSetting) -> Bool {
-        (defaults.object(forKey: setting.rawValue) as? Bool) ?? true
+        (defaults.object(forKey: setting.rawValue) as? Bool) ?? (setting != .contrast && setting != .leftHand)
     }
+    func volumeStep(music: Bool) -> Int { min(5, max(0, defaults.object(forKey: music ? "musicVolume" : "effectsVolume") as? Int ?? (music ? 2 : 3))) }
+    func changeVolume(music: Bool, by delta: Int) { defaults.set(min(5, max(0, volumeStep(music: music) + delta)), forKey: music ? "musicVolume" : "effectsVolume") }
+    var musicVolume: Float { Float(volumeStep(music: true)) / 5 * 0.55 }
+    var effectsVolume: Float { Float(volumeStep(music: false)) / 5 }
 
     func toggle(_ setting: GameSetting) {
         defaults.set(!enabled(setting), forKey: setting.rawValue)
@@ -174,16 +266,28 @@ final class GameProgress {
         defaults.set(max(stars(index), min(3, max(1, earned))), forKey: "stars-\(index)")
         defaults.set(max(unlockedLevel, min(LevelCatalog.levels.count - 1, index + 1)), forKey: "unlockedLevel")
         let after = completedCount
-        return Companion.all.filter { $0.unlockAfter > before && $0.unlockAfter <= after }
+        return Companion.all.filter { $0.unlockQuest == nil && $0.unlockAfter > before && $0.unlockAfter <= after }
     }
 
-    func unlocked(_ companion: Companion) -> Bool { completedCount >= companion.unlockAfter }
+    func unlocked(_ companion: Companion) -> Bool {
+        if let id = companion.unlockQuest {
+            return FestivalQuest.all.first(where: { $0.id == id }).map { adventure.completed($0) } ?? false
+        }
+        return completedCount >= companion.unlockAfter
+    }
 
     func selected(_ kind: Companion.Kind) -> Companion {
         let key = kind == .animal ? "selectedAnimal" : "selectedHuman"
         let saved = defaults.string(forKey: key)
         return Companion.all.first { $0.id == saved && $0.kind == kind && unlocked($0) }
             ?? Companion.all.first { $0.kind == kind && $0.unlockAfter == 0 }!
+    }
+
+    func neighborIsAvailable(_ neighbor: FestivalNeighbor) -> Bool { unlockedLevel >= neighbor.area * 10 }
+    func hasMet(_ neighbor: FestivalNeighbor) -> Bool { defaults.bool(forKey: "neighborMet-\(neighbor.id)") }
+    func markMet(_ neighbor: FestivalNeighbor) {
+        guard neighborIsAvailable(neighbor) else { return }
+        defaults.set(true, forKey: "neighborMet-\(neighbor.id)")
     }
 
     func select(_ companion: Companion) {
@@ -209,6 +313,7 @@ struct BubblePoint: Equatable {
 struct BubbleFlight {
     let points: [BubblePoint]
     let landing: Cell?
+    var bounces: [BubblePoint] = []
 }
 
 enum BubbleGeometry {
@@ -219,6 +324,9 @@ enum BubbleGeometry {
     static let origin = BubblePoint(x: 195, y: 176)
     static let lossLine = 360.0
     static let maxAngle = 1.2
+    static func bouncePoints(_ flight: BubbleFlight) -> [BubblePoint] {
+        flight.bounces
+    }
 
     static func point(_ cell: Cell) -> BubblePoint {
         BubblePoint(x: left + Double(cell.column) * radius * 2 + Double(cell.row % 2) * radius,
@@ -235,14 +343,21 @@ enum BubbleGeometry {
         var dx = sin(clamped)
         let dy = cos(clamped)
         var points = [position]
+        var bounces: [BubblePoint] = []
         let occupied = board.bubbles.keys.sorted {
             $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row
         }
         for _ in 0..<700 {
             position.x += dx * 3
             position.y += dy * 3
-            if position.x < left { position.x = left * 2 - position.x; dx *= -1 }
-            if position.x > right { position.x = right * 2 - position.x; dx *= -1 }
+            if position.x < left {
+                bounces.append(BubblePoint(x: left, y: position.y - (left - position.x) * dy / max(0.0001, abs(dx))))
+                position.x = left * 2 - position.x; dx *= -1
+            }
+            if position.x > right {
+                bounces.append(BubblePoint(x: right, y: position.y - (position.x - right) * dy / max(0.0001, abs(dx))))
+                position.x = right * 2 - position.x; dx *= -1
+            }
             points.append(position)
             let hit = occupied.filter { distance(point($0), position) <= radius * 2 - 1 }
                 .min { distance(point($0), position) < distance(point($1), position) }
@@ -256,9 +371,9 @@ enum BubbleGeometry {
                     return abs(a - b) < 0.00001 ? ($0.row == $1.row ? $0.column < $1.column : $0.row < $1.row) : a < b
                 }
                 if let landing { points.append(point(landing)) }
-                return BubbleFlight(points: points, landing: landing)
+                return BubbleFlight(points: points, landing: landing, bounces: bounces)
             }
         }
-        return BubbleFlight(points: points, landing: nil)
+        return BubbleFlight(points: points, landing: nil, bounces: bounces)
     }
 }

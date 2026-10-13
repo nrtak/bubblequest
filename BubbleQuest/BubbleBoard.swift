@@ -1,5 +1,19 @@
 import Foundation
 
+enum SpecialBubble: String, Codable {
+    case lantern, riverPearl, blossomSpark
+    var artIndex: Int {
+        switch self { case .lantern: return 0; case .riverPearl: return 1; case .blossomSpark: return 2 }
+    }
+    var explanation: String {
+        switch self {
+        case .lantern: return "Lantern: match it to light up and clear its row."
+        case .riverPearl: return "River pearl: match it to get one shot back."
+        case .blossomSpark: return "Blossom spark: match it to pop nearby bubbles."
+        }
+    }
+}
+
 struct Cell: Hashable {
     let row: Int
     let column: Int
@@ -9,6 +23,7 @@ struct BubbleBoard {
     static let columns = 8
     static let rows = 14
     var bubbles: [Cell: Int] = [:]
+    var specials: [Cell: SpecialBubble] = [:]
 
     static func valid(_ cell: Cell) -> Bool {
         cell.row >= 0 && cell.row < rows && cell.column >= 0 &&
@@ -71,13 +86,24 @@ struct BubbleBoard {
             }
             group = affected.intersection(Set(bubbles.keys))
         }
-        for match in group { bubbles.removeValue(forKey: match) }
+        var processed = Set<Cell>()
+        while let special = group.subtracting(processed).first {
+            processed.insert(special)
+            switch specials[special] {
+            case .some(.lantern):
+                group.formUnion(bubbles.keys.filter { $0.row == special.row })
+            case .some(.blossomSpark):
+                group.formUnion(Self.neighbors(of: special).filter { bubbles[$0] != nil })
+            default: break
+            }
+        }
+        for match in group { bubbles.removeValue(forKey: match); specials.removeValue(forKey: match) }
         var anchored = Set<Cell>()
         for ceiling in bubbles.keys where ceiling.row == 0 {
             anchored.formUnion(connected(from: ceiling, matchingColor: false))
         }
         let dropped = Set(bubbles.keys).subtracting(anchored)
-        for cell in dropped { bubbles.removeValue(forKey: cell) }
+        for cell in dropped { bubbles.removeValue(forKey: cell); specials.removeValue(forKey: cell) }
         return (group, dropped)
     }
 

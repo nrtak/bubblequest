@@ -5,20 +5,34 @@ final class FestivalAudio {
     private var effects: [AVAudioPlayer] = []
     private var track = ""
     private var suspended = false
+    private var fadingTracks: [AVAudioPlayer] = []
 
     func update(area: Int, enabled: Bool) {
         let name = area < 2 ? "music-day" : "music-evening"
         if track != name {
             track = name
-            music?.stop()
+            if let old = music {
+                old.setVolume(0, fadeDuration: 0.8)
+                fadingTracks.append(old)
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.85) { [weak self, weak old] in
+                    old?.stop()
+                    self?.fadingTracks.removeAll { $0 === old }
+                }
+            }
             if let url = Bundle.main.url(forResource: name, withExtension: "wav") {
                 music = try? AVAudioPlayer(contentsOf: url)
                 music?.numberOfLoops = -1
-                music?.volume = 0.22
+                music?.volume = 0
                 music?.prepareToPlay()
             }
         }
-        if enabled && !suspended { music?.play() } else { music?.pause() }
+        if enabled && !suspended {
+            music?.play()
+            music?.setVolume(0.22, fadeDuration: 0.8)
+        } else {
+            music?.pause()
+            fadingTracks.forEach { $0.stop() }
+        }
     }
 
     func effect(_ name: String, enabled: Bool) {
@@ -33,6 +47,6 @@ final class FestivalAudio {
 
     func suspend(_ value: Bool) {
         suspended = value
-        if value { music?.pause(); effects.forEach { $0.stop() } }
+        if value { music?.pause(); fadingTracks.forEach { $0.stop() }; effects.forEach { $0.stop() } }
     }
 }

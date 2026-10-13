@@ -1264,6 +1264,7 @@ private extension FestivalScene {
     }
 
     func setOperatorHands(working: Bool) {
+        if let hands = gameRoot.childNode(withName: "operator-hands"), hands.zPosition == (working ? 5 : -0.2) { return }
         gameRoot.childNode(withName: "operator-hands")?.removeFromParent()
         let hands = SKNode(); hands.name = "operator-hands"
         // Idle wrists sit behind the controls; gripping fingers sit in front.
@@ -1549,12 +1550,11 @@ private extension FestivalScene {
         for (index, setting) in GameSetting.allCases.enumerated() {
             menuButton("\(setting.title): \(progress.enabled(setting) ? "On" : "Off")", name: "setting-\(setting.rawValue)", point: CGPoint(x: 195, y: 606 - CGFloat(index) * 58), parent: overlay, height: 44)
         }
-        menuButton("How to play", name: "tutorial", point: CGPoint(x: 195, y: 252), parent: overlay, height: 44)
-        menuButton("Sound levels", name: "sound-levels", point: CGPoint(x: 195, y: 202), parent: overlay, height: 44)
-        menuButton(progress.soundMuted ? "Sound: Off" : "Sound: On", name: "quick-sound", point: CGPoint(x: 195, y: 155), parent: overlay, width: 220, height: 44)
-        menuButton("Back", name: "back", point: CGPoint(x: 114, y: 97), parent: overlay, width: 158, height: 50)
-        menuButton("Home", name: "home", point: CGPoint(x: 282, y: 97), parent: overlay, width: 158, height: 50)
-        label("Irvine Dynamics • Bubble Quest", size: 13, point: CGPoint(x: 195, y: 63), parent: overlay)
+        menuButton("How to play", name: "tutorial", point: CGPoint(x: 195, y: 250), parent: overlay, height: 44)
+        menuButton("Sound levels", name: "sound-levels", point: CGPoint(x: 195, y: 193), parent: overlay, height: 44)
+        menuButton(progress.soundMuted ? "Sound: Off" : "Sound: On", name: "quick-sound", point: CGPoint(x: 195, y: 136), parent: overlay, width: 220, height: 44)
+        menuButton("Back", name: "back", point: CGPoint(x: 114, y: 78), parent: overlay, width: 158, height: 50)
+        menuButton("Home", name: "home", point: CGPoint(x: 282, y: 78), parent: overlay, width: 158, height: 50)
     }
 
     func showTutorial() {
@@ -1597,8 +1597,8 @@ private extension FestivalScene {
         let friends = Array(Companion.all.dropFirst(friendsPage * 6).prefix(6))
         for (index, friend) in friends.enumerated() {
             let x: CGFloat = index % 2 == 0 ? 105 : 285
-            let y: CGFloat = 617 - CGFloat(index / 2) * 166
-            let tile = panel(width: 160, height: 154, point: CGPoint(x: x, y: y), parent: overlay)
+            let y: CGFloat = 617 - CGFloat(index / 2) * 145
+            let tile = panel(width: 160, height: 136, point: CGPoint(x: x, y: y), parent: overlay)
             tile.name = "friend-\(friend.id)"
             let available = progress.unlocked(friend)
             let portrait = SKSpriteNode(texture: companionTexture(friend, frame: 0), size: CGSize(width: 96, height: 96))
@@ -1609,7 +1609,7 @@ private extension FestivalScene {
             let chosen = progress.selected(friend.kind).id == friend.id
             label(available ? chosen ? "Selected ✓" : "Tap to choose" : friend.unlockDescription, size: 10, point: CGPoint(x: 0, y: -65), parent: tile)
         }
-        menuButton(friendsPage == 0 ? "More friends →" : "← First friends", name: "friends-page", point: CGPoint(x: 195, y: 236), parent: overlay, height: 44)
+        menuButton(friendsPage == 0 ? "More friends →" : "← First friends", name: "friends-page", point: CGPoint(x: 195, y: 230), parent: overlay, height: 44)
         menuButton("Buddy pins", name: "accessories", point: CGPoint(x: 195, y: 171), parent: overlay, height: 44)
         menuButton("Back", name: "back", point: CGPoint(x: 195, y: 93), parent: overlay)
     }

@@ -435,7 +435,7 @@ final class FestivalScene: SKScene {
                 halo.zPosition = -1; entry.addChild(halo)
                 let buddy = SKSpriteNode(texture: companionTexture(progress.selected(.human), frame: 0), size: CGSize(width: 44, height: 44))
                 buddy.anchorPoint = CGPoint(x: 0.5, y: 0)
-                buddy.position = CGPoint(x: -38, y: -21)
+                buddy.position = CGPoint(x: position.x < 220 ? 38 : -38, y: -21)
                 entry.addChild(buddy)
                 if !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled {
                     halo.run(.repeatForever(.sequence([.fadeAlpha(to: 0.4, duration: 0.8), .fadeAlpha(to: 1, duration: 0.8)])))

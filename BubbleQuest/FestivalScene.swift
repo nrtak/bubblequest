@@ -591,8 +591,13 @@ final class FestivalScene: SKScene {
 
 private extension FestivalScene {
     func companionTexture(_ friend: Companion, frame: Int) -> SKTexture {
-        SKTexture(rect: CGRect(x: CGFloat(frame) / 4, y: CGFloat(5 - friend.atlasIndex) / 6,
-                               width: 0.25, height: 1.0 / 6), in: SKTexture(imageNamed: "festival-companion-motion"))
+        // The painted atlas uses different row heights for ears and human hairstyles.
+        let boundaries: [CGFloat] = [0, 245, 481, 713, 976, 1254, 1536]
+        let top = boundaries[friend.atlasIndex]
+        let bottom = boundaries[friend.atlasIndex + 1]
+        return SKTexture(rect: CGRect(x: CGFloat(frame) / 4, y: (1536 - bottom) / 1536,
+                                      width: 0.25, height: (bottom - top) / 1536),
+                         in: SKTexture(imageNamed: "festival-companion-motion"))
     }
 
     func animateCompanion(_ kind: Companion.Kind, frames: [Int], repeating: Bool = false) {

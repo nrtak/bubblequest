@@ -526,8 +526,8 @@ final class FestivalScene: SKScene {
         gameRoot.childNode(withName: "cannon")?.zRotation = -CGFloat(angle)
         gameRoot.childNode(withName: "handwheel")?.zRotation = -CGFloat(angle) * 2.5
         guide.removeAllChildren()
-        guard progress.enabled(.guide) else { return }
         setOperatorHands(working: true)
+        guard progress.enabled(.guide) else { return }
         let flight = BubbleGeometry.flight(angle: angle, board: board)
         for point in BubbleGeometry.bouncePoints(flight) {
             let bounce = SKShapeNode(circleOfRadius: 7)

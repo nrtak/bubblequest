@@ -7,7 +7,7 @@ final class FestivalAudio {
     private var suspended = false
     private var fadingTracks: [AVAudioPlayer] = []
 
-    func update(area: Int, enabled: Bool) {
+    func update(area: Int, enabled: Bool, volume: Float = 0.22) {
         let name = area < 2 ? "music-day" : "music-evening"
         if track != name {
             track = name
@@ -28,19 +28,19 @@ final class FestivalAudio {
         }
         if enabled && !suspended {
             music?.play()
-            music?.setVolume(0.22, fadeDuration: 0.8)
+            music?.setVolume(volume, fadeDuration: 0.8)
         } else {
             music?.pause()
             fadingTracks.forEach { $0.stop() }
         }
     }
 
-    func effect(_ name: String, enabled: Bool) {
+    func effect(_ name: String, enabled: Bool, volume: Float = 0.6) {
         guard enabled, !suspended,
               let url = Bundle.main.url(forResource: name, withExtension: "wav"),
               let player = try? AVAudioPlayer(contentsOf: url) else { return }
         effects.removeAll { !$0.isPlaying }
-        player.volume = 0.6
+        player.volume = volume
         effects.append(player)
         player.play()
     }

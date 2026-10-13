@@ -196,6 +196,7 @@ final class GameProgress {
         markSaved()
     }
     func clearCheckpoint() { defaults.removeObject(forKey: "unfinishedPuzzle") }
+    var currentLevel: Int { checkpoint?.level ?? unlockedLevel }
     var lastSaved: Date? { defaults.object(forKey: "lastSaved") as? Date }
     func markSaved() { defaults.set(Date(), forKey: "lastSaved") }
     var pendingBuddy: Companion? {

@@ -44,6 +44,7 @@ final class AdventureTests: XCTestCase {
         let progress = GameProgress(defaults: defaults)
         let checkpoint = GameCheckpoint(level: 0, board: LevelCatalog.level(0).board, shots: 10, score: 120,
                                         current: 0, next: 1, bag: [1, 0], rainbow: 0, bomb: 1, play: QuestPlay(), freeRainbow: false)
+        progress.recordVictory(index: 9, score: 100, stars: 1)
         progress.save(checkpoint)
         progress.recordAttempt(0)
         let reopened = GameProgress(defaults: defaults)
@@ -51,6 +52,8 @@ final class AdventureTests: XCTestCase {
         XCTAssertEqual(saved.shots, 10)
         XCTAssertEqual(saved.score, 120)
         XCTAssertEqual(saved.freeRainbow, false)
+        XCTAssertEqual(reopened.unlockedLevel, 10)
+        XCTAssertEqual(reopened.currentLevel, 0, "A replay must stay current even after later levels unlock")
         XCTAssertEqual(saved.board?.bubbles, checkpoint.board?.bubbles)
         XCTAssertNotNil(reopened.lastSaved)
         XCTAssertEqual(reopened.attempts(0), 1)
@@ -58,6 +61,7 @@ final class AdventureTests: XCTestCase {
         XCTAssertEqual(reopened.attempts(0), 1)
         reopened.clearCheckpoint()
         XCTAssertNil(GameProgress(defaults: defaults).checkpoint)
+        XCTAssertEqual(GameProgress(defaults: defaults).currentLevel, 10)
     }
 
     func testNeighborsFollowAreaUnlocksAndRememberIntroductions() {

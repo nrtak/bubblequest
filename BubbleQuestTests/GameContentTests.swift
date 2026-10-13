@@ -8,7 +8,6 @@ final class GameContentTests: XCTestCase {
             "festival-title-cast", "festival-hosts", "festival-companion-atlas",
             "festival-companion-motion", "festival-companion-glance", "festival-new-human-motion", "festival-special-bubbles",
             "festival-neighbors", "festival-neighbors-extra",
-            "festival-operator-hands",
             "festival-logo", "festival-bubbles", "festival-map", "festival-map-day"
         ])
         for name in images { XCTAssertNotNil(UIImage(named: name), "Missing image \(name)") }

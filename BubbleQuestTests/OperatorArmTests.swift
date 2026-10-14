@@ -31,6 +31,11 @@ final class OperatorArmTests: XCTestCase {
             let hand = grip.convert(CGPoint.zero, to: scene)
             XCTAssertEqual(wrist.x, hand.x, accuracy: 0.001)
             XCTAssertEqual(wrist.y, hand.y, accuracy: 0.001)
+            let palm = grip.convert(CGPoint(x: 19 * 32.0 / 72, y: 0), to: scene)
+            let wheelCenter = wheel.convert(CGPoint.zero, to: scene)
+            let palmRadius = hypot(palm.x - wheelCenter.x, palm.y - wheelCenter.y)
+            XCTAssertGreaterThan(palmRadius, 18)
+            XCTAssertLessThan(palmRadius, 23)
             motion = max(motion, hypot(hand.x - firstHand.x, hand.y - firstHand.y))
         }
         XCTAssertGreaterThan(motion, 5)

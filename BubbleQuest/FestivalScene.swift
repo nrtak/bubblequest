@@ -1493,10 +1493,14 @@ private extension FestivalScene {
     func companionTexture(_ friend: Companion, frame: Int, glance: Bool = false) -> SKTexture {
         if friend.kind == .animal && friend.atlasIndex >= 12 {
             let row = friend.atlasIndex - 12
-            let boundaries: [CGFloat] = [0, 397, 755, 1086]
-            return SKTexture(rect: CGRect(x: CGFloat(min(3, max(0, frame))) / 4,
+            let columns: [CGFloat] = [0, 362, 736, 1086, 1448]
+            let column = min(3, max(0, frame))
+            let rowSplits: [CGFloat] = [394, 398, 394, 398]
+            let boundaries: [CGFloat] = [0, rowSplits[column], 755, 1086]
+            return SKTexture(rect: CGRect(x: columns[column] / 1448,
                                           y: (1086 - boundaries[row + 1]) / 1086,
-                                          width: 0.25, height: (boundaries[row + 1] - boundaries[row]) / 1086),
+                                          width: (columns[column + 1] - columns[column]) / 1448,
+                                          height: (boundaries[row + 1] - boundaries[row]) / 1086),
                              in: SKTexture(imageNamed: "festival-summer-buddy-motion"))
         }
         if friend.atlasIndex >= 6 {

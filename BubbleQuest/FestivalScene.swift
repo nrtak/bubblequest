@@ -262,21 +262,6 @@ final class FestivalScene: SKScene {
         return node
     }
 
-    private func button(_ title: String, name: String, x: CGFloat, y: CGFloat, width: CGFloat = 82) {
-        let box = SKShapeNode(rectOf: CGSize(width: width, height: 42), cornerRadius: 18)
-        box.fillColor = UIColor(red: 0.23, green: 0.28, blue: 0.47, alpha: 0.9)
-        box.strokeColor = UIColor(red: 1, green: 0.85, blue: 0.60, alpha: 1)
-        box.lineWidth = 2
-        box.position = CGPoint(x: x, y: y)
-        box.name = name
-        let titleNode = SKLabelNode(fontNamed: "AvenirNext-DemiBold")
-        titleNode.text = title
-        titleNode.fontSize = 15
-        titleNode.verticalAlignmentMode = .center
-        box.addChild(titleNode)
-        gameRoot.addChild(box)
-    }
-
     private func bubble(_ color: Int) -> SKNode {
         bubbleArt(index: color)
     }
@@ -1485,9 +1470,10 @@ private extension FestivalScene {
         guard let arm = buddy.childNode(withName: "operator-arm") else { return }
         let shoulder = buddy.convert(socket, to: gameRoot)
         // A short rim stroke follows steering without forcing a full crank rotation.
-        let stroke = max(-CGFloat(0.3), min(CGFloat(0.3), wheel.zRotation * 0.16))
-        let hand = CGPoint(x: wheel.position.x + cos(stroke) * 21,
-                           y: wheel.position.y + sin(stroke) * 21)
+        let stroke = max(-CGFloat(0.4), min(CGFloat(0.4), wheel.zRotation * 0.13))
+        // The painted palm extends eight points beyond the wrist pivot onto the rim.
+        let hand = CGPoint(x: wheel.position.x + cos(stroke) * 13,
+                           y: wheel.position.y + sin(stroke) * 13)
         let pose = OperatorArmPose.gripping(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: hand.x, y: hand.y))
         let a = arm.convert(CGPoint(x: pose.shoulder.x, y: pose.shoulder.y), from: gameRoot)
         let b = arm.convert(CGPoint(x: pose.elbow.x, y: pose.elbow.y), from: gameRoot)

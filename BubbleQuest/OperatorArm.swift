@@ -1,7 +1,7 @@
 import Foundation
 
 struct OperatorArmPose {
-    static let upperLength = 18.0
+    static let upperLength = 24.0
     static let forearmLength = 24.0
     let shoulder: BubblePoint
     let elbow: BubblePoint

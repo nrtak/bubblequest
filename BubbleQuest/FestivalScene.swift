@@ -85,9 +85,7 @@ final class FestivalScene: SKScene {
         shotsLabel.verticalAlignmentMode = .center
         shotsLabel.position = CGPoint(x: 207, y: 755)
         gameRoot.addChild(shotsLabel)
-        iconButton("house.fill", name: "home", point: CGPoint(x: 47, y: 755))
-        button("Restart", name: "retry", x: 48, y: 65)
-        button("Swap", name: "swap", x: 195, y: 65, width: 64)
+        iconButton("gearshape.fill", name: "game-menu", point: CGPoint(x: 48, y: 65))
         boosterButton(.rainbow, name: "rainbow", point: CGPoint(x: 132, y: 65))
         boosterButton(.bomb, name: "bomb", point: CGPoint(x: 258, y: 65))
         level = progress.unlockedLevel
@@ -316,7 +314,7 @@ final class FestivalScene: SKScene {
         gameRoot.childNode(withName: "cancel-cue")?.isHidden = true
         colorBag.removeAll()
         gameRoot.isPaused = false
-        for name in ["retry", "swap", "rainbow", "bomb", "next-caption"] { gameRoot.childNode(withName: name)?.isHidden = false }
+        for name in ["rainbow", "bomb"] { gameRoot.childNode(withName: name)?.isHidden = false }
         for index in 0..<2 {
             let friend = progress.selected(index == 0 ? .animal : .human)
             let sprite = gameRoot.childNode(withName: "companion-\(index)") as? SKSpriteNode
@@ -437,14 +435,14 @@ final class FestivalScene: SKScene {
         label("Start Menu", size: 26, point: CGPoint(x: 195, y: 553), parent: overlay)
         panel(width: 342, height: 392, point: CGPoint(x: 195, y: 345), parent: overlay)
         label("Welcome, \(profiles.active.name)", size: 22, point: CGPoint(x: 195, y: 498), parent: overlay)
-        navigationCard(progress.checkpoint == nil ? "Play" : "Continue playing", detail: "Level \(progress.currentLevel + 1) • \(LevelCatalog.level(progress.currentLevel).area + 1) / 5 areas", symbol: "play.fill", name: "continue-stop", y: 418, parent: overlay, primary: true)
+        navigationCard(progress.checkpoint == nil ? "Play" : "Continue playing", detail: "Level \(progress.currentLevel + 1) • \(LevelCatalog.level(progress.currentLevel).area + 1) / \(LevelCatalog.areas.count) areas", symbol: "play.fill", name: "continue-stop", y: 418, parent: overlay, primary: true)
         navigationCard("Explore Map", detail: "Levels • buddies • activities", symbol: "map.fill", name: "start-adventure", y: 317, parent: overlay, primary: false)
-        menuButton("Players", name: "players", point: CGPoint(x: 147, y: 219), parent: overlay, width: 190, height: 48)
-        decorateMenuIcon("person.2.fill", name: "players", parent: overlay, x: -65)
-        let settings = panel(width: 48, height: 48, point: CGPoint(x: 303, y: 219), parent: overlay)
-        settings.name = "settings"; settings.fillColor = .systemGray4
-        let gear = questIcon("gearshape.fill", size: 26, color: .darkGray); settings.addChild(gear)
-        label("Saved automatically • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 181), parent: overlay)
+        menuButton("Players", name: "players", point: CGPoint(x: 147, y: 230), parent: overlay, width: 166, height: 44)
+        decorateMenuIcon("person.2.fill", name: "players", parent: overlay, x: -56)
+        let settings = panel(width: 48, height: 48, point: CGPoint(x: 303, y: 230), parent: overlay)
+        settings.name = "settings"; settings.fillColor = UIColor(white: 0.96, alpha: 1)
+        let gear = questIcon("gearshape.fill", size: 26, color: UIColor(white: 0.55, alpha: 1)); settings.addChild(gear)
+        label("Saved automatically • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 169), parent: overlay)
         label("Irvine Dynamics", size: 12, point: CGPoint(x: 195, y: 62), parent: overlay)
     }
 
@@ -507,7 +505,7 @@ final class FestivalScene: SKScene {
         panel(width: 342, height: 468, point: CGPoint(x: 195, y: 441), parent: overlay)
         label("Saved progress", size: 28, point: CGPoint(x: 195, y: 630), parent: overlay)
         paragraph("\(profiles.active.name)'s levels, stars, buddies, quests and prizes save separately on this iPhone.", y: 554, parent: overlay)
-        label("\(progress.completedCount)/50 stops • \(progress.totalStars)/150 stars", size: 19, point: CGPoint(x: 195, y: 468), parent: overlay)
+        label("\(progress.completedCount)/\(LevelCatalog.levelCount) stops • \(progress.totalStars)/\(LevelCatalog.maximumStars) stars", size: 19, point: CGPoint(x: 195, y: 468), parent: overlay)
         label(progress.checkpoint.map { "Puzzle \($0.level + 1) ready to resume" } ?? "No unfinished puzzle", size: 17, point: CGPoint(x: 195, y: 428), parent: overlay)
         let stamp = progress.lastSaved.map { DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .short) } ?? "Ready for your first adventure"
         label(stamp, size: 14, point: CGPoint(x: 195, y: 385), parent: overlay)
@@ -518,17 +516,17 @@ final class FestivalScene: SKScene {
 
     private func showLevels() {
         menuKind = "map"
-        mapArea = min(4, max(0, mapArea))
+        mapArea = min(LevelCatalog.areas.count - 1, max(0, mapArea))
         let area = LevelCatalog.areas[mapArea]
-        let overlay = makeMenu(background: mapArea < 2 ? "festival-map-day" : "festival-map")
+        let overlay = makeMenu(background: !area.nightTint && mapArea % 5 < 2 ? "festival-map-day" : "festival-map")
         panel(width: 346, height: 82, point: CGPoint(x: 195, y: 738), parent: overlay)
         label(area.name, size: 23, point: CGPoint(x: 195, y: 750), parent: overlay)
         let current = progress.currentLevel
-        label("Area \(mapArea + 1)/5 • Active level \(current + 1) • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 720), parent: overlay)
+        label("Area \(mapArea + 1)/\(LevelCatalog.areas.count) • Active level \(current + 1) • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 720), parent: overlay)
         // Marker centers follow the painted roads, leaving the scenery visible.
         let dayXs: [CGFloat] = [223, 234, 238, 251, 270, 232, 174, 184, 246, 242]
         let nightXs: [CGFloat] = [218, 260, 246, 192, 222, 300, 314, 306, 312, 337]
-        let xs = mapArea < 2 ? dayXs : nightXs
+        let xs = !area.nightTint && mapArea % 5 < 2 ? dayXs : nightXs
         let positions = xs.enumerated().map { CGPoint(x: $0.element, y: 270 + CGFloat($0.offset) * 44) }
         let path = CGMutablePath(); path.move(to: positions[0])
         for position in positions.dropFirst() { path.addLine(to: position) }
@@ -564,7 +562,7 @@ final class FestivalScene: SKScene {
                 label(String(repeating: "★", count: progress.stars(index)), size: 8, point: CGPoint(x: 0, y: 20), parent: entry)
             }
         }
-        for (name, text, x, enabled) in [("area-prev", "Previous area", CGFloat(99), mapArea > 0), ("area-next", "Next area", CGFloat(291), mapArea < 4)] {
+        for (name, text, x, enabled) in [("area-prev", "Previous area", CGFloat(99), mapArea > 0), ("area-next", "Next area", CGFloat(291), mapArea < LevelCatalog.areas.count - 1)] {
             let tab = SKShapeNode(rectOf: CGSize(width: 152, height: 36), cornerRadius: 7)
             tab.name = enabled ? name : "area-unavailable"; tab.position = CGPoint(x: x, y: 197)
             tab.fillColor = .systemGray4; tab.strokeColor = .white; tab.alpha = enabled ? 1 : 0.35
@@ -579,6 +577,7 @@ final class FestivalScene: SKScene {
             label("Active favor", size: 14, point: CGPoint(x: 10, y: 8), parent: card)
             label("\(progress.adventure.count(quest))/3 • Details", size: 13, point: CGPoint(x: 0, y: -17), parent: card)
         }
+        if FestivalHost.all.indices.contains(mapArea) {
         let station = SKNode(); station.position = CGPoint(x: 80, y: 414); overlay.addChild(station)
         station.name = "meet-host"
         let footing = SKShapeNode(ellipseOf: CGSize(width: 82, height: 14)); footing.fillColor = .brown.withAlphaComponent(0.5); footing.strokeColor = .clear; footing.position.y = -46
@@ -594,6 +593,7 @@ final class FestivalScene: SKScene {
         }
         addQuestDecorations(to: station)
         host.run(.repeatForever(.sequence([.moveBy(x: 0, y: 3, duration: 1.6), .moveBy(x: 0, y: -3, duration: 1.6)])))
+        }
         let wheelStop = panel(width: 128, height: 52, point: CGPoint(x: 80, y: 270), parent: overlay)
         wheelStop.name = "open-wheel"
         menuButton("Neighbors", name: "neighbors", point: CGPoint(x: 80, y: 584), parent: overlay, width: 128, height: 40)
@@ -625,12 +625,8 @@ final class FestivalScene: SKScene {
             animateCompanion(.animal, frames: [1, 2, 1, 0])
             node.run(.sequence([.move(to: origin, duration: 0.3), .run { [weak self] in self?.loadingBubble = false }]))
         }
-        gameRoot.childNode(withName: "next-caption")?.removeFromParent()
-        let caption = SKLabelNode(fontNamed: "AvenirNext-Bold")
-        caption.name = "next-caption"; caption.text = "NEXT"; caption.fontSize = 14
-        caption.fontColor = .darkGray; caption.position = CGPoint(x: 113, y: 187)
-        gameRoot.addChild(caption)
         let next = bubble(nextColor)
+        next.name = "swap-bubble"
         next.setScale(0.85)
         let queueRing = SKShapeNode(circleOfRadius: 25)
         queueRing.fillColor = UIColor.white.withAlphaComponent(0.85); queueRing.strokeColor = .systemYellow
@@ -664,6 +660,7 @@ final class FestivalScene: SKScene {
         aim = CGVector(dx: sin(angle), dy: cos(angle))
         gameRoot.childNode(withName: "cannon")?.zRotation = -CGFloat(angle)
         gameRoot.childNode(withName: "handwheel")?.zRotation = -CGFloat(angle) * 2.5
+        synchronizeOperatorRig()
         guide.removeAllChildren()
         guard progress.enabled(.guide) else { return }
         let flight = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: ceilingOffset)
@@ -707,18 +704,17 @@ final class FestivalScene: SKScene {
         guard !suspended, let location = touches.first?.location(in: self) else { return }
         let names = interactionNames(at: location)
         if levelMenu != nil { handleMenu(names); return }
-        if let control = names.first(where: { ["rainbow", "bomb", "swap"].contains($0) }) {
+        if let control = names.first(where: { ["rainbow", "bomb"].contains($0) }) {
             gameRoot.run(.sequence([.wait(forDuration: 0.55), .run { [weak self] in self?.showControlHelp(control) }]), withKey: "control-help")
         }
         if names.contains("quest-objective") { showObjectives(); return }
-        if names.contains("home") { showTitle(); return }
-        if names.contains("retry") { showRetryPrompt(); return }
+        if names.contains("game-menu") { showGameMenu(); return }
         if finished {
             guard names.contains("result-next") else { return }
             if let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
             if let completedQuest { showQuest(completedQuest); return }
             if challengeMode && won { challengeMode = false; showQuests(area: level / 10); return }
-            if won && level == 49 { showEnding(); return }
+            if won && level == LevelCatalog.levelCount - 1 { showEnding(); return }
             if won { level += 1 }
             beginSelectedLevel()
             return
@@ -726,7 +722,7 @@ final class FestivalScene: SKScene {
         guard projectile == nil, !loadingBubble, !ceilingMoving else { return }
         if names.contains("rainbow") && rainbowLeft > 0 { armed = armed == .rainbow ? nil : .rainbow; reload(); refreshHUD(); return }
         if names.contains("bomb") && bombLeft > 0 { armed = armed == .bomb ? nil : .bomb; reload(); refreshHUD(); return }
-        if names.contains("swap") { armed = nil; swap(&currentColor, &nextColor); reload(); refreshHUD(); return }
+        if names.contains("swap-bubble") { armed = nil; swap(&currentColor, &nextColor); reload(); refreshHUD(); return }
         guard location.y > 350 && location.y < 710 else { return }
         aiming = true
         aimGesture.begin(at: BubblePoint(x: Double(location.x), y: Double(location.y)))
@@ -858,7 +854,7 @@ final class FestivalScene: SKScene {
         }
         finished = true
         won = success
-        for name in ["retry", "swap", "rainbow", "bomb", "next-caption"] { gameRoot.childNode(withName: name)?.isHidden = true }
+        for name in ["rainbow", "bomb"] { gameRoot.childNode(withName: name)?.isHidden = true }
         aiming = false
         guide.removeAllChildren()
         loaded?.removeFromParent()
@@ -868,7 +864,7 @@ final class FestivalScene: SKScene {
         if success {
             if challengeMode && LevelCatalog.level(level).stars(shotsRemaining: shots) == 3 { progress.recordChallenge(level / 10) }
             score += shots * 25
-            status.text = level % 3 == 0 ? FestivalHost.all[level / 10].encouragement : "Beautiful popping!"
+            status.text = level % 3 == 0 && FestivalHost.all.indices.contains(level / 10) ? FestivalHost.all[level / 10].encouragement : "Beautiful popping!"
             let unlocked = progress.recordVictory(index: level, score: score,
                                                    stars: LevelCatalog.level(level).stars(shotsRemaining: shots))
             let newQuests = progress.adventure.recordWin(level: level, play: questPlay, completedLevels: progress.completedCount)
@@ -915,13 +911,13 @@ final class FestivalScene: SKScene {
         message.verticalAlignmentMode = .center
         message.position = CGPoint(x: 0, y: -35)
         panel.addChild(message)
-        menuButton(success ? (completedQuest != nil ? "Collect reward" : level == 49 ? "Celebrate!" : "Next level") : "Try again", name: "result-next", point: CGPoint(x: 0, y: -99), parent: panel, width: 270, height: 56)
+        menuButton(success ? (completedQuest != nil ? "Collect reward" : level == LevelCatalog.levelCount - 1 ? "Celebrate!" : "Next level") : "Try again", name: "result-next", point: CGPoint(x: 0, y: -99), parent: panel, width: 270, height: 56)
         shotsLabel.text = "\(shots)"
     }
 }
 
 private extension FestivalScene {
-    func interactionNames(at location: CGPoint) -> [String] {
+    internal func interactionNames(at location: CGPoint) -> [String] {
         let parent = levelMenu ?? gameRoot
         let point = convert(location, to: parent)
         let hits = parent.nodes(at: point)
@@ -933,6 +929,11 @@ private extension FestivalScene {
         // Keep controls at least 44 physical points tall on compact iPhones.
         let scale = min((view?.bounds.width ?? size.width) / size.width, (view?.bounds.height ?? size.height) / size.height)
         let minimum = 44 / max(0.1, scale)
+        if levelMenu == nil, !finished, let next = nextNode,
+           CGRect(x: next.position.x - minimum / 2, y: next.position.y - minimum / 2,
+                  width: minimum, height: minimum).contains(point) {
+            return names + ["swap-bubble"]
+        }
         let targets = parent.children.filter { $0 is SKShapeNode && $0.name != nil && $0.name != "board-veil" && $0.name != "result" && $0.name != "control-tip" }
         if targets.contains(where: { names.contains($0.name!) }) { return names }
         let nearby = targets.filter { node in
@@ -1223,6 +1224,17 @@ private extension FestivalScene {
         menuButton("Festival map", name: "quest-back", point: CGPoint(x: 195, y: 115), parent: overlay, height: 48)
     }
 
+    internal func showGameMenu() {
+        menuKind = "game-menu"; returnMenu = "game"
+        let overlay = makeMenu(background: LevelCatalog.level(level).background)
+        panel(width: 330, height: 340, point: CGPoint(x: 195, y: 440), parent: overlay)
+        label("Puzzle menu", size: 28, point: CGPoint(x: 195, y: 562), parent: overlay)
+        menuButton("Keep playing", name: "game-resume", point: CGPoint(x: 195, y: 492), parent: overlay, height: 50)
+        menuButton("Restart puzzle", name: "game-restart", point: CGPoint(x: 195, y: 424), parent: overlay, height: 50)
+        menuButton("Settings", name: "settings", point: CGPoint(x: 195, y: 356), parent: overlay, height: 44)
+        menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 292), parent: overlay, height: 44)
+    }
+
     func showRetryPrompt() {
         menuKind = "retry-prompt"; returnMenu = "game"
         let overlay = makeMenu(background: LevelCatalog.level(level).background)
@@ -1337,7 +1349,7 @@ private extension FestivalScene {
 
     func updateControlLayout() {
         let leftHand = progress.enabled(.leftHand)
-        let positions: [(String, CGFloat)] = leftHand ? [("retry", 342), ("rainbow", 48), ("swap", 112), ("bomb", 178)] : [("retry", 48), ("rainbow", 132), ("swap", 195), ("bomb", 258)]
+        let positions: [(String, CGFloat)] = leftHand ? [("game-menu", 342), ("rainbow", 48), ("bomb", 132)] : [("game-menu", 48), ("rainbow", 132), ("bomb", 258)]
         for (name, x) in positions { gameRoot.childNode(withName: name)?.position.x = x }
         gameRoot.childNode(withName: "board-veil")?.alpha = progress.enabled(.contrast) ? 0.34 : 0.17
         view?.preferredFramesPerSecond = levelMenu != nil || ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60
@@ -1397,7 +1409,7 @@ private extension FestivalScene {
     }
 
     func animateCompanion(_ kind: Companion.Kind, frames: [Int], repeating: Bool = false) {
-        if kind == .human { return } // The operator rests on the stationary rim.
+        if kind == .human { return } // The articulated arm owns the operator motion.
         let index = kind == .animal ? 0 : 1
         guard let sprite = gameRoot.childNode(withName: "companion-\(index)") as? SKSpriteNode else { return }
         let key = kind == .animal ? "loading" : "operating"
@@ -1412,17 +1424,17 @@ private extension FestivalScene {
         guard let cannon = gameRoot.childNode(withName: "cannon") as? SKShapeNode else { return }
         let colors: [UIColor] = [.brown, .systemGreen, .systemOrange, .systemTeal, .systemPurple]
         let symbols = ["leaf.fill", "sun.max.fill", "lightbulb.fill", "water.waves", "sparkles"]
-        cannon.fillColor = colors[level / 10]
+        cannon.fillColor = colors[(level / 10) % colors.count]
         cannon.strokeColor = .systemYellow
         cannon.removeAllChildren()
-        let emblem = questIcon(symbols[level / 10], size: 18, color: .white)
+        let emblem = questIcon(symbols[(level / 10) % symbols.count], size: 18, color: .white)
         emblem.position.y = -31; cannon.addChild(emblem)
         gameRoot.childNode(withName: "machine-trim")?.removeFromParent()
         let trim = SKNode(); trim.name = "machine-trim"; trim.zPosition = -0.1
         gameRoot.addChild(trim)
         for side in [-1, 1] {
             let ornament: SKShapeNode
-            switch level / 10 {
+            switch (level / 10) % LevelCatalog.originalAreas.count {
             case 1: ornament = SKShapeNode(ellipseOf: CGSize(width: 12, height: 34))
             case 2: ornament = SKShapeNode(rectOf: CGSize(width: 15, height: 24), cornerRadius: 6)
             case 3: ornament = SKShapeNode(ellipseOf: CGSize(width: 26, height: 10))
@@ -1430,15 +1442,15 @@ private extension FestivalScene {
             default: ornament = SKShapeNode(rectOf: CGSize(width: 12, height: 22), cornerRadius: 3)
             }
             ornament.position = CGPoint(x: 195 + CGFloat(side) * 36, y: 151)
-            ornament.fillColor = colors[level / 10]; ornament.strokeColor = .systemYellow
+            ornament.fillColor = colors[(level / 10) % colors.count]; ornament.strokeColor = .systemYellow
             trim.addChild(ornament)
         }
         synchronizeOperatorRig()
     }
 
-    func synchronizeOperatorRig() {
+    internal func synchronizeOperatorRig() {
         guard let buddy = gameRoot.childNode(withName: "companion-1") as? SKSpriteNode,
-              let knob = gameRoot.childNode(withName: "rim-contact") else { return }
+              let wheel = gameRoot.childNode(withName: "handwheel") else { return }
         let friend = progress.selected(.human)
         buddy.removeAction(forKey: "operating"); buddy.removeAction(forKey: "breathing"); buddy.yScale = 1
         buddy.texture = operatorTexture(friend, part: 0)
@@ -1451,47 +1463,42 @@ private extension FestivalScene {
             operatorBuddyID = friend.id
             gameRoot.childNode(withName: "operator-arm")?.removeFromParent()
             buddy.childNode(withName: "operator-arm")?.removeFromParent()
-            let arm = SKNode(); arm.name = "operator-arm"; arm.zPosition = 4; arm.xScale = -1
-            knob.childNode(withName: "operator-grip")?.removeFromParent()
+            let arm = SKNode(); arm.name = "operator-arm"; arm.zPosition = 12; arm.xScale = -1
             for part in 1...2 {
                 let sprite = SKSpriteNode(texture: operatorTexture(friend, part: part)); sprite.name = "part-\(part)"
                 // Pivots sit on the painted joint, excluding the transparent crop margins.
                 sprite.anchorPoint = part == 1 ? CGPoint(x: 15.0 / 153, y: 92.0 / 123) : CGPoint(x: 21.0 / 133, y: 31.0 / 62)
-                sprite.size = CGSize(width: 1, height: 1) // Sized once from the fixed pose below.
+                let length = part == 1 ? OperatorArmPose.upperLength : OperatorArmPose.forearmLength
+                let scale = CGFloat(length) / (part == 1 ? hypot(121, 22) : hypot(102, 5))
+                sprite.size = part == 1 ? CGSize(width: 153 * scale, height: 123 * scale) : CGSize(width: 133 * scale, height: 62 * scale)
                 sprite.zPosition = CGFloat(part); arm.addChild(sprite)
             }
             buddy.addChild(arm)
-            // Rest on the stationary rim; wheel rotation never stretches the elbow.
+            // Every joint, including the hand, belongs to the same character.
             let grip = SKSpriteNode(texture: operatorTexture(friend, part: 3))
             grip.name = "operator-grip"
-            grip.anchorPoint = CGPoint(x: 40.0 / 72, y: 31.0 / 59)
+            grip.anchorPoint = CGPoint(x: 8.0 / 72, y: 31.0 / 59)
             grip.size = CGSize(width: 19, height: 16)
             grip.zPosition = 12
-            knob.addChild(grip)
+            arm.addChild(grip)
         }
         guard let arm = buddy.childNode(withName: "operator-arm") else { return }
         let shoulder = buddy.convert(socket, to: gameRoot)
-        let hand = knob.convert(CGPoint.zero, to: gameRoot)
-        let pose = OperatorArmPose.resting(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: hand.x, y: hand.y))
+        // A short rim stroke follows steering without forcing a full crank rotation.
+        let stroke = max(-CGFloat(0.3), min(CGFloat(0.3), wheel.zRotation * 0.16))
+        let hand = CGPoint(x: wheel.position.x + cos(stroke) * 21,
+                           y: wheel.position.y + sin(stroke) * 21)
+        let pose = OperatorArmPose.gripping(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: hand.x, y: hand.y))
         let a = arm.convert(CGPoint(x: pose.shoulder.x, y: pose.shoulder.y), from: gameRoot)
         let b = arm.convert(CGPoint(x: pose.elbow.x, y: pose.elbow.y), from: gameRoot)
         let c = arm.convert(CGPoint(x: pose.hand.x, y: pose.hand.y), from: gameRoot)
         arm.childNode(withName: "part-1")?.position = a
-        if let sleeve = arm.childNode(withName: "part-1") as? SKSpriteNode {
-            let length = hypot(b.x - a.x, b.y - a.y)
-            sleeve.size = CGSize(width: 153 * length / hypot(121, 22), height: 123 * length / hypot(121, 22))
-            sleeve.zRotation = atan2(b.y - a.y, b.x - a.x) - atan2(-22, 121)
-        }
+        arm.childNode(withName: "part-1")?.zRotation = atan2(b.y - a.y, b.x - a.x) - atan2(-22, 121)
         arm.childNode(withName: "part-2")?.position = b
-        // The forearm ends at the wrist, behind the fist that encloses the knob.
         let direction = atan2(c.y - b.y, c.x - b.x)
-        let wrist = CGPoint(x: c.x - cos(direction) * 5, y: c.y - sin(direction) * 5)
-        if let forearm = arm.childNode(withName: "part-2") as? SKSpriteNode {
-            let length = hypot(wrist.x - b.x, wrist.y - b.y)
-            forearm.size = CGSize(width: 133 * length / hypot(102, 5), height: 62 * length / hypot(102, 5))
-            forearm.zRotation = atan2(wrist.y - b.y, wrist.x - b.x) - atan2(5, 102)
-        }
-        knob.childNode(withName: "operator-grip")?.zRotation = direction
+        arm.childNode(withName: "part-2")?.zRotation = direction - atan2(5, 102)
+        arm.childNode(withName: "operator-grip")?.position = c
+        arm.childNode(withName: "operator-grip")?.zRotation = direction
     }
 
     func operatorTexture(_ friend: Companion, part: Int) -> SKTexture {
@@ -1603,16 +1610,7 @@ private extension FestivalScene {
             spoke.strokeColor = .clear
             wheel.addChild(spoke)
         }
-        let crank = SKShapeNode(circleOfRadius: 5)
-        crank.name = "crank"
-        crank.position = CGPoint(x: 0, y: 18)
-        crank.fillColor = .brown
-        crank.strokeColor = .white
-        wheel.addChild(crank)
         gameRoot.addChild(wheel)
-        let contact = SKNode(); contact.name = "rim-contact"
-        contact.position = CGPoint(x: wheel.position.x + 18, y: wheel.position.y + 12)
-        contact.zPosition = 12; gameRoot.addChild(contact)
         let cue = SKNode()
         cue.name = "cancel-cue"
         cue.isHidden = true
@@ -1656,9 +1654,9 @@ private extension FestivalScene {
 
     func iconButton(_ symbol: String, name: String, point: CGPoint) {
         let box = panel(width: 48, height: 44, point: point, parent: gameRoot)
-        box.fillColor = .systemGray4
+        box.fillColor = UIColor(white: 0.96, alpha: 1)
         box.name = name
-        if let image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold))?.withTintColor(.darkGray, renderingMode: .alwaysOriginal) {
+        if let image = UIImage(systemName: symbol, withConfiguration: UIImage.SymbolConfiguration(pointSize: 24, weight: .semibold))?.withTintColor(UIColor(white: 0.55, alpha: 1), renderingMode: .alwaysOriginal) {
             let icon = SKSpriteNode(texture: SKTexture(image: image))
             icon.size = CGSize(width: 25, height: 25)
             box.addChild(icon)
@@ -1738,7 +1736,7 @@ private extension FestivalScene {
         }
     }
 
-    func closeMenu() {
+    internal func closeMenu() {
         levelMenu?.removeFromParent()
         levelMenu = nil
         menuKind = "game"
@@ -1814,6 +1812,7 @@ private extension FestivalScene {
         case "players": showPlayers()
         case "map": showLevels()
         case "settings": showSettings()
+        case "game-menu": showGameMenu()
         default: closeMenu()
         }
     }
@@ -1829,7 +1828,7 @@ private extension FestivalScene {
         menuButton("How to play", name: "tutorial", point: CGPoint(x: 195, y: 250), parent: overlay, height: 44)
         menuButton("Sound levels", name: "sound-levels", point: CGPoint(x: 195, y: 193), parent: overlay, height: 44)
         menuButton(progress.soundMuted ? "Sound: Off" : "Sound: On", name: "quick-sound", point: CGPoint(x: 195, y: 136), parent: overlay, width: 220, height: 44)
-        menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 78), parent: overlay, width: 270, height: 50)
+        menuButton(returnMenu == "game-menu" ? "Back to puzzle menu" : "Start Menu", name: returnMenu == "game-menu" ? "back" : "home", point: CGPoint(x: 195, y: 78), parent: overlay, width: 270, height: 50)
     }
 
     func showTutorial() {
@@ -1856,7 +1855,7 @@ private extension FestivalScene {
     func finishTutorial() {
         progress.tutorialSeen = true
         if tutorialFromSettings { tutorialFromSettings = false; showSettings() }
-        else if returnMenu == "game", !progress.hasMet(FestivalHost.all[level / 10]) {
+        else if returnMenu == "game", FestivalHost.all.indices.contains(level / 10), !progress.hasMet(FestivalHost.all[level / 10]) {
             menuKind = "game"
             showHost(FestivalHost.all[level / 10])
         } else { restoreMenu() }
@@ -1888,7 +1887,7 @@ private extension FestivalScene {
         let overlay = makeMenu(background: "festival-dusk")
         panel(width: 342, height: 98, point: CGPoint(x: 195, y: 707), parent: overlay)
         label("Festival complete!", size: 30, point: CGPoint(x: 195, y: 717), parent: overlay)
-        label("50 stops • \(progress.totalStars)/150 stars", size: 18, point: CGPoint(x: 195, y: 682), parent: overlay)
+        label("\(LevelCatalog.levelCount) stops • \(progress.totalStars)/\(LevelCatalog.maximumStars) stars", size: 18, point: CGPoint(x: 195, y: 682), parent: overlay)
         let cast = SKSpriteNode(imageNamed: "festival-title-cast")
         cast.size = CGSize(width: 372, height: 372)
         cast.position = CGPoint(x: 195, y: 458)
@@ -1913,9 +1912,11 @@ private extension FestivalScene {
         overlay.run(.repeatForever(fireworks))
     }
 
-    func handleMenu(_ incomingNames: [String]) {
+    internal func handleMenu(_ incomingNames: [String]) {
         let names = menuKind == "map-buddies" ? FestivalMenuTargets.buddies(incomingNames) : incomingNames
         if wheelSpinning { return }
+        if names.contains("game-resume") { closeMenu(); return }
+        if names.contains("game-restart") { showRetryPrompt(); return }
         if menuKind == "map-buddies" {
             if names.contains("home") { showTitle(); return }
             if names.contains("map-buddies-close") { showLevels(); return }
@@ -1938,7 +1939,7 @@ private extension FestivalScene {
         if names.contains("new-buddy"), let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
         if names.contains("buddy-choose") || names.contains("buddy-later") {
             if let buddy = progress.pendingBuddy { if names.contains("buddy-choose") { progress.select(buddy) }; progress.welcome(buddy) }
-            if finished && won && level < 49 && !challengeMode { level += 1; beginSelectedLevel() }
+            if finished && won && level < LevelCatalog.levelCount - 1 && !challengeMode { level += 1; beginSelectedLevel() }
             else if finished { closeMenu() }
             else { showLevels() }
             return
@@ -2001,8 +2002,8 @@ private extension FestivalScene {
         if names.contains("start-adventure") { mapArea = progress.currentLevel / 10; showLevels() }
         else if names.contains("home") { showTitle() }
         else if names.contains("area-prev") { mapArea = max(0, mapArea - 1); showLevels() }
-        else if names.contains("area-next") { mapArea = min(4, mapArea + 1); showLevels() }
-        else if names.contains("meet-host") {
+        else if names.contains("area-next") { mapArea = min(LevelCatalog.areas.count - 1, mapArea + 1); showLevels() }
+        else if names.contains("meet-host"), FestivalHost.all.indices.contains(mapArea) {
             let host = FestivalHost.all[mapArea]
             if progress.hostIsAvailable(host) { progress.markMet(host); showQuests(area: mapArea) }
             else if let overlay = levelMenu {

@@ -1913,7 +1913,8 @@ private extension FestivalScene {
         overlay.run(.repeatForever(fireworks))
     }
 
-    func handleMenu(_ names: [String]) {
+    func handleMenu(_ incomingNames: [String]) {
+        let names = menuKind == "map-buddies" ? FestivalMenuTargets.buddies(incomingNames) : incomingNames
         if wheelSpinning { return }
         if menuKind == "map-buddies" {
             if names.contains("home") { showTitle(); return }

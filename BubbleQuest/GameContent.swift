@@ -1,5 +1,12 @@
 import Foundation
 
+enum FestivalMenuTargets {
+    static func buddies(_ names: [String]) -> [String] {
+        let controls: Set<String> = ["home", "map-buddies-close", "friends-page", "accessories"]
+        return names.filter { controls.contains($0) || $0.hasPrefix("friend-") }
+    }
+}
+
 enum BubbleShot: Equatable {
     case color(Int)
     case rainbow

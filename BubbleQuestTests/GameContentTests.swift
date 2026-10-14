@@ -13,6 +13,13 @@ final class GameContentTests: XCTestCase {
         XCTAssertLessThan(finalArea, firstArea * 0.8)
     }
 
+    func testAreaMechanicsBuildFromSingleTypesToCombinations() {
+        XCTAssertTrue(LevelCatalog.level(8).initialSpecials.isEmpty)
+        XCTAssertEqual(Set(LevelCatalog.level(22).initialSpecials.values), [.lantern])
+        XCTAssertTrue(Set(LevelCatalog.level(36).initialSpecials.values).isSuperset(of: [.lantern, .riverPearl]))
+        XCTAssertEqual(Set(LevelCatalog.level(48).initialSpecials.values), [.lantern, .riverPearl, .blossomSpark])
+    }
+
     func testEveryRuntimeImageAndAudioCueIsBundled() {
         let images = Set(LevelCatalog.levels.map(\.background)).union([
             "festival-title-cast", "festival-hosts", "festival-companion-atlas",

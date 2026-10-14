@@ -1,5 +1,12 @@
 import Foundation
 
+enum FestivalMenuTargets {
+    static func buddies(_ names: [String]) -> [String] {
+        let controls: Set<String> = ["home", "map-buddies-close", "friends-page", "accessories"]
+        return names.filter { controls.contains($0) || $0.hasPrefix("friend-") }
+    }
+}
+
 enum BubbleShot: Equatable {
     case color(Int)
     case rainbow
@@ -19,9 +26,19 @@ struct GameLevel {
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
-    var ceilingInterval: Int { max(6, 12 - index / 8) }
-    var ceilingStep: Double { 4 + Double(index) * 0.3 }
-    func ceilingOffset(after shotsFired: Int) -> Double { min(240, Double(max(0, shotsFired) / ceilingInterval) * ceilingStep) }
+    var ceilingInterval: Int { max(4, 12 - index / 5) }
+    var ceilingStep: Double { 4 + Double(index) * 0.55 }
+    func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
+        var state = seed
+        var threshold = 0
+        var drops = 0
+        while threshold <= shotsFired {
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            threshold += ceilingInterval - 1 + Int((state >> 32) % 4)
+            if threshold <= shotsFired { drops += 1 }
+        }
+        return min(240, Double(drops) * ceilingStep)
+    }
     var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials) }
     var initialSpecials: [Cell: SpecialBubble] {
         guard index % 10 >= 2, area >= 2 else { return [:] }
@@ -29,7 +46,15 @@ struct GameLevel {
         let color = area == 2 ? 1 : area == 3 ? 2 : 0
         let cell = initialBubbles.keys.filter { $0.row > 0 && initialBubbles[$0] == color }
             .sorted { $0.row == $1.row ? $0.column < $1.column : $0.row > $1.row }.first
-        return cell.map { [$0: kind] } ?? [:]
+        var specials = cell.map { [$0: kind] } ?? [:]
+        if area >= 3 && index % 10 >= 6 {
+            let earlier: [SpecialBubble] = area == 3 ? [.lantern] : [.lantern, .riverPearl]
+            let layout = BubbleBoard(bubbles: initialBubbles)
+            let candidates = initialBubbles.keys.filter { $0.row > 0 && specials[$0] == nil && layout.connected(from: $0, matchingColor: true).count >= 2 }
+                .sorted { $0.row == $1.row ? $0.column < $1.column : $0.row > $1.row }
+            for (cell, special) in zip(candidates, earlier) { specials[cell] = special }
+        }
+        return specials
     }
     var background: String {
         if area == 0 && index % 10 >= 5 { return "festival-summer-water" }
@@ -80,7 +105,7 @@ enum LevelCatalog {
     static let levels: [GameLevel] = (0..<50).map { index in
         let area = index / 10
         let local = index % 10
-        let height = index < 5 ? [2, 2, 3, 3, 3][index] : min(8, 3 + area / 2 + local / 3)
+        let height = index < 5 ? [2, 2, 3, 3, 3][index] : min(8, 3 + index / 8)
         let colors = index < 5 ? [2, 2, 3, 3, 3][index] : min(5, 3 + (area + local / 8) / 2)
         var cells: [Cell: Int] = [:]
         for row in 0..<height {
@@ -109,7 +134,7 @@ enum LevelCatalog {
         if let authored = AuthoredLayouts.bubbles(for: index) { cells = authored }
         let budgetColors = max(colors, Set(cells.values).count)
         // Later areas no longer reset the challenge with welcome/recovery allowances.
-        let shots = max(24, cells.count * 2 / 3 + budgetColors * 2 + 5 - index / 5)
+        let shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
         return GameLevel(index: index, area: area, shots: shots, initialBubbles: cells)
     }
 

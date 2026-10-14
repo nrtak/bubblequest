@@ -3,6 +3,30 @@ import UIKit
 @testable import BubbleQuest
 
 final class GameContentTests: XCTestCase {
+    func testBuddyPickerConsumesTouchesAboveUnderlyingMapActivities() {
+        XCTAssertEqual(FestivalMenuTargets.buddies(["friend-shiba", "open-wheel", "continue-stop", "meet-host"]), ["friend-shiba"])
+        XCTAssertEqual(FestivalMenuTargets.buddies(["friends-page", "continue-stop"]), ["friends-page"])
+        XCTAssertEqual(FestivalMenuTargets.buddies(["accessories", "level-0"]), ["accessories"])
+        XCTAssertTrue(FestivalMenuTargets.buddies(["level-0"]).isEmpty)
+    }
+
+    func testLaterLevelsHaveTighterShotAllowanceAndFasterPressure() {
+        let early = LevelCatalog.level(4)
+        let late = LevelCatalog.level(49)
+        XCTAssertLessThan(late.ceilingInterval, early.ceilingInterval)
+        XCTAssertGreaterThan(late.ceilingStep, early.ceilingStep)
+        let firstArea = LevelCatalog.levels.prefix(10).map { Double($0.shots) / Double($0.initialBubbles.count) }.reduce(0, +) / 10
+        let finalArea = LevelCatalog.levels.suffix(10).map { Double($0.shots) / Double($0.initialBubbles.count) }.reduce(0, +) / 10
+        XCTAssertLessThan(finalArea, firstArea * 0.8)
+    }
+
+    func testAreaMechanicsBuildFromSingleTypesToCombinations() {
+        XCTAssertTrue(LevelCatalog.level(8).initialSpecials.isEmpty)
+        XCTAssertEqual(Set(LevelCatalog.level(22).initialSpecials.values), [.lantern])
+        XCTAssertTrue(Set(LevelCatalog.level(36).initialSpecials.values).isSuperset(of: [.lantern, .riverPearl]))
+        XCTAssertEqual(Set(LevelCatalog.level(48).initialSpecials.values), [.lantern, .riverPearl, .blossomSpark])
+    }
+
     func testEveryRuntimeImageAndAudioCueIsBundled() {
         let images = Set(LevelCatalog.levels.map(\.background)).union([
             "festival-title-cast", "festival-hosts", "festival-companion-atlas",
@@ -32,7 +56,7 @@ final class GameContentTests: XCTestCase {
                 XCTAssertTrue((0..<5).contains(color))
                 XCTAssertGreaterThan(BubbleGeometry.point(cell).y, BubbleGeometry.lossLine)
             }
-            XCTAssertGreaterThanOrEqual(level.shots, 24)
+            XCTAssertGreaterThanOrEqual(level.shots, 18)
         }
     }
 

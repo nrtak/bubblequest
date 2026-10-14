@@ -14,6 +14,7 @@ final class LevelReplayTests: XCTestCase {
     // This is a clearing-route regression check; human difficulty still needs playtesting.
     func testEveryLevelHasAClearingRouteWithTheActualShotQueue() {
         for level in LevelCatalog.levels {
+            for pressureSeed in [UInt64(0), UInt64(level.number)] {
             var random = SeededRandom(state: UInt64(level.number))
             var board = level.board
             var bag: [Int] = []
@@ -28,7 +29,7 @@ final class LevelReplayTests: XCTestCase {
                 if board.bubbles.isEmpty { break }
                 var landings = Set<Cell>()
                 for angle in stride(from: -1.2, through: 1.2, by: 0.08) {
-                    if let cell = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: level.ceilingOffset(after: shotNumber)).landing { landings.insert(cell) }
+                    if let cell = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: level.ceilingOffset(after: shotNumber, seed: pressureSeed)).landing { landings.insert(cell) }
                 }
                 var choices: [BubbleShot] = [.color(current), .color(next)]
                 if rainbow { choices.append(.rainbow) }
@@ -50,11 +51,12 @@ final class LevelReplayTests: XCTestCase {
                 if selected.shot == .rainbow { rainbow = false }
                 if selected.shot == .bomb { bomb = false }
                 board = selected.board
-                if board.bubbles.keys.contains(where: { BubbleGeometry.point($0, ceilingOffset: level.ceilingOffset(after: shotNumber + 1)).y < BubbleGeometry.lossLine }) { break }
+                if board.bubbles.keys.contains(where: { BubbleGeometry.point($0, ceilingOffset: level.ceilingOffset(after: shotNumber + 1, seed: pressureSeed)).y < BubbleGeometry.lossLine }) { break }
                 current = Set(board.bubbles.values).contains(next) ? next : draw()
                 next = draw()
             }
             XCTAssertTrue(board.bubbles.isEmpty, "Level \(level.number) needs a better layout or shot budget; \(board.bubbles.count) bubbles remain")
+            }
         }
     }
 }

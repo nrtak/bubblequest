@@ -147,8 +147,8 @@ enum LevelCatalog {
             let variation = (index - 50) / 30
             let permutations = [[1, 2, 3, 0, 4], [2, 0, 3, 1, 4], [3, 1, 0, 2, 4],
                                 [0, 3, 1, 2, 4], [2, 3, 0, 1, 4]]
-            // These original templates share a board; reverse one in the expansion.
-            let mirror = (variation % 2 == 0) != (layoutIndex == 43)
+            // Reverse the repeated template and the level-161 approach to keep supports reachable.
+            let mirror = (variation % 2 == 0) != (layoutIndex == 43 || index == 160)
             cells = Dictionary(uniqueKeysWithValues: cells.map { cell, color in
                 let column = mirror ? BubbleBoard.columns - cell.row % 2 - 1 - cell.column : cell.column
                 return (Cell(row: cell.row, column: column), permutations[variation][color])

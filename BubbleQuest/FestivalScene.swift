@@ -279,7 +279,7 @@ final class FestivalScene: SKScene {
         cannon.strokeColor = UIColor(red: 1, green: 0.79, blue: 0.43, alpha: 1)
         cannon.lineWidth = 3
         gameRoot.addChild(cannon)
-        label("✿", size: 21, point: CGPoint(x: 0, y: -31), parent: cannon)
+        label("âœ¿", size: 21, point: CGPoint(x: 0, y: -31), parent: cannon)
         let nextStand = panel(width: 40, height: 28, point: CGPoint(x: 113, y: 151), parent: gameRoot)
         nextStand.fillColor = UIColor(red: 0.45, green: 0.27, blue: 0.16, alpha: 0.65)
         decorateMechanism()
@@ -471,14 +471,14 @@ final class FestivalScene: SKScene {
         welcome.fontSize = 18; welcome.numberOfLines = 2; welcome.preferredMaxLayoutWidth = 300
         welcome.lineBreakMode = .byCharWrapping; welcome.verticalAlignmentMode = .center
         welcome.position = CGPoint(x: 195, y: 498); overlay.addChild(welcome)
-        navigationCard(progress.checkpoint == nil ? "Play" : "Continue playing", detail: "Level \(progress.currentLevel + 1) • \(LevelCatalog.level(progress.currentLevel).area + 1) / \(LevelCatalog.areas.count) areas", symbol: "play.fill", name: "continue-stop", y: 418, parent: overlay, primary: true)
-        navigationCard("Explore Map", detail: "Levels • buddies • activities", symbol: "map.fill", name: "start-adventure", y: 317, parent: overlay, primary: false)
+        navigationCard(progress.checkpoint == nil ? "Play" : "Continue playing", detail: "Level \(progress.currentLevel + 1) â€¢ \(LevelCatalog.level(progress.currentLevel).area + 1) / \(LevelCatalog.areas.count) areas", symbol: "play.fill", name: "continue-stop", y: 418, parent: overlay, primary: true)
+        navigationCard("Explore Map", detail: "Levels â€¢ buddies â€¢ activities", symbol: "map.fill", name: "start-adventure", y: 317, parent: overlay, primary: false)
         menuButton("Players", name: "players", point: CGPoint(x: 147, y: 230), parent: overlay, width: 166, height: 44)
         decorateMenuIcon("person.2.fill", name: "players", parent: overlay, x: -56)
         let settings = panel(width: 48, height: 48, point: CGPoint(x: 303, y: 230), parent: overlay)
         settings.name = "settings"; settings.fillColor = UIColor(white: 0.96, alpha: 1)
         let gear = questIcon("gearshape.fill", size: 26, color: UIColor(white: 0.55, alpha: 1)); settings.addChild(gear)
-        label("Saved automatically • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 169), parent: overlay)
+        label("Saved automatically â€¢ \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 169), parent: overlay)
         label("Irvine Dynamics", size: 12, point: CGPoint(x: 195, y: 62), parent: overlay)
     }
 
@@ -491,13 +491,13 @@ final class FestivalScene: SKScene {
         playersPage = min(max(0, playersPage), (profiles.players.count - 1) / 4)
         for (row, player) in profiles.players.dropFirst(playersPage * 4).prefix(4).enumerated() {
             let y = CGFloat(613 - row * 79)
-            menuButton(player.name + (player.id == profiles.active.id ? " ✓" : ""), name: "player-\(player.id)", point: CGPoint(x: 195, y: y), parent: overlay, width: 300, height: 53)
-            label("\(GameProgress(defaults: profiles.defaults(for: player)).currentLevel + 1) • Saved on this iPhone", size: 12, point: CGPoint(x: 195, y: y - 37), parent: overlay)
+            menuButton(player.name + (player.id == profiles.active.id ? " âœ“" : ""), name: "player-\(player.id)", point: CGPoint(x: 195, y: y), parent: overlay, width: 300, height: 53)
+            label("\(GameProgress(defaults: profiles.defaults(for: player)).currentLevel + 1) â€¢ Saved on this iPhone", size: 12, point: CGPoint(x: 195, y: y - 37), parent: overlay)
         }
         if profiles.players.count > 4 {
-            menuButton("‹", name: "players-prev", point: CGPoint(x: 69, y: 291), parent: overlay, width: 60, height: 44)
+            menuButton("â€¹", name: "players-prev", point: CGPoint(x: 69, y: 291), parent: overlay, width: 60, height: 44)
             label("\(playersPage + 1)/\((profiles.players.count + 3) / 4)", size: 16, point: CGPoint(x: 195, y: 285), parent: overlay)
-            menuButton("›", name: "players-next", point: CGPoint(x: 321, y: 291), parent: overlay, width: 60, height: 44)
+            menuButton("â€º", name: "players-next", point: CGPoint(x: 321, y: 291), parent: overlay, width: 60, height: 44)
         }
         menuButton("New player & save", name: "player-create", point: CGPoint(x: 195, y: 231), parent: overlay, height: 48)
         menuButton("Rename \(profiles.active.name)", name: "player-rename", point: CGPoint(x: 195, y: 172), parent: overlay, height: 44)
@@ -540,7 +540,7 @@ final class FestivalScene: SKScene {
         panel(width: 342, height: 468, point: CGPoint(x: 195, y: 441), parent: overlay)
         label("Saved progress", size: 28, point: CGPoint(x: 195, y: 630), parent: overlay)
         paragraph("\(profiles.active.name)'s levels, stars, buddies, quests and prizes save separately on this iPhone.", y: 554, parent: overlay)
-        label("\(progress.completedCount)/\(LevelCatalog.levelCount) stops • \(progress.totalStars)/\(LevelCatalog.maximumStars) stars", size: 19, point: CGPoint(x: 195, y: 468), parent: overlay)
+        label("\(progress.completedCount)/\(LevelCatalog.levelCount) stops â€¢ \(progress.totalStars)/\(LevelCatalog.maximumStars) stars", size: 19, point: CGPoint(x: 195, y: 468), parent: overlay)
         label(progress.checkpoint.map { "Puzzle \($0.level + 1) ready to resume" } ?? "No unfinished puzzle", size: 17, point: CGPoint(x: 195, y: 428), parent: overlay)
         let stamp = progress.lastSaved.map { DateFormatter.localizedString(from: $0, dateStyle: .short, timeStyle: .short) } ?? "Ready for your first adventure"
         label(stamp, size: 14, point: CGPoint(x: 195, y: 385), parent: overlay)
@@ -561,7 +561,7 @@ final class FestivalScene: SKScene {
         panel(width: 346, height: 82, point: CGPoint(x: 195, y: 738), parent: overlay)
         label(area.name, size: 23, point: CGPoint(x: 195, y: 750), parent: overlay)
         let current = progress.currentLevel
-        label("Area \(mapArea + 1)/\(LevelCatalog.areas.count) • Active level \(current + 1) • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 720), parent: overlay)
+        label("Area \(mapArea + 1)/\(LevelCatalog.areas.count) â€¢ Active level \(current + 1) â€¢ \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 720), parent: overlay)
         // Marker centers follow the painted roads, leaving the scenery visible.
         let dayXs: [CGFloat] = [223, 234, 238, 251, 270, 232, 174, 184, 246, 242]
         let nightXs: [CGFloat] = [218, 260, 246, 192, 222, 300, 314, 306, 312, 337]
@@ -598,7 +598,7 @@ final class FestivalScene: SKScene {
                 }
             }
             if progress.stars(index) > 0 {
-                label(String(repeating: "★", count: progress.stars(index)), size: 8, point: CGPoint(x: 0, y: 20), parent: entry)
+                label(String(repeating: "â˜…", count: progress.stars(index)), size: 8, point: CGPoint(x: 0, y: 20), parent: entry)
             }
         }
         for (name, text, x, enabled) in [("area-prev", "Previous area", CGFloat(99), mapArea > 0), ("area-next", "Next area", CGFloat(291), mapArea < LevelCatalog.areas.count - 1)] {
@@ -614,7 +614,7 @@ final class FestivalScene: SKScene {
             card.name = "map-objective"
             let icon = questIcon(quest.symbol, size: 21, color: .systemOrange); icon.position = CGPoint(x: -50, y: 10); card.addChild(icon)
             label("Active favor", size: 14, point: CGPoint(x: 10, y: 8), parent: card)
-            label("\(progress.adventure.count(quest))/3 • Details", size: 13, point: CGPoint(x: 0, y: -17), parent: card)
+            label("\(progress.adventure.count(quest))/3 â€¢ Details", size: 13, point: CGPoint(x: 0, y: -17), parent: card)
         }
         if FestivalHost.all.indices.contains(mapArea) {
         let station = SKNode(); station.position = CGPoint(x: 80, y: 414); overlay.addChild(station)
@@ -976,9 +976,9 @@ final class FestivalScene: SKScene {
         panel.position = CGPoint(x: 195, y: 414)
         panel.zPosition = 20
         gameRoot.addChild(panel)
-        label(success ? "Festival cheers! 🎉" : "Try another angle", size: 23, point: CGPoint(x: 0, y: 100), parent: panel)
-        label(success ? String(repeating: "★", count: LevelCatalog.level(level).stars(shotsRemaining: shots)) : "Keep trying!", size: 23, point: CGPoint(x: 0, y: 64), parent: panel)
-        label("Score \(score) • Best \(progress.bestScore(level))", size: 16, point: CGPoint(x: 0, y: 31), parent: panel)
+        label(success ? "Festival cheers! ðŸŽ‰" : "Try another angle", size: 23, point: CGPoint(x: 0, y: 100), parent: panel)
+        label(success ? String(repeating: "â˜…", count: LevelCatalog.level(level).stars(shotsRemaining: shots)) : "Keep trying!", size: 23, point: CGPoint(x: 0, y: 64), parent: panel)
+        label("Score \(score) â€¢ Best \(progress.bestScore(level))", size: 16, point: CGPoint(x: 0, y: 31), parent: panel)
         if success { label("\(shots) shots saved", size: 15, point: CGPoint(x: 0, y: 5), parent: panel) }
         let message = SKLabelNode(fontNamed: "AvenirNext-Medium")
         message.text = success ? status.text : "Try a wall bounce or swap your next bubble."
@@ -1042,7 +1042,7 @@ private extension FestivalScene {
             card.name = "quest-\(quest.id)"
             label(quest.title, size: 20, point: CGPoint(x: 0, y: 25), parent: card)
             let count = progress.adventure.count(quest)
-            let text = progress.adventure.completed(quest) ? "Story complete • Choose colors" : progress.adventure.accepted(quest) ? "\(count)/3 • \(quest.steps[count])" : "Tap to hear the story"
+            let text = progress.adventure.completed(quest) ? "Story complete â€¢ Choose colors" : progress.adventure.accepted(quest) ? "\(count)/3 â€¢ \(quest.steps[count])" : "Tap to hear the story"
             let detail = SKLabelNode(fontNamed: "AvenirNext-Medium")
             detail.text = text; detail.fontSize = 15; detail.numberOfLines = 2
             detail.preferredMaxLayoutWidth = 290; detail.verticalAlignmentMode = .center
@@ -1162,7 +1162,7 @@ private extension FestivalScene {
             menuButton("Visit the display", name: "quest-back", point: CGPoint(x: 195, y: 172), parent: overlay, height: 44)
         } else {
             let step = progress.adventure.count(quest)
-            label("\(step)/3 • \(quest.steps[step])", size: 15, point: CGPoint(x: 195, y: 343), parent: overlay)
+            label("\(step)/3 â€¢ \(quest.steps[step])", size: 15, point: CGPoint(x: 195, y: 343), parent: overlay)
             let buddy = Companion.all.first { $0.unlockQuest == quest.id }
             label(buddy.map { "Reward: \($0.name) joins as a buddy" } ?? "Reward: a festival decoration + free spin", size: 14, point: CGPoint(x: 195, y: 302), parent: overlay)
             menuButton(progress.adventure.accepted(quest) ? "Play a puzzle" : "I'll help!", name: progress.adventure.accepted(quest) ? "quest-play" : "quest-accept", point: CGPoint(x: 195, y: 222), parent: overlay)
@@ -1252,9 +1252,9 @@ private extension FestivalScene {
         result.text = progress.adventure.lastPrize.map { "Last gift: \($0.title)" } ?? "A little festival surprise"
         result.position = CGPoint(x: 195, y: 280); overlay.addChild(result)
         label("Earn a spin every five new levels", size: 14, point: CGPoint(x: 195, y: 240), parent: overlay)
-        label("80% boosters • 20% keepsakes", size: 13, point: CGPoint(x: 195, y: 260), parent: overlay)
+        label("80% boosters â€¢ 20% keepsakes", size: 13, point: CGPoint(x: 195, y: 260), parent: overlay)
         label("and for each completed side quest.", size: 14, point: CGPoint(x: 195, y: 219), parent: overlay)
-        label("Saved boosters: \(progress.adventure.rainbowGifts) rainbow • \(progress.adventure.bombGifts) bomb", size: 13, point: CGPoint(x: 195, y: 196), parent: overlay)
+        label("Saved boosters: \(progress.adventure.rainbowGifts) rainbow â€¢ \(progress.adventure.bombGifts) bomb", size: 13, point: CGPoint(x: 195, y: 196), parent: overlay)
         menuButton("Spin", name: "wheel-spin", point: CGPoint(x: 195, y: 165), parent: overlay)
         overlay.childNode(withName: "wheel-spin")?.alpha = progress.adventure.availableSpins > 0 ? 1 : 0.4
         menuButton("Back to the map", name: "quest-back", point: CGPoint(x: 195, y: 92), parent: overlay, height: 44)
@@ -1313,7 +1313,7 @@ private extension FestivalScene {
         icon.position = CGPoint(x: 195, y: 548); overlay.addChild(icon)
         label(prize.title, size: 25, point: CGPoint(x: 195, y: 470), parent: overlay)
         paragraph(prize == .rainbow || prize == .bomb ? "Saved to your booster supply. Use it from the bottom controls during a puzzle." : "Saved to your collection. Choose pins in Buddies on the festival map; bunting appears at your stations.", y: 400, parent: overlay)
-        label("\(progress.adventure.rainbowGifts) extra rainbow • \(progress.adventure.bombGifts) extra bomb", size: 15, point: CGPoint(x: 195, y: 299), parent: overlay)
+        label("\(progress.adventure.rainbowGifts) extra rainbow â€¢ \(progress.adventure.bombGifts) extra bomb", size: 15, point: CGPoint(x: 195, y: 299), parent: overlay)
         menuButton("Back to the wheel", name: "wheel-return", point: CGPoint(x: 195, y: 185), parent: overlay, height: 48)
         menuButton("Festival map", name: "quest-back", point: CGPoint(x: 195, y: 115), parent: overlay, height: 48)
     }
@@ -1390,7 +1390,7 @@ private extension FestivalScene {
         label("A little extra challenge", size: 25, point: CGPoint(x: 195, y: 720), parent: overlay)
         panel(width: 342, height: 300, point: CGPoint(x: 195, y: 470), parent: overlay)
         paragraph("Replay this station's opening puzzle with fewer shots and no boosters. Can you earn three stars?", y: 510, parent: overlay)
-        label(progress.challengeWon(questArea) ? "Challenge completed ✓" : "An optional festival challenge", size: 17, point: CGPoint(x: 195, y: 375), parent: overlay)
+        label(progress.challengeWon(questArea) ? "Challenge completed âœ“" : "An optional festival challenge", size: 17, point: CGPoint(x: 195, y: 375), parent: overlay)
         menuButton("Try the challenge", name: "challenge-play", point: CGPoint(x: 195, y: 248), parent: overlay)
         menuButton("Stories", name: "quest-list", point: CGPoint(x: 195, y: 160), parent: overlay, height: 44)
     }
@@ -1471,7 +1471,7 @@ private extension FestivalScene {
             let y = CGFloat(505 - index * 112)
             label(music ? "Music" : "Sounds", size: 23, point: CGPoint(x: 195, y: y + 34), parent: overlay)
             label("\(progress.volumeStep(music: music) * 20)%", size: 23, point: CGPoint(x: 195, y: y - 8), parent: overlay)
-            menuButton("−", name: music ? "music-down" : "effects-down", point: CGPoint(x: 80, y: y), parent: overlay, width: 64, height: 44)
+            menuButton("âˆ’", name: music ? "music-down" : "effects-down", point: CGPoint(x: 80, y: y), parent: overlay, width: 64, height: 44)
             menuButton("+", name: music ? "music-up" : "effects-up", point: CGPoint(x: 310, y: y), parent: overlay, width: 64, height: 44)
         }
         menuButton("Back", name: "sound-back", point: CGPoint(x: 195, y: 286), parent: overlay, height: 44)
@@ -1485,7 +1485,7 @@ private extension FestivalScene {
         paragraph("Little gifts from the festival prize wheel and our friends.", y: 651, parent: overlay)
         menuButton("No pin", name: "pin-none", point: CGPoint(x: 195, y: 550), parent: overlay)
         for (index, prize) in progress.adventure.unlockedPins.enumerated() {
-            menuButton(prize.title + (progress.adventure.equippedPin == prize ? " ✓" : ""), name: "pin-\(prize.rawValue)", point: CGPoint(x: 195, y: 478 - CGFloat(index) * 72), parent: overlay)
+            menuButton(prize.title + (progress.adventure.equippedPin == prize ? " âœ“" : ""), name: "pin-\(prize.rawValue)", point: CGPoint(x: 195, y: 478 - CGFloat(index) * 72), parent: overlay)
         }
         menuButton("Buddies", name: "accessory-back", point: CGPoint(x: 195, y: 120), parent: overlay, height: 44)
     }
@@ -1569,8 +1569,9 @@ private extension FestivalScene {
         let row = friend.atlasIndex - 4
         let boundaries: [CGFloat] = [0, 223, 435, 654, 876, 1099, 1326, 1550, 1774]
         let sockets: [CGPoint] = [CGPoint(x: 192, y: 128), CGPoint(x: 183, y: 344), CGPoint(x: 188, y: 562), CGPoint(x: 194, y: 785), CGPoint(x: 197, y: 1009), CGPoint(x: 194, y: 1232), CGPoint(x: 195, y: 1456), CGPoint(x: 194, y: 1680)]
-        let socket = CGPoint(x: ((sockets[row].x - 35) / 215 - 0.5) * buddy.size.width,
-                             y: (boundaries[row + 1] - sockets[row].y) / (boundaries[row + 1] - boundaries[row]) * buddy.size.height)
+        // Overlap the sleeve at its shoulder seam, above the old cuff socket.
+        let socket = CGPoint(x: ((sockets[row].x - 9 - 35) / 215 - 0.5) * buddy.size.width,
+                             y: (boundaries[row + 1] - sockets[row].y + 12) / (boundaries[row + 1] - boundaries[row]) * buddy.size.height)
         if operatorBuddyID != friend.id || buddy.childNode(withName: "operator-arm") == nil {
             operatorBuddyID = friend.id
             gameRoot.childNode(withName: "operator-arm")?.removeFromParent()
@@ -1597,11 +1598,10 @@ private extension FestivalScene {
         guard let arm = buddy.childNode(withName: "operator-arm") else { return }
         let shoulder = buddy.convert(socket, to: gameRoot)
         // A short rim stroke follows steering without forcing a full crank rotation.
-        let stroke = max(-CGFloat(0.4), min(CGFloat(0.4), wheel.zRotation * 0.13))
-        // The painted palm extends eight points beyond the wrist pivot onto the rim.
-        let hand = CGPoint(x: wheel.position.x + cos(stroke) * 13,
-                           y: wheel.position.y + sin(stroke) * 13)
-        let pose = OperatorArmPose.gripping(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: hand.x, y: hand.y))
+        let stroke = -CGFloat(0.65) + max(-CGFloat(0.2), min(CGFloat(0.2), wheel.zRotation * 0.08))
+        let contact = CGPoint(x: wheel.position.x + cos(stroke) * 21,
+                              y: wheel.position.y + sin(stroke) * 21)
+        let pose = OperatorArmPose.gripping(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: contact.x, y: contact.y), palmLength: OperatorArmPose.palmLength)
         let a = arm.convert(CGPoint(x: pose.shoulder.x, y: pose.shoulder.y), from: gameRoot)
         let b = arm.convert(CGPoint(x: pose.elbow.x, y: pose.elbow.y), from: gameRoot)
         let c = arm.convert(CGPoint(x: pose.hand.x, y: pose.hand.y), from: gameRoot)
@@ -1686,7 +1686,7 @@ private extension FestivalScene {
         case .drop: done = questPlay.dropped > 0
         case .color(let color): done = questPlay.colors.contains(color)
         }
-        label("\(step)/3 • \(done ? "Ready to finish" : "Festival favor")", size: 13, point: CGPoint(x: 8, y: -4), parent: badge)
+        label("\(step)/3 â€¢ \(done ? "Ready to finish" : "Festival favor")", size: 13, point: CGPoint(x: 8, y: -4), parent: badge)
     }
 
     func showObjectives() {
@@ -1990,7 +1990,7 @@ private extension FestivalScene {
             let portrait = SKSpriteNode(texture: companionTexture(friend, frame: 0), size: CGSize(width: 56, height: 56))
             portrait.position.y = 17; portrait.alpha = available ? 1 : 0.35; tile.addChild(portrait)
             label(friend.name, size: 12, point: CGPoint(x: 0, y: -22), parent: tile)
-            label(available ? progress.selected(friend.kind).id == friend.id ? "Selected ✓" : "Tap to choose" : "Locked", size: 10, point: CGPoint(x: 0, y: -39), parent: tile)
+            label(available ? progress.selected(friend.kind).id == friend.id ? "Selected âœ“" : "Tap to choose" : "Locked", size: 10, point: CGPoint(x: 0, y: -39), parent: tile)
         }
         menuButton("More \(friendsPage + 1)/\(pages)", name: "friends-page", point: CGPoint(x: 81, y: 136), parent: overlay, width: 102, height: 40)
         menuButton("Pins", name: "accessories", point: CGPoint(x: 195, y: 136), parent: overlay, width: 102, height: 40)
@@ -2002,7 +2002,7 @@ private extension FestivalScene {
         let overlay = makeMenu(background: "festival-dusk")
         panel(width: 342, height: 98, point: CGPoint(x: 195, y: 707), parent: overlay)
         label("Festival complete!", size: 30, point: CGPoint(x: 195, y: 717), parent: overlay)
-        label("\(LevelCatalog.levelCount) stops • \(progress.totalStars)/\(LevelCatalog.maximumStars) stars", size: 18, point: CGPoint(x: 195, y: 682), parent: overlay)
+        label("\(LevelCatalog.levelCount) stops â€¢ \(progress.totalStars)/\(LevelCatalog.maximumStars) stars", size: 18, point: CGPoint(x: 195, y: 682), parent: overlay)
         let cast = SKSpriteNode(imageNamed: "festival-title-cast")
         cast.size = CGSize(width: 372, height: 372)
         cast.position = CGPoint(x: 195, y: 458)

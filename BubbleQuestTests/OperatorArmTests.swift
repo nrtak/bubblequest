@@ -15,7 +15,7 @@ final class OperatorArmTests: XCTestCase {
         let forearm = try XCTUnwrap(arm.childNode(withName: "part-2") as? SKSpriteNode)
         let sleeveSize = sleeve.size, forearmSize = forearm.size
         let firstHand = grip.convert(CGPoint.zero, to: scene)
-        var motion = 0.0
+        var motion: CGFloat = 0
         XCTAssertNil(wheel.childNode(withName: "crank"))
         XCTAssertTrue(grip.parent === arm)
         for step in -30...30 {

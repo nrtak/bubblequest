@@ -1,8 +1,36 @@
 import XCTest
 import UIKit
+import SpriteKit
 @testable import BubbleQuest
 
 final class GameContentTests: XCTestCase {
+    @MainActor
+    func testAllTwentyMapPagesOpenAndShowTheirLevels() {
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844))
+        scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        scene.handleMenu(["start-adventure"])
+        for _ in 0..<20 { scene.handleMenu(["area-prev"]) }
+        for area in 0..<20 {
+            let overlay = scene.children.last!
+            let headings = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
+            XCTAssertTrue(headings.contains { $0.hasPrefix("Area \(area + 1)/20") })
+            let markers = overlay.children.flatMap { $0.children.compactMap { ($0 as? SKLabelNode)?.text } }
+            XCTAssertTrue(markers.contains("\(area * 10 + 1)"))
+            XCTAssertTrue(markers.contains("\(area * 10 + 10)"))
+            scene.handleMenu(["area-next"])
+        }
+    }
+
+    func testAdditionalLevelsUseDistinctStartingBoards() {
+        func signature(_ level: GameLevel) -> String {
+            level.initialBubbles.map { "\($0.key.row):\($0.key.column):\($0.value)" }.sorted().joined(separator: ",")
+        }
+        let original = Set(LevelCatalog.levels.prefix(50).map(signature))
+        let added = Set(LevelCatalog.levels.dropFirst(50).map(signature))
+        XCTAssertEqual(added.count, 150)
+        XCTAssertTrue(original.isDisjoint(with: added))
+    }
+
     func testExpandedCampaignMigratesOldFinaleAndPersistsLateProgress() throws {
         XCTAssertEqual(LevelCatalog.areas.count, 20)
         XCTAssertEqual(LevelCatalog.levels.last?.number, 200)

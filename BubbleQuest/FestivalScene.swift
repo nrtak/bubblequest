@@ -1420,7 +1420,7 @@ private extension FestivalScene {
         }
         guard let arm = buddy.childNode(withName: "operator-arm") else { return }
         let shoulder = buddy.convert(socket, to: gameRoot)
-        let hand = knob.convert(.zero, to: gameRoot)
+        let hand = knob.convert(CGPoint.zero, to: gameRoot)
         let pose = OperatorArmPose.connecting(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: hand.x, y: hand.y))
         let a = arm.convert(CGPoint(x: pose.shoulder.x, y: pose.shoulder.y), from: gameRoot)
         let b = arm.convert(CGPoint(x: pose.elbow.x, y: pose.elbow.y), from: gameRoot)

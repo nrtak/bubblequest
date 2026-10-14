@@ -44,6 +44,7 @@ final class FestivalScene: SKScene {
     private var currentColor = 0
     private var nextColor = 1
     private var shots = 24
+    private var pressureSeed: UInt64 = 0
     private var shotsFired = 0
     private var ceilingOffset = 0.0
     private var ceilingMoving = false
@@ -70,6 +71,10 @@ final class FestivalScene: SKScene {
 
     deinit { if let powerObserver { NotificationCenter.default.removeObserver(powerObserver) } }
 
+    override func update(_ currentTime: TimeInterval) {
+        if !gameRoot.isPaused && !suspended { setOperatorHands(working: aiming) }
+    }
+
     override func didMove(to view: SKView) {
         guard children.isEmpty else { return }
         view.preferredFramesPerSecond = 60
@@ -85,10 +90,6 @@ final class FestivalScene: SKScene {
         shotsLabel.position = CGPoint(x: 207, y: 755)
         gameRoot.addChild(shotsLabel)
         iconButton("house.fill", name: "home", point: CGPoint(x: 47, y: 755))
-        let pressure = panel(width: 88, height: 46, point: CGPoint(x: 323, y: 755), parent: gameRoot)
-        pressure.name = "ceiling-meter"
-        label("ROOF MOVES IN", size: 9, point: CGPoint(x: 0, y: 9), parent: pressure)
-        let count = SKLabelNode(fontNamed: "AvenirNext-Bold"); count.name = "ceiling-count"; count.fontSize = 15; count.position.y = -11; pressure.addChild(count)
         button("Restart", name: "retry", x: 48, y: 65)
         button("Swap", name: "swap", x: 195, y: 65, width: 64)
         boosterButton(.rainbow, name: "rainbow", point: CGPoint(x: 132, y: 65))
@@ -121,10 +122,10 @@ final class FestivalScene: SKScene {
         else if ProcessInfo.processInfo.arguments.contains("--purple-preview") { updateAim(CGPoint(x: 50, y: 420)) }
         else if ProcessInfo.processInfo.arguments.contains("--pressure-preview") {
             shotsFired = LevelCatalog.level(level).ceilingInterval * 2
-            ceilingOffset = LevelCatalog.level(level).ceilingOffset(after: shotsFired)
+            ceilingOffset = LevelCatalog.level(level).ceilingOffset(after: shotsFired, seed: pressureSeed)
             positionCeiling(animated: false); refreshHUD(); updateAim(CGPoint(x: 290, y: 500))
         }
-        else if ProcessInfo.processInfo.arguments.contains("--friends-preview") { friendsPage = 1; showFriends() }
+        else if ProcessInfo.processInfo.arguments.contains("--friends-preview") { friendsPage = 1; showMapBuddies() }
         else if ProcessInfo.processInfo.arguments.contains("--quest-preview") { showQuests(area: 2) }
         else if ProcessInfo.processInfo.arguments.contains("--quest-detail-preview") { showQuest(FestivalQuest.all[2]) }
         else if ProcessInfo.processInfo.arguments.contains("--quest-reward-preview") {
@@ -294,6 +295,7 @@ final class FestivalScene: SKScene {
     private func startLevel(restoring: Bool = false) {
         let saved = restoring ? progress.checkpoint : nil
         if let saved { level = saved.level; challengeMode = saved.challenge ?? false }
+        pressureSeed = saved.map { $0.pressureSeed ?? 0 } ?? UInt64.random(in: 1...UInt64.max)
         shotsFired = saved?.shotsFired ?? 0
         ceilingOffset = saved?.ceilingOffset ?? 0
         ceilingMoving = false
@@ -410,14 +412,16 @@ final class FestivalScene: SKScene {
         logo.size = CGSize(width: 285, height: 190)
         logo.position = CGPoint(x: 195, y: 683)
         overlay.addChild(logo)
-        panel(width: 342, height: 340, point: CGPoint(x: 195, y: 335), parent: overlay)
-        label("Home", size: 28, point: CGPoint(x: 195, y: 457), parent: overlay)
-        label("Welcome, \(profiles.active.name)", size: 18, point: CGPoint(x: 195, y: 413), parent: overlay)
-        menuButton("User selection", name: "players", point: CGPoint(x: 195, y: 341), parent: overlay, height: 56)
-        menuButton("Settings", name: "settings", point: CGPoint(x: 195, y: 264), parent: overlay, height: 56)
+        label("Start Menu", size: 26, point: CGPoint(x: 195, y: 553), parent: overlay)
+        panel(width: 342, height: 392, point: CGPoint(x: 195, y: 345), parent: overlay)
+        label("Welcome, \(profiles.active.name)", size: 22, point: CGPoint(x: 195, y: 498), parent: overlay)
+        menuButton(progress.checkpoint == nil ? "Play level \(progress.currentLevel + 1)" : "Resume puzzle \(progress.currentLevel + 1)", name: "continue-stop", point: CGPoint(x: 195, y: 421), parent: overlay, height: 60)
+        menuButton("Festival map", name: "start-adventure", point: CGPoint(x: 195, y: 344), parent: overlay, height: 54)
+        menuButton("Change player", name: "players", point: CGPoint(x: 109, y: 248), parent: overlay, width: 150, height: 44)
+        menuButton("Settings", name: "settings", point: CGPoint(x: 281, y: 248), parent: overlay, width: 150, height: 44)
         (overlay.childNode(withName: "settings") as? SKShapeNode)?.fillColor = .systemGray4
         (overlay.childNode(withName: "settings")?.children.first as? SKLabelNode)?.fontColor = .darkGray
-        label("Choose a player to enter the festival", size: 14, point: CGPoint(x: 195, y: 193), parent: overlay)
+        label("Saved automatically • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 181), parent: overlay)
         label("Irvine Dynamics", size: 12, point: CGPoint(x: 195, y: 62), parent: overlay)
     }
 
@@ -441,7 +445,7 @@ final class FestivalScene: SKScene {
         menuButton("New player & save", name: "player-create", point: CGPoint(x: 195, y: 231), parent: overlay, height: 48)
         menuButton("Rename \(profiles.active.name)", name: "player-rename", point: CGPoint(x: 195, y: 172), parent: overlay, height: 44)
         if let message { label(message, size: 12, point: CGPoint(x: 195, y: 118), parent: overlay) }
-        menuButton("Home", name: "home", point: CGPoint(x: 195, y: 65), parent: overlay, height: 44)
+        menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 65), parent: overlay, height: 44)
     }
 
     private func enterPlayer(_ id: String) {
@@ -454,7 +458,8 @@ final class FestivalScene: SKScene {
         mapArea = level / 10
         gameRoot.removeAllActions()
         startLevel(restoring: true)
-        showFestival()
+        if progress.checkpoint != nil { closeMenu(); startLevel(restoring: true) }
+        else { beginSelectedLevel() }
     }
 
     private func namePlayer(rename: Bool) {
@@ -471,22 +476,7 @@ final class FestivalScene: SKScene {
         }
     }
 
-    private func showFestival(announceBuddy: Bool = true) {
-        if announceBuddy, let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
-        menuKind = "festival"
-        let overlay = makeMenu(background: LevelCatalog.areas[mapArea].background)
-        panel(width: 342, height: 535, point: CGPoint(x: 195, y: 408), parent: overlay)
-        label("Your festival", size: 29, point: CGPoint(x: 195, y: 636), parent: overlay)
-        label(profiles.active.name, size: 19, point: CGPoint(x: 195, y: 600), parent: overlay)
-        let saved = progress.checkpoint
-        menuButton(saved == nil ? "Choose a level" : "Resume puzzle \(progress.currentLevel + 1)", name: saved == nil ? "start-adventure" : "resume-play", point: CGPoint(x: 195, y: 489), parent: overlay, height: 54)
-        menuButton("Festival map", name: "start-adventure", point: CGPoint(x: 195, y: 421), parent: overlay, height: 50)
-        menuButton("Buddies", name: "friends", point: CGPoint(x: 195, y: 357), parent: overlay, height: 50)
-        menuButton("Saved progress", name: "saved-progress", point: CGPoint(x: 195, y: 293), parent: overlay, height: 50)
-        menuButton("Home", name: "home", point: CGPoint(x: 195, y: 229), parent: overlay, height: 50)
-        label("\(progress.completedCount)/50 stops • \(progress.totalStars) stars", size: 16, point: CGPoint(x: 195, y: 175), parent: overlay)
-        label("Progress saves automatically on this iPhone", size: 13, point: CGPoint(x: 195, y: 140), parent: overlay)
-    }
+    private func showFestival(announceBuddy: Bool = true) { mapArea = progress.currentLevel / 10; showLevels() }
 
     private func showSavedProgress() {
         menuKind = "saved-progress"
@@ -500,7 +490,7 @@ final class FestivalScene: SKScene {
         label(stamp, size: 14, point: CGPoint(x: 195, y: 385), parent: overlay)
         menuButton("Save now", name: "save-now", point: CGPoint(x: 195, y: 306), parent: overlay, height: 50)
         label(profiles.active.fileName, size: 12, point: CGPoint(x: 195, y: 246), parent: overlay)
-        menuButton("Festival menu", name: "festival-menu", point: CGPoint(x: 195, y: 136), parent: overlay, height: 50)
+        menuButton("Festival map", name: "festival-menu", point: CGPoint(x: 195, y: 136), parent: overlay, height: 50)
     }
 
     private func showLevels() {
@@ -511,27 +501,31 @@ final class FestivalScene: SKScene {
         panel(width: 346, height: 82, point: CGPoint(x: 195, y: 738), parent: overlay)
         label(area.name, size: 23, point: CGPoint(x: 195, y: 750), parent: overlay)
         let current = progress.currentLevel
-        label("Current level \(current + 1) • \(progress.totalStars)/150 stars", size: 16, point: CGPoint(x: 195, y: 720), parent: overlay)
+        label("Area \(mapArea + 1)/5 • Active level \(current + 1) • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 720), parent: overlay)
         // Marker centers follow the painted roads, leaving the scenery visible.
         let dayXs: [CGFloat] = [223, 234, 238, 251, 270, 232, 174, 184, 246, 242]
         let nightXs: [CGFloat] = [218, 260, 246, 192, 222, 300, 314, 306, 312, 337]
         let xs = mapArea < 2 ? dayXs : nightXs
-        let positions = xs.enumerated().map { CGPoint(x: $0.element, y: 205 + CGFloat($0.offset) * 52) }
+        let positions = xs.enumerated().map { CGPoint(x: $0.element, y: 270 + CGFloat($0.offset) * 44) }
+        let path = CGMutablePath(); path.move(to: positions[0])
+        for position in positions.dropFirst() { path.addLine(to: position) }
+        let road = SKShapeNode(path: path); road.strokeColor = UIColor(red: 0.98, green: 0.85, blue: 0.59, alpha: 0.9); road.lineWidth = 17; road.lineCap = .round
+        overlay.addChild(road)
         for (local, position) in positions.enumerated() {
             let index = mapArea * 10 + local
-            let entry = SKShapeNode(circleOfRadius: 22)
+            let entry = SKShapeNode(circleOfRadius: 18)
             entry.position = position
             entry.fillColor = index == current ? .systemPink : progress.stars(index) > 0 ? .systemOrange : index <= progress.unlockedLevel ? .systemTeal : .darkGray
             entry.strokeColor = .white
             entry.lineWidth = 3
             entry.name = index <= progress.unlockedLevel ? "level-\(index)" : "locked"
             overlay.addChild(entry)
-            label("\(index + 1)", size: 20, point: CGPoint(x: 0, y: -7), parent: entry)
+            label("\(index + 1)", size: 17, point: CGPoint(x: 0, y: -6), parent: entry)
             if index == current {
                 entry.strokeColor = .systemYellow
                 entry.lineWidth = 5
                 entry.zPosition = 3
-                let halo = SKShapeNode(circleOfRadius: 27)
+                let halo = SKShapeNode(circleOfRadius: 23)
                 halo.strokeColor = .systemYellow; halo.fillColor = .clear; halo.lineWidth = 2
                 halo.zPosition = -1; entry.addChild(halo)
                 let buddy = SKSpriteNode(texture: companionTexture(progress.selected(.human), frame: 0), size: CGSize(width: 44, height: 44))
@@ -543,10 +537,9 @@ final class FestivalScene: SKScene {
                 }
             }
             if progress.stars(index) > 0 {
-                label(String(repeating: "★", count: progress.stars(index)) + String(repeating: "☆", count: 3 - progress.stars(index)), size: 12, point: CGPoint(x: 0, y: -34), parent: entry)
+                label(String(repeating: "★", count: progress.stars(index)), size: 8, point: CGPoint(x: 0, y: 20), parent: entry)
             }
         }
-        label("Area \(mapArea + 1) of 5", size: 12, point: CGPoint(x: 195, y: 690), parent: overlay)
         for (name, text, x, enabled) in [("area-prev", "Previous area", CGFloat(99), mapArea > 0), ("area-next", "Next area", CGFloat(291), mapArea < 4)] {
             let tab = SKShapeNode(rectOf: CGSize(width: 152, height: 36), cornerRadius: 7)
             tab.name = enabled ? name : "area-unavailable"; tab.position = CGPoint(x: x, y: 197)
@@ -563,7 +556,7 @@ final class FestivalScene: SKScene {
         host.position = CGPoint(x: 0, y: 23)
         station.addChild(host)
         label("Meet \(FestivalHost.all[mapArea].name)", size: 19, point: CGPoint(x: 0, y: -69), parent: station)
-        label("Tap to chat", size: 12, point: CGPoint(x: 0, y: -89), parent: station)
+        label("Stories & favors", size: 12, point: CGPoint(x: 0, y: -89), parent: station)
         station.alpha = progress.hostIsAvailable(FestivalHost.all[mapArea]) ? 1 : 0.55
         if progress.hostIsAvailable(FestivalHost.all[mapArea]) && !progress.hasMet(FestivalHost.all[mapArea]) {
             station.run(.repeatForever(.sequence([.scale(to: 1.025, duration: 1.1), .scale(to: 1, duration: 1.1)])))
@@ -572,10 +565,12 @@ final class FestivalScene: SKScene {
         host.run(.repeatForever(.sequence([.moveBy(x: 0, y: 3, duration: 1.6), .moveBy(x: 0, y: -3, duration: 1.6)])))
         let wheelStop = panel(width: 128, height: 52, point: CGPoint(x: 80, y: 270), parent: overlay)
         wheelStop.name = "open-wheel"
+        menuButton("Neighbors", name: "neighbors", point: CGPoint(x: 80, y: 584), parent: overlay, width: 128, height: 40)
         label("Prize Wheel", size: 18, point: CGPoint(x: 0, y: 3), parent: wheelStop)
         label("Free spins: \(progress.adventure.availableSpins)", size: 14, point: CGPoint(x: 0, y: -15), parent: wheelStop)
         menuButton("\(progress.checkpoint == nil ? "Start level" : "Resume puzzle") \(current + 1)", name: "continue-stop", point: CGPoint(x: 195, y: 133), parent: overlay, width: 270, height: 52)
-        menuButton("Festival menu", name: "festival-menu", point: CGPoint(x: 195, y: 65), parent: overlay, width: 210, height: 44)
+        menuButton("Start Menu", name: "home", point: CGPoint(x: 109, y: 65), parent: overlay, width: 150, height: 44)
+        menuButton("Buddies", name: "friends", point: CGPoint(x: 281, y: 65), parent: overlay, width: 150, height: 44)
     }
 
     private func availableColor() -> Int {
@@ -605,10 +600,6 @@ final class FestivalScene: SKScene {
 
     private func refreshHUD() {
         shotsLabel.text = "\(shots)"
-        let remaining = LevelCatalog.level(level).ceilingInterval - shotsFired % LevelCatalog.level(level).ceilingInterval
-        let meter = gameRoot.childNode(withName: "ceiling-meter") as? SKShapeNode
-        (meter?.childNode(withName: "ceiling-count") as? SKLabelNode)?.text = "\(remaining) shots"
-        meter?.strokeColor = remaining <= 2 ? .systemOrange : .white
         refreshQuestBadge()
         for (name, count) in [("rainbow", rainbowLeft), ("bomb", bombLeft)] {
             let box = gameRoot.childNode(withName: name) as? SKShapeNode
@@ -678,7 +669,6 @@ final class FestivalScene: SKScene {
             gameRoot.run(.sequence([.wait(forDuration: 0.55), .run { [weak self] in self?.showControlHelp(control) }]), withKey: "control-help")
         }
         if names.contains("quest-objective") { showObjectives(); return }
-        if names.contains("ceiling-meter") { showCeilingHelp(); return }
         if names.contains("home") { showTitle(); return }
         if names.contains("retry") { showRetryPrompt(); return }
         if finished {
@@ -804,7 +794,7 @@ final class FestivalScene: SKScene {
             audio.effect(kind == .bomb ? "bomb" : "pop", enabled: progress.enabled(.effects), volume: progress.effectsVolume)
         }
         if board.bubbles.isEmpty { finish(success: true); return }
-        let newOffset = LevelCatalog.level(level).ceilingOffset(after: shotsFired)
+        let newOffset = LevelCatalog.level(level).ceilingOffset(after: shotsFired, seed: pressureSeed)
         if newOffset > ceilingOffset {
             ceilingOffset = newOffset
             positionCeiling(animated: true)
@@ -1259,7 +1249,7 @@ private extension FestivalScene {
         progress.save(GameCheckpoint(level: level, board: board, shots: shots, score: score,
                                      current: currentColor, next: nextColor, bag: colorBag,
                                      rainbow: rainbowLeft, bomb: bombLeft, play: questPlay, challenge: challengeMode,
-                                     freeRainbow: freeRainbow, freeBomb: freeBomb, ceilingOffset: ceilingOffset, shotsFired: shotsFired))
+                                     freeRainbow: freeRainbow, freeBomb: freeBomb, ceilingOffset: ceilingOffset, shotsFired: shotsFired, pressureSeed: pressureSeed))
         profiles.persistActive()
     }
 
@@ -1402,37 +1392,45 @@ private extension FestivalScene {
     }
 
     func setOperatorHands(working: Bool) {
-        gameRoot.childNode(withName: "operator-hands")?.removeFromParent()
-        guard let buddy = gameRoot.childNode(withName: "companion-1") as? SKSpriteNode else { return }
+        guard let buddy = gameRoot.childNode(withName: "companion-1") as? SKSpriteNode,
+              let wheel = gameRoot.childNode(withName: "handwheel"),
+              let knob = wheel.childNode(withName: "crank") else { return }
         let friend = progress.selected(.human)
-        buddy.removeAction(forKey: "operating")
-        buddy.removeAction(forKey: "breathing")
-        buddy.yScale = 1
+        buddy.removeAction(forKey: "operating"); buddy.removeAction(forKey: "breathing"); buddy.yScale = 1
         buddy.texture = operatorTexture(friend, part: 0)
-        buddy.zPosition = 0
-        if operatorBuddyID != friend.id || gameRoot.childNode(withName: "operator-arm") == nil {
+        let row = friend.atlasIndex - 4
+        let boundaries: [CGFloat] = [0, 223, 435, 654, 876, 1099, 1326, 1550, 1774]
+        let sockets: [CGPoint] = [CGPoint(x: 192, y: 128), CGPoint(x: 183, y: 344), CGPoint(x: 188, y: 562), CGPoint(x: 194, y: 785), CGPoint(x: 197, y: 1009), CGPoint(x: 194, y: 1232), CGPoint(x: 195, y: 1456), CGPoint(x: 194, y: 1680)]
+        let socket = CGPoint(x: ((sockets[row].x - 35) / 215 - 0.5) * buddy.size.width,
+                             y: (boundaries[row + 1] - sockets[row].y) / (boundaries[row + 1] - boundaries[row]) * buddy.size.height)
+        if operatorBuddyID != friend.id || buddy.childNode(withName: "operator-arm") == nil {
             operatorBuddyID = friend.id
             gameRoot.childNode(withName: "operator-arm")?.removeFromParent()
-            let arm = SKNode(); arm.name = "operator-arm"; arm.zPosition = 3
+            buddy.childNode(withName: "operator-arm")?.removeFromParent()
+            let arm = SKNode(); arm.name = "operator-arm"; arm.zPosition = 4; arm.xScale = -1
             for part in 1...3 {
-                let sprite = SKSpriteNode(texture: operatorTexture(friend, part: part))
-                sprite.name = "part-\(part)"
-                sprite.anchorPoint = part == 3 ? CGPoint(x: 0.5, y: 0.5) : CGPoint(x: 0, y: 0.5)
-                sprite.size = part == 1 ? CGSize(width: 24, height: 20) : part == 2 ? CGSize(width: 26, height: 11) : CGSize(width: 15, height: 12)
-                sprite.zPosition = CGFloat(part)
-                arm.addChild(sprite)
+                let sprite = SKSpriteNode(texture: operatorTexture(friend, part: part)); sprite.name = "part-\(part)"
+                // Pivots sit on the painted joint, excluding the transparent crop margins.
+                sprite.anchorPoint = part == 1 ? CGPoint(x: 15.0 / 153, y: 92.0 / 123) : part == 2 ? CGPoint(x: 21.0 / 133, y: 31.0 / 62) : CGPoint(x: 40.0 / 72, y: 31.0 / 59)
+                let scale = part == 1 ? OperatorArmPose.upperLength / hypot(121, 22) : OperatorArmPose.forearmLength / hypot(102, 5)
+                sprite.size = part == 1 ? CGSize(width: 153 * scale, height: 123 * scale) : part == 2 ? CGSize(width: 133 * scale, height: 62 * scale) : CGSize(width: 15, height: 12)
+                sprite.zPosition = CGFloat(part); arm.addChild(sprite)
             }
-            gameRoot.addChild(arm)
+            buddy.addChild(arm)
         }
-        let rotation = gameRoot.childNode(withName: "handwheel")?.zRotation ?? 0
-        let pose = OperatorArmPose.aiming(-Double(rotation) / 2.5)
-        let arm = gameRoot.childNode(withName: "operator-arm")
-        arm?.childNode(withName: "part-1")?.position = CGPoint(x: pose.shoulder.x, y: pose.shoulder.y)
-        arm?.childNode(withName: "part-1")?.zRotation = atan2(pose.elbow.y - pose.shoulder.y, pose.elbow.x - pose.shoulder.x)
-        arm?.childNode(withName: "part-2")?.position = CGPoint(x: pose.elbow.x, y: pose.elbow.y)
-        arm?.childNode(withName: "part-2")?.zRotation = atan2(pose.hand.y - pose.elbow.y, pose.hand.x - pose.elbow.x)
-        arm?.childNode(withName: "part-3")?.position = CGPoint(x: pose.hand.x, y: pose.hand.y)
-        arm?.childNode(withName: "part-3")?.zRotation = atan2(pose.hand.y - pose.elbow.y, pose.hand.x - pose.elbow.x)
+        guard let arm = buddy.childNode(withName: "operator-arm") else { return }
+        let shoulder = buddy.convert(socket, to: gameRoot)
+        let hand = knob.convert(.zero, to: gameRoot)
+        let pose = OperatorArmPose.connecting(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: hand.x, y: hand.y))
+        let a = arm.convert(CGPoint(x: pose.shoulder.x, y: pose.shoulder.y), from: gameRoot)
+        let b = arm.convert(CGPoint(x: pose.elbow.x, y: pose.elbow.y), from: gameRoot)
+        let c = arm.convert(CGPoint(x: pose.hand.x, y: pose.hand.y), from: gameRoot)
+        arm.childNode(withName: "part-1")?.position = a
+        arm.childNode(withName: "part-1")?.zRotation = atan2(b.y - a.y, b.x - a.x) - atan2(-22, 121)
+        arm.childNode(withName: "part-2")?.position = b
+        arm.childNode(withName: "part-2")?.zRotation = atan2(c.y - b.y, c.x - b.x) - atan2(5, 102)
+        arm.childNode(withName: "part-3")?.position = c
+        arm.childNode(withName: "part-3")?.zRotation = atan2(c.y - b.y, c.x - b.x)
     }
 
     func operatorTexture(_ friend: Companion, part: Int) -> SKTexture {
@@ -1536,6 +1534,7 @@ private extension FestivalScene {
             wheel.addChild(spoke)
         }
         let crank = SKShapeNode(circleOfRadius: 5)
+        crank.name = "crank"
         crank.position = CGPoint(x: 0, y: 18)
         crank.fillColor = .brown
         crank.strokeColor = .white
@@ -1666,15 +1665,6 @@ private extension FestivalScene {
         }
     }
 
-    func showCeilingHelp() {
-        menuKind = "ceiling-help"
-        let overlay = makeMenu(background: LevelCatalog.level(level).background)
-        panel(width: 342, height: 320, point: CGPoint(x: 195, y: 448), parent: overlay)
-        label("Watch the festival roof", size: 25, point: CGPoint(x: 195, y: 564), parent: overlay)
-        paragraph("Every \(LevelCatalog.level(level).ceilingInterval) shots, the roof and bubbles move down. The counter turns orange two shots before it moves. Clear the bubbles before they cross the orange line. Taking time to aim does not move the roof.", y: 464, parent: overlay)
-        menuButton("Keep playing", name: "objective-close", point: CGPoint(x: 195, y: 231), parent: overlay, height: 48)
-    }
-
     func closeMenu() {
         levelMenu?.removeFromParent()
         levelMenu = nil
@@ -1693,8 +1683,6 @@ private extension FestivalScene {
             tutorialFromSettings = false
             returnMenu = "game"
             showTutorial()
-        } else if !progress.hasMet(FestivalHost.all[level / 10]) {
-            showHost(FestivalHost.all[level / 10])
         } else if let special = board.specials.values.first, !progress.hasLearned(special) {
             showSpecialHelp(special)
         }
@@ -1768,8 +1756,7 @@ private extension FestivalScene {
         menuButton("How to play", name: "tutorial", point: CGPoint(x: 195, y: 250), parent: overlay, height: 44)
         menuButton("Sound levels", name: "sound-levels", point: CGPoint(x: 195, y: 193), parent: overlay, height: 44)
         menuButton(progress.soundMuted ? "Sound: Off" : "Sound: On", name: "quick-sound", point: CGPoint(x: 195, y: 136), parent: overlay, width: 220, height: 44)
-        menuButton("Back", name: "back", point: CGPoint(x: 114, y: 78), parent: overlay, width: 158, height: 50)
-        menuButton("Home", name: "home", point: CGPoint(x: 282, y: 78), parent: overlay, width: 158, height: 50)
+        menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 78), parent: overlay, width: 270, height: 50)
     }
 
     func showTutorial() {
@@ -1829,6 +1816,27 @@ private extension FestivalScene {
         menuButton("Back", name: "back", point: CGPoint(x: 195, y: 93), parent: overlay)
     }
 
+    func showMapBuddies() {
+        showLevels()
+        menuKind = "map-buddies"
+        guard let overlay = levelMenu else { return }
+        panel(width: 360, height: 342, point: CGPoint(x: 195, y: 258), parent: overlay)
+        label("Choose your buddies", size: 24, point: CGPoint(x: 195, y: 397), parent: overlay)
+        for (index, friend) in Companion.all.dropFirst(friendsPage * 6).prefix(6).enumerated() {
+            let x = CGFloat(81 + (index % 3) * 114), y = CGFloat(327 - (index / 3) * 103)
+            let tile = panel(width: 102, height: 96, point: CGPoint(x: x, y: y), parent: overlay)
+            tile.name = "friend-\(friend.id)"
+            let available = progress.unlocked(friend)
+            let portrait = SKSpriteNode(texture: companionTexture(friend, frame: 0), size: CGSize(width: 56, height: 56))
+            portrait.position.y = 17; portrait.alpha = available ? 1 : 0.35; tile.addChild(portrait)
+            label(friend.name, size: 12, point: CGPoint(x: 0, y: -22), parent: tile)
+            label(available ? progress.selected(friend.kind).id == friend.id ? "Selected ✓" : "Tap to choose" : "Locked", size: 10, point: CGPoint(x: 0, y: -39), parent: tile)
+        }
+        menuButton(friendsPage == 0 ? "More" : "First", name: "friends-page", point: CGPoint(x: 81, y: 136), parent: overlay, width: 102, height: 40)
+        menuButton("Pins", name: "accessories", point: CGPoint(x: 195, y: 136), parent: overlay, width: 102, height: 40)
+        menuButton("Done", name: "map-buddies-close", point: CGPoint(x: 309, y: 136), parent: overlay, width: 102, height: 40)
+    }
+
     func showEnding() {
         menuKind = "ending"
         let overlay = makeMenu(background: "festival-dusk")
@@ -1842,7 +1850,7 @@ private extension FestivalScene {
         panel(width: 342, height: 100, point: CGPoint(x: 195, y: 243), parent: overlay)
         paragraph("Thanks for bringing the festival to life! Visit your favorite stops and collect every star.", y: 247, parent: overlay)
         menuButton("Explore again", name: "start-adventure", point: CGPoint(x: 195, y: 145), parent: overlay)
-        menuButton("Home", name: "home", point: CGPoint(x: 195, y: 77), parent: overlay, width: 150)
+        menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 77), parent: overlay, width: 150)
         let fireworks = SKAction.sequence([.run { [weak self, weak overlay] in
             guard let self, let overlay else { return }
             let center = CGPoint(x: CGFloat.random(in: 70...320), y: CGFloat.random(in: 540...650))
@@ -1861,6 +1869,11 @@ private extension FestivalScene {
 
     func handleMenu(_ names: [String]) {
         if wheelSpinning { return }
+        if menuKind == "map-buddies" {
+            if names.contains("home") { showTitle(); return }
+            if names.contains("map-buddies-close") { showLevels(); return }
+            if !names.contains("friends-page") && !names.contains("accessories") && !names.contains(where: { $0.hasPrefix("friend-") }) { showLevels(); return }
+        }
         if names.contains("players") { showPlayers(); return }
         if names.contains("players-prev") { playersPage = max(0, playersPage - 1); showPlayers(); return }
         if names.contains("players-next") { playersPage += 1; showPlayers(); return }
@@ -1883,7 +1896,7 @@ private extension FestivalScene {
         if names.contains("saved-progress") { showSavedProgress(); return }
         if names.contains("save-now") { saveCheckpoint(); progress.markSaved(); showSavedProgress(); return }
         if names.contains("objective-close") { closeMenu(); return }
-        if names.contains("neighbors") { showNeighbors(); return }
+        if names.contains("neighbors") { if menuKind == "map" { questArea = mapArea }; showNeighbors(); return }
         if let name = names.first(where: { $0.hasPrefix("neighbor-") }), let neighbor = FestivalNeighbor.all.first(where: { "neighbor-\($0.id)" == name }) { showNeighbor(neighbor); return }
         if names.contains("special-ready"), let specialToLearn { progress.markLearned(specialToLearn); closeMenu(); return }
         if names.contains("open-challenge") { showChallenge(); return }
@@ -1896,8 +1909,8 @@ private extension FestivalScene {
             showSoundLevels(); return
         }
         if names.contains("accessories") { showAccessories(); return }
-        if names.contains("accessory-back") { showFriends(); return }
-        if names.contains("friends-page") { friendsPage = 1 - friendsPage; showFriends(); return }
+        if names.contains("accessory-back") { showMapBuddies(); return }
+        if names.contains("friends-page") { friendsPage = 1 - friendsPage; if menuKind == "map-buddies" { showMapBuddies() } else { showFriends() }; return }
         if names.contains("pin-none") { progress.adventure.equip(nil); applyCompanionPins(); showAccessories(); return }
         if let name = names.first(where: { $0.hasPrefix("pin-") }), let pin = FestivalPrize(rawValue: String(name.dropFirst(4))) {
             progress.adventure.equip(pin); applyCompanionPins(); showAccessories(); return
@@ -1918,7 +1931,8 @@ private extension FestivalScene {
         }
         if names.contains("quest-accept"), let selectedQuest {
             progress.adventure.accept(selectedQuest, unlockedLevel: progress.unlockedLevel)
-            showQuest(selectedQuest); return
+            if let next = progress.adventure.nextLevel(selectedQuest, unlockedLevel: progress.unlockedLevel) { level = next; challengeMode = false; beginSelectedLevel() }
+            return
         }
         if names.contains("quest-play"), let selectedQuest {
             if let next = progress.adventure.nextLevel(selectedQuest, unlockedLevel: progress.unlockedLevel) {
@@ -1940,7 +1954,7 @@ private extension FestivalScene {
         else if names.contains("area-next") { mapArea = min(4, mapArea + 1); showLevels() }
         else if names.contains("meet-host") {
             let host = FestivalHost.all[mapArea]
-            if progress.hostIsAvailable(host) { showHost(host) }
+            if progress.hostIsAvailable(host) { progress.markMet(host); showQuests(area: mapArea) }
             else if let overlay = levelMenu {
                 overlay.childNode(withName: "unlock-message")?.removeFromParent()
                 let message = panel(width: 280, height: 32, point: CGPoint(x: 195, y: 139), parent: overlay)
@@ -1949,7 +1963,7 @@ private extension FestivalScene {
             }
         }
         else if names.contains("settings") { returnMenu = menuKind; showSettings() }
-        else if names.contains("friends") { returnMenu = menuKind; showFriends() }
+        else if names.contains("friends") { if menuKind == "map" { showMapBuddies() } else { returnMenu = menuKind; showFriends() } }
         else if names.contains("back") { restoreMenu() }
         else if names.contains("tutorial") { tutorialFromSettings = true; tutorialPage = 0; showTutorial() }
         else if names.contains("tutorial-skip") { finishTutorial() }
@@ -1966,7 +1980,7 @@ private extension FestivalScene {
         }
         else if let name = names.first(where: { $0.hasPrefix("friend-") }), let friend = Companion.all.first(where: { "friend-\($0.id)" == name }) {
             progress.select(friend)
-            showFriends()
+            if menuKind == "map-buddies" { showMapBuddies() } else { showFriends() }
         }
         else if let name = names.first(where: { $0.hasPrefix("level-") }), let selected = Int(name.dropFirst(6)), selected <= progress.unlockedLevel {
             level = selected

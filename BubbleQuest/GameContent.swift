@@ -21,7 +21,17 @@ struct GameLevel {
     var number: Int { index + 1 }
     var ceilingInterval: Int { max(6, 12 - index / 8) }
     var ceilingStep: Double { 4 + Double(index) * 0.3 }
-    func ceilingOffset(after shotsFired: Int) -> Double { min(240, Double(max(0, shotsFired) / ceilingInterval) * ceilingStep) }
+    func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
+        var state = seed
+        var threshold = 0
+        var drops = 0
+        while threshold <= shotsFired {
+            state = state &* 6364136223846793005 &+ 1442695040888963407
+            threshold += ceilingInterval - 1 + Int((state >> 32) % 4)
+            if threshold <= shotsFired { drops += 1 }
+        }
+        return min(240, Double(drops) * ceilingStep)
+    }
     var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials) }
     var initialSpecials: [Cell: SpecialBubble] {
         guard index % 10 >= 2, area >= 2 else { return [:] }

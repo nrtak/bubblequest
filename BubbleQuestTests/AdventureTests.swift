@@ -69,9 +69,9 @@ final class AdventureTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let progress = GameProgress(defaults: defaults)
-        XCTAssertEqual(FestivalNeighbor.all.count, 8)
-        XCTAssertEqual(Set(FestivalNeighbor.all.map(\.id)).count, 8)
-        XCTAssertEqual(Set(FestivalNeighbor.all.map(\.area)), Set(0..<5))
+        XCTAssertEqual(FestivalNeighbor.all.count, 14)
+        XCTAssertEqual(Set(FestivalNeighbor.all.map(\.id)).count, 14)
+        XCTAssertEqual(Set(FestivalNeighbor.all.map(\.area)), Set(0..<11))
         let aya = FestivalNeighbor.all.first { $0.id == "aya" }!
         let shin = FestivalNeighbor.all.first { $0.id == "shin" }!
         progress.markMet(aya)
@@ -88,7 +88,7 @@ final class AdventureTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let progress = GameProgress(defaults: defaults)
-        let newFriends = Companion.all.filter { $0.atlasIndex >= 6 }
+        let newFriends = Companion.all.filter { $0.kind == .human && $0.atlasIndex >= 6 }
         XCTAssertEqual(newFriends.count, 6)
         XCTAssertEqual(Set(newFriends.map(\.id)).count, 6)
         XCTAssertTrue(newFriends.allSatisfy { !progress.unlocked($0) })

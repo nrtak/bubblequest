@@ -1250,7 +1250,7 @@ private extension FestivalScene {
         let tip = panel(width: 320, height: 86, point: CGPoint(x: 195, y: 304), parent: gameRoot)
         tip.name = "control-tip"; tip.zPosition = 25
         let text = SKLabelNode(fontNamed: "AvenirNext-Medium")
-        text.text = control == "rainbow" ? "Rainbow pops the largest neighboring color group." : control == "bomb" ? "Bomb pops bubbles nearby. The guide previews its reach." : "Swap your loaded bubble with the next bubble, freely."
+        text.text = control == "rainbow" ? "Rainbow pops the largest neighboring color group." : "Bomb pops bubbles nearby. The guide previews its reach."
         text.fontSize = 16; text.numberOfLines = 3; text.preferredMaxLayoutWidth = 285
         text.verticalAlignmentMode = .center; tip.addChild(text)
         tip.run(.sequence([.wait(forDuration: 3), .fadeOut(withDuration: 0.3), .removeFromParent()]))
@@ -1836,7 +1836,7 @@ private extension FestivalScene {
         let overlay = makeMenu(background: "festival-courtyard")
         let titles = ["Aim and pop", "Try a wall bounce", "A little extra help", "Festival surprises"]
         let bodies = ["Drag above the launcher to aim. Release to shoot. Drag back down toward the launcher to cancel. Match three bubbles with the same color and symbol.",
-                      "Use the walls to reach tricky spots. Pop a supporting group to drop the bubbles below it. Clear the board to win!",
+                      "Use the walls to reach tricky spots. Pop a supporting group to drop the bubbles below it. Clear the board to win! Tap the bubble your buddy holds to swap it with the loaded bubble.",
                       "Rainbow pops its largest connected color group. Bomb clears nearby bubbles. You get one of each per attempt. Save shots to earn more stars. Hold an icon for help!",
                       "Lanterns clear a row. River pearls return a shot. Blossom sparks pop nearby bubbles. Each keeps its usual matching color."]
         panel(width: 342, height: 440, point: CGPoint(x: 195, y: 465), parent: overlay)

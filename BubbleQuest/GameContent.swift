@@ -145,11 +145,13 @@ enum LevelCatalog {
         if let authored = AuthoredLayouts.bubbles(for: layoutIndex) { cells = authored }
         if index >= 50 {
             let variation = (index - 50) / 30
-            let shift = variation + 1
-            let paletteCount = max(colors, (cells.values.max() ?? 0) + 1)
+            let permutations = [[1, 2, 3, 0, 4], [2, 0, 3, 1, 4], [3, 1, 0, 2, 4],
+                                [0, 3, 1, 2, 4], [2, 3, 0, 1, 4]]
+            // These original templates share a board; reverse one in the expansion.
+            let mirror = (variation % 2 == 0) != (layoutIndex == 43)
             cells = Dictionary(uniqueKeysWithValues: cells.map { cell, color in
-                let column = variation % 2 == 0 ? BubbleBoard.columns - cell.row % 2 - 1 - cell.column : cell.column
-                return (Cell(row: cell.row, column: column), (color + shift) % paletteCount)
+                let column = mirror ? BubbleBoard.columns - cell.row % 2 - 1 - cell.column : cell.column
+                return (Cell(row: cell.row, column: column), permutations[variation][color])
             })
         }
         let budgetColors = max(colors, Set(cells.values).count)

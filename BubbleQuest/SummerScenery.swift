@@ -43,11 +43,11 @@ enum SummerScenery: Int, CaseIterable {
     var markerPositions: [CGPoint] {
         let xs: [CGFloat]
         switch self {
-        case .river: xs = [249, 240, 214, 187, 160, 143, 145, 165, 184, 188]
-        case .tea: xs = [229, 215, 192, 165, 143, 145, 168, 189, 185, 168]
-        case .beach: xs = [253, 247, 234, 216, 202, 195, 196, 192, 184, 175]
-        case .lake: xs = [242, 239, 227, 208, 188, 173, 165, 165, 176, 189]
-        case .hill: xs = [245, 256, 258, 224, 196, 209, 260, 275, 245, 245]
+        case .river: xs = [204, 213, 226, 212, 195, 161, 159, 189, 181, 210]
+        case .tea: xs = [180, 172, 176, 162, 146, 160, 182, 196, 179, 152]
+        case .beach: xs = [238, 236, 239, 243, 223, 198, 176, 218, 235, 176]
+        case .lake: xs = [186, 182, 180, 182, 211, 222, 202, 171, 179, 202]
+        case .hill: xs = [233, 256, 233, 196, 223, 280, 261, 217, 279, 245]
         }
         return xs.enumerated().map { CGPoint(x: $0.element, y: 235 + CGFloat($0.offset) * 38) }
     }

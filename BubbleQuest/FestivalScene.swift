@@ -167,7 +167,7 @@ final class FestivalScene: SKScene {
         else if ProcessInfo.processInfo.arguments.contains("--map-preview") { showLevels() }
         else if ProcessInfo.processInfo.arguments.contains("--host-preview") { showHost(FestivalHost.all[mapArea]) }
         else if ProcessInfo.processInfo.arguments.contains("--cancel-preview") { updateAim(CGPoint(x: 195, y: 220)) }
-        else if ProcessInfo.processInfo.arguments.contains("--gameplay-preview") { updateAim(CGPoint(x: 242, y: 600)) }
+        else if ProcessInfo.processInfo.arguments.contains("--gameplay-preview") || ProcessInfo.processInfo.arguments.contains("--beach-preview") || ProcessInfo.processInfo.arguments.contains("--hill-preview") { updateAim(CGPoint(x: 242, y: 600)) }
         else { showTitle() }
     }
 

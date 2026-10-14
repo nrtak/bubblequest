@@ -1890,7 +1890,9 @@ private extension FestivalScene {
         if names.contains("new-buddy"), let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
         if names.contains("buddy-choose") || names.contains("buddy-later") {
             if let buddy = progress.pendingBuddy { if names.contains("buddy-choose") { progress.select(buddy) }; progress.welcome(buddy) }
-            if finished { closeMenu() } else { showFestival(announceBuddy: false) }
+            if finished && won && level < 49 && !challengeMode { level += 1; beginSelectedLevel() }
+            else if finished { closeMenu() }
+            else { showLevels() }
             return
         }
         if names.contains("saved-progress") { showSavedProgress(); return }

@@ -597,7 +597,7 @@ final class FestivalScene: SKScene {
         let wheelStop = panel(width: 128, height: 52, point: CGPoint(x: 80, y: 270), parent: overlay)
         wheelStop.name = "open-wheel"
         menuButton("Neighbors", name: "neighbors", point: CGPoint(x: 80, y: 584), parent: overlay, width: 128, height: 40)
-        let gift = questIcon("gift.fill", size: 20, color: .darkGray); gift.position = CGPoint(x: -48, y: 0); wheelStop.addChild(gift)
+        let gift = questIcon("gift.fill", size: 20, color: .systemYellow); gift.position = CGPoint(x: -48, y: 0); wheelStop.addChild(gift)
         label("Prize Wheel", size: 15, point: CGPoint(x: 10, y: 3), parent: wheelStop)
         label("Free spins: \(progress.adventure.availableSpins)", size: 14, point: CGPoint(x: 0, y: -15), parent: wheelStop)
         menuButton("\(progress.checkpoint == nil ? "Start level" : "Continue level") \(current + 1)", name: "continue-stop", point: CGPoint(x: 195, y: 133), parent: overlay, width: 270, height: 52)

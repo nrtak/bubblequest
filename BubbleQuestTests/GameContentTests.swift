@@ -3,6 +3,13 @@ import UIKit
 @testable import BubbleQuest
 
 final class GameContentTests: XCTestCase {
+    func testBuddyPickerConsumesTouchesAboveUnderlyingMapActivities() {
+        XCTAssertEqual(FestivalMenuTargets.buddies(["friend-shiba", "open-wheel", "continue-stop", "meet-host"]), ["friend-shiba"])
+        XCTAssertEqual(FestivalMenuTargets.buddies(["friends-page", "continue-stop"]), ["friends-page"])
+        XCTAssertEqual(FestivalMenuTargets.buddies(["accessories", "level-0"]), ["accessories"])
+        XCTAssertTrue(FestivalMenuTargets.buddies(["level-0"]).isEmpty)
+    }
+
     func testLaterLevelsHaveTighterShotAllowanceAndFasterPressure() {
         let early = LevelCatalog.level(4)
         let late = LevelCatalog.level(49)

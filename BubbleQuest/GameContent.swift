@@ -19,8 +19,8 @@ struct GameLevel {
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
-    var ceilingInterval: Int { max(6, 12 - index / 8) }
-    var ceilingStep: Double { 4 + Double(index) * 0.3 }
+    var ceilingInterval: Int { max(4, 12 - index / 5) }
+    var ceilingStep: Double { 4 + Double(index) * 0.55 }
     func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
         var state = seed
         var threshold = 0
@@ -119,7 +119,7 @@ enum LevelCatalog {
         if let authored = AuthoredLayouts.bubbles(for: index) { cells = authored }
         let budgetColors = max(colors, Set(cells.values).count)
         // Later areas no longer reset the challenge with welcome/recovery allowances.
-        let shots = max(24, cells.count * 2 / 3 + budgetColors * 2 + 5 - index / 5)
+        let shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
         return GameLevel(index: index, area: area, shots: shots, initialBubbles: cells)
     }
 

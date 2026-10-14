@@ -71,7 +71,7 @@ final class FestivalScene: SKScene {
 
     deinit { if let powerObserver { NotificationCenter.default.removeObserver(powerObserver) } }
 
-    override func update(_ currentTime: TimeInterval) {
+    override func didFinishUpdate() {
         if !gameRoot.isPaused && !suspended { setOperatorHands(working: aiming) }
     }
 
@@ -403,6 +403,31 @@ final class FestivalScene: SKScene {
         button.lineWidth = 3
         parent.addChild(button)
         label(title, size: min(23, (width - 28) / max(1, CGFloat(title.count) * 0.58)), point: CGPoint(x: 0, y: -8), parent: button)
+        let symbols = ["Festival map": "map.fill", "Neighbors": "person.2.fill", "Prize Wheel": "gift.fill", "Pins": "star.circle.fill"]
+        if let symbol = symbols[title] {
+            let icon = questIcon(symbol, size: 20, color: .white)
+            icon.position.x = -width / 2 + 23; button.addChild(icon)
+            if let text = button.children.first as? SKLabelNode {
+                text.position.x = 12
+                text.fontSize = min(text.fontSize, (width - 64) / max(1, CGFloat(title.count) * 0.58))
+            }
+        }
+    }
+
+    private func decorateMenuIcon(_ symbol: String, name: String, parent: SKNode, x: CGFloat) {
+        guard let button = parent.childNode(withName: name) else { return }
+        let icon = questIcon(symbol, size: 22, color: .white)
+        icon.position.x = x; button.addChild(icon)
+        (button.children.first as? SKLabelNode)?.position.x = 12
+    }
+
+    private func navigationCard(_ title: String, detail: String, symbol: String, name: String, y: CGFloat, parent: SKNode, primary: Bool) {
+        let card = panel(width: 292, height: 82, point: CGPoint(x: 195, y: y), parent: parent)
+        card.name = name
+        card.fillColor = primary ? UIColor(red: 0.94, green: 0.39, blue: 0.31, alpha: 1) : UIColor(red: 0.22, green: 0.55, blue: 0.48, alpha: 1)
+        let icon = questIcon(symbol, size: 30, color: .white); icon.position = CGPoint(x: -111, y: 0); card.addChild(icon)
+        label(title, size: 22, point: CGPoint(x: 15, y: 5), parent: card)
+        label(detail, size: 12, point: CGPoint(x: 15, y: -22), parent: card)
     }
 
     private func showTitle() {
@@ -415,12 +440,13 @@ final class FestivalScene: SKScene {
         label("Start Menu", size: 26, point: CGPoint(x: 195, y: 553), parent: overlay)
         panel(width: 342, height: 392, point: CGPoint(x: 195, y: 345), parent: overlay)
         label("Welcome, \(profiles.active.name)", size: 22, point: CGPoint(x: 195, y: 498), parent: overlay)
-        menuButton(progress.checkpoint == nil ? "Play level \(progress.currentLevel + 1)" : "Resume puzzle \(progress.currentLevel + 1)", name: "continue-stop", point: CGPoint(x: 195, y: 421), parent: overlay, height: 60)
-        menuButton("Festival map", name: "start-adventure", point: CGPoint(x: 195, y: 344), parent: overlay, height: 54)
-        menuButton("Change player", name: "players", point: CGPoint(x: 109, y: 248), parent: overlay, width: 150, height: 44)
-        menuButton("Settings", name: "settings", point: CGPoint(x: 281, y: 248), parent: overlay, width: 150, height: 44)
-        (overlay.childNode(withName: "settings") as? SKShapeNode)?.fillColor = .systemGray4
-        (overlay.childNode(withName: "settings")?.children.first as? SKLabelNode)?.fontColor = .darkGray
+        navigationCard(progress.checkpoint == nil ? "Play" : "Continue playing", detail: "Level \(progress.currentLevel + 1) • \(LevelCatalog.level(progress.currentLevel).area + 1) / 5 areas", symbol: "play.fill", name: "continue-stop", y: 418, parent: overlay, primary: true)
+        navigationCard("Explore festival", detail: "Choose levels, buddies & activities", symbol: "map.fill", name: "start-adventure", y: 317, parent: overlay, primary: false)
+        menuButton("Players", name: "players", point: CGPoint(x: 147, y: 219), parent: overlay, width: 190, height: 48)
+        decorateMenuIcon("person.2.fill", name: "players", parent: overlay, x: -65)
+        let settings = panel(width: 48, height: 48, point: CGPoint(x: 303, y: 219), parent: overlay)
+        settings.name = "settings"; settings.fillColor = .systemGray4
+        let gear = questIcon("gearshape.fill", size: 26, color: .darkGray); settings.addChild(gear)
         label("Saved automatically • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 181), parent: overlay)
         label("Irvine Dynamics", size: 12, point: CGPoint(x: 195, y: 62), parent: overlay)
     }
@@ -570,7 +596,9 @@ final class FestivalScene: SKScene {
         label("Free spins: \(progress.adventure.availableSpins)", size: 14, point: CGPoint(x: 0, y: -15), parent: wheelStop)
         menuButton("\(progress.checkpoint == nil ? "Start level" : "Resume puzzle") \(current + 1)", name: "continue-stop", point: CGPoint(x: 195, y: 133), parent: overlay, width: 270, height: 52)
         menuButton("Start Menu", name: "home", point: CGPoint(x: 109, y: 65), parent: overlay, width: 150, height: 44)
+        decorateMenuIcon("house.fill", name: "home", parent: overlay, x: -57)
         menuButton("Buddies", name: "friends", point: CGPoint(x: 281, y: 65), parent: overlay, width: 150, height: 44)
+        decorateMenuIcon("pawprint.fill", name: "friends", parent: overlay, x: -57)
     }
 
     private func availableColor() -> Int {
@@ -1172,7 +1200,7 @@ private extension FestivalScene {
         icon.setScale(prize == .rainbow || prize == .bomb ? 2 : 1)
         icon.position = CGPoint(x: 195, y: 548); overlay.addChild(icon)
         label(prize.title, size: 25, point: CGPoint(x: 195, y: 470), parent: overlay)
-        paragraph(prize == .rainbow || prize == .bomb ? "Saved to your booster supply. Use it from the bottom controls during a puzzle." : "Saved to your collection. Choose pins in Buddies from the festival menu; bunting appears at your stations.", y: 400, parent: overlay)
+        paragraph(prize == .rainbow || prize == .bomb ? "Saved to your booster supply. Use it from the bottom controls during a puzzle." : "Saved to your collection. Choose pins in Buddies on the festival map; bunting appears at your stations.", y: 400, parent: overlay)
         label("\(progress.adventure.rainbowGifts) extra rainbow • \(progress.adventure.bombGifts) extra bomb", size: 15, point: CGPoint(x: 195, y: 299), parent: overlay)
         menuButton("Back to the wheel", name: "wheel-return", point: CGPoint(x: 195, y: 185), parent: overlay, height: 48)
         menuButton("Festival map", name: "quest-back", point: CGPoint(x: 195, y: 115), parent: overlay, height: 48)
@@ -1413,7 +1441,7 @@ private extension FestivalScene {
                 // Pivots sit on the painted joint, excluding the transparent crop margins.
                 sprite.anchorPoint = part == 1 ? CGPoint(x: 15.0 / 153, y: 92.0 / 123) : part == 2 ? CGPoint(x: 21.0 / 133, y: 31.0 / 62) : CGPoint(x: 40.0 / 72, y: 31.0 / 59)
                 let scale = part == 1 ? OperatorArmPose.upperLength / hypot(121, 22) : OperatorArmPose.forearmLength / hypot(102, 5)
-                sprite.size = part == 1 ? CGSize(width: 153 * scale, height: 123 * scale) : part == 2 ? CGSize(width: 133 * scale, height: 62 * scale) : CGSize(width: 15, height: 12)
+                sprite.size = part == 1 ? CGSize(width: 153 * scale, height: 123 * scale) : part == 2 ? CGSize(width: 133 * scale, height: 62 * scale) : CGSize(width: 19, height: 16)
                 sprite.zPosition = CGFloat(part); arm.addChild(sprite)
             }
             buddy.addChild(arm)
@@ -1428,7 +1456,14 @@ private extension FestivalScene {
         arm.childNode(withName: "part-1")?.position = a
         arm.childNode(withName: "part-1")?.zRotation = atan2(b.y - a.y, b.x - a.x) - atan2(-22, 121)
         arm.childNode(withName: "part-2")?.position = b
-        arm.childNode(withName: "part-2")?.zRotation = atan2(c.y - b.y, c.x - b.x) - atan2(5, 102)
+        // The forearm ends at the wrist, behind the fist that encloses the knob.
+        let direction = atan2(c.y - b.y, c.x - b.x)
+        let wrist = CGPoint(x: c.x - cos(direction) * 5, y: c.y - sin(direction) * 5)
+        if let forearm = arm.childNode(withName: "part-2") as? SKSpriteNode {
+            let length = hypot(wrist.x - b.x, wrist.y - b.y)
+            forearm.size = CGSize(width: 133 * length / hypot(102, 5), height: 62 * length / hypot(102, 5))
+            forearm.zRotation = atan2(wrist.y - b.y, wrist.x - b.x) - atan2(5, 102)
+        }
         arm.childNode(withName: "part-3")?.position = c
         arm.childNode(withName: "part-3")?.zRotation = atan2(c.y - b.y, c.x - b.x)
     }

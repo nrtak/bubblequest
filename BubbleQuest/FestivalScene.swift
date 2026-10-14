@@ -585,7 +585,7 @@ final class FestivalScene: SKScene {
                 entry.strokeColor = .systemYellow
                 entry.lineWidth = 5
                 entry.zPosition = 3
-                let halo = SKShapeNode(circleOfRadius: 23)
+                let halo = SKShapeNode(circleOfRadius: scenery == nil ? 23 : 20)
                 halo.strokeColor = .systemYellow; halo.fillColor = .clear; halo.lineWidth = 2
                 halo.zPosition = -1; entry.addChild(halo)
                 let buddy = SKSpriteNode(texture: companionTexture(progress.selected(.human), frame: 0), size: CGSize(width: 56, height: 56))
@@ -632,6 +632,25 @@ final class FestivalScene: SKScene {
         }
         addQuestDecorations(to: station)
         host.run(.repeatForever(.sequence([.moveBy(x: 0, y: 3, duration: 1.6), .moveBy(x: 0, y: -3, duration: 1.6)])))
+        } else if let neighbor = FestivalNeighbor.all.first(where: { $0.area == mapArea }) {
+            let station = SKNode(); station.position = CGPoint(x: 65, y: 414); overlay.addChild(station)
+            let available = progress.neighborIsAvailable(neighbor)
+            station.name = available ? "neighbor-\(neighbor.id)" : "locked"
+            station.alpha = available ? 1 : 0.55
+            let portrait = SKSpriteNode(texture: neighborTexture(neighbor), size: CGSize(width: 120, height: 120))
+            portrait.position.y = 20; station.addChild(portrait)
+            // The waist-up portrait stands behind a supported festival counter.
+            for x in [CGFloat(-31), CGFloat(31)] {
+                let leg = SKShapeNode(rectOf: CGSize(width: 8, height: 29), cornerRadius: 2)
+                leg.position = CGPoint(x: x, y: -47); leg.fillColor = .brown; leg.strokeColor = .clear
+                station.addChild(leg)
+            }
+            let counter = SKShapeNode(rectOf: CGSize(width: 92, height: 16), cornerRadius: 3)
+            counter.position.y = -34; counter.zPosition = 1
+            counter.fillColor = UIColor(red: 0.69, green: 0.43, blue: 0.23, alpha: 1); counter.strokeColor = .white
+            station.addChild(counter)
+            label("Meet \(neighbor.name)", size: 17, point: CGPoint(x: 0, y: -83), parent: station)
+            label(available ? "Say hello" : "Clear earlier levels", size: 10, point: CGPoint(x: 0, y: -99), parent: station)
         }
         let wheelStop = panel(width: 128, height: 52, point: CGPoint(x: 80, y: 270), parent: overlay)
         wheelStop.name = "open-wheel"

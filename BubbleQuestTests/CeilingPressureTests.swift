@@ -24,6 +24,11 @@ final class CeilingPressureTests: XCTestCase {
         XCTAssertEqual(reopened.ceilingOffset, 12)
         XCTAssertEqual(reopened.shotsFired, 36)
         XCTAssertNotNil(reopened.board)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(checkpoint)) as? [String: Any])
+        legacy.removeValue(forKey: "ceilingOffset"); legacy.removeValue(forKey: "shotsFired")
+        let oldSave = try JSONDecoder().decode(GameCheckpoint.self, from: JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertNil(oldSave.ceilingOffset)
+        XCTAssertNotNil(oldSave.board, "Pre-update puzzles must remain resumable")
         let unsafe = GameCheckpoint(level: 0, board: LevelCatalog.level(0).board, shots: 10, score: 100, current: 0, next: 1,
                                     bag: [], rainbow: 1, bomb: 1, play: QuestPlay(), ceilingOffset: .nan)
         XCTAssertNil(unsafe.board)

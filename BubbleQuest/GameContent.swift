@@ -19,6 +19,9 @@ struct GameLevel {
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
+    var ceilingInterval: Int { max(6, 12 - index / 8) }
+    var ceilingStep: Double { 4 + Double(index) * 0.3 }
+    func ceilingOffset(after shotsFired: Int) -> Double { min(240, Double(max(0, shotsFired) / ceilingInterval) * ceilingStep) }
     var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials) }
     var initialSpecials: [Cell: SpecialBubble] {
         guard index % 10 >= 2, area >= 2 else { return [:] }
@@ -104,11 +107,9 @@ enum LevelCatalog {
             }
         }
         if let authored = AuthoredLayouts.bubbles(for: index) { cells = authored }
-        // New stations and the afternoon's middle stop leave room to recover.
-        let welcomeAllowance = local < 2 ? 4 : 0
-        let recoveryAllowance = local == 5 ? 3 : 0
         let budgetColors = max(colors, Set(cells.values).count)
-        let shots = max(24, cells.count * 2 / 3 + budgetColors * 2 + 5 - local % 3 + welcomeAllowance + recoveryAllowance)
+        // Later areas no longer reset the challenge with welcome/recovery allowances.
+        let shots = max(24, cells.count * 2 / 3 + budgetColors * 2 + 5 - index / 5)
         return GameLevel(index: index, area: area, shots: shots, initialBubbles: cells)
     }
 
@@ -329,16 +330,16 @@ enum BubbleGeometry {
         flight.bounces
     }
 
-    static func point(_ cell: Cell) -> BubblePoint {
+    static func point(_ cell: Cell, ceilingOffset: Double = 0) -> BubblePoint {
         BubblePoint(x: left + Double(cell.column) * radius * 2 + Double(cell.row % 2) * radius,
-                    y: ceiling - Double(cell.row) * radius * sqrt(3))
+                    y: ceiling - ceilingOffset - Double(cell.row) * radius * sqrt(3))
     }
 
     static func distance(_ a: BubblePoint, _ b: BubblePoint) -> Double {
         hypot(a.x - b.x, a.y - b.y)
     }
 
-    static func flight(angle: Double, board: BubbleBoard) -> BubbleFlight {
+    static func flight(angle: Double, board: BubbleBoard, ceilingOffset: Double = 0) -> BubbleFlight {
         let clamped = min(maxAngle, max(-maxAngle, angle))
         var position = origin
         var dx = sin(clamped)
@@ -360,18 +361,18 @@ enum BubbleGeometry {
                 position.x = right * 2 - position.x; dx *= -1
             }
             points.append(position)
-            let hit = occupied.filter { distance(point($0), position) <= radius * 2 - 1 }
-                .min { distance(point($0), position) < distance(point($1), position) }
-            if position.y >= ceiling || hit != nil {
+            let hit = occupied.filter { distance(point($0, ceilingOffset: ceilingOffset), position) <= radius * 2 - 1 }
+                .min { distance(point($0, ceilingOffset: ceilingOffset), position) < distance(point($1, ceilingOffset: ceilingOffset), position) }
+            if position.y >= ceiling - ceilingOffset || hit != nil {
                 let candidates = hit.map { BubbleBoard.neighbors(of: $0) }
                     ?? (0..<BubbleBoard.columns).map { Cell(row: 0, column: $0) }
                 let free = candidates.filter { board.bubbles[$0] == nil }
                 let landing = free.min {
-                    let a = distance(point($0), position)
-                    let b = distance(point($1), position)
+                    let a = distance(point($0, ceilingOffset: ceilingOffset), position)
+                    let b = distance(point($1, ceilingOffset: ceilingOffset), position)
                     return abs(a - b) < 0.00001 ? ($0.row == $1.row ? $0.column < $1.column : $0.row < $1.row) : a < b
                 }
-                if let landing { points.append(point(landing)) }
+                if let landing { points.append(point(landing, ceilingOffset: ceilingOffset)) }
                 return BubbleFlight(points: points, landing: landing, bounces: bounces)
             }
         }

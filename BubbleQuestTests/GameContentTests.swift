@@ -7,7 +7,7 @@ final class GameContentTests: XCTestCase {
         let images = Set(LevelCatalog.levels.map(\.background)).union([
             "festival-title-cast", "festival-hosts", "festival-companion-atlas",
             "festival-companion-motion", "festival-companion-glance", "festival-new-human-motion", "festival-special-bubbles",
-            "festival-neighbors", "festival-neighbors-extra",
+            "festival-neighbors", "festival-neighbors-extra", "festival-operator-rig",
             "festival-logo", "festival-bubbles", "festival-map", "festival-map-day"
         ])
         for name in images { XCTAssertNotNil(UIImage(named: name), "Missing image \(name)") }

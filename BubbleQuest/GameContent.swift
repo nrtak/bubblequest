@@ -42,13 +42,13 @@ struct GameLevel {
         var specials = cell.map { [$0: kind] } ?? [:]
         if area >= 3 && index % 10 >= 6 {
             let earlier: [SpecialBubble] = area == 3 ? [.lantern] : [.lantern, .riverPearl]
-            let candidates = initialBubbles.keys.filter { $0.row > 0 && specials[$0] == nil && boardWithoutSpecials.connected(from: $0, matchingColor: true).count >= 2 }
+            let layout = BubbleBoard(bubbles: initialBubbles)
+            let candidates = initialBubbles.keys.filter { $0.row > 0 && specials[$0] == nil && layout.connected(from: $0, matchingColor: true).count >= 2 }
                 .sorted { $0.row == $1.row ? $0.column < $1.column : $0.row > $1.row }
             for (cell, special) in zip(candidates, earlier) { specials[cell] = special }
         }
         return specials
     }
-    private var boardWithoutSpecials: BubbleBoard { BubbleBoard(bubbles: initialBubbles) }
     var background: String {
         if area == 0 && index % 10 >= 5 { return "festival-summer-water" }
         if area == 1 && index % 10 >= 4 { return "festival-tea-fields" }

@@ -374,6 +374,7 @@ final class FestivalScene: SKScene {
         applyCompanionPins()
         updateControlLayout()
         saveCheckpoint()
+        showPracticeHint()
     }
 
     private func makeMenu(background: String) -> SKNode {
@@ -784,7 +785,7 @@ final class FestivalScene: SKScene {
     }
 
     internal func launchShot(angle: Double) {
-        guard angle.isFinite, abs(angle) <= 1.2, !finished, projectile == nil, !loadingBubble, !ceilingMoving, levelMenu == nil, let shot = loaded else { return }
+        guard hasStartedPuzzle, !suspended, angle.isFinite, abs(angle) <= BubbleGeometry.maxAngle, !finished, projectile == nil, !loadingBubble, !ceilingMoving, levelMenu == nil, let shot = loaded else { return }
         if !attemptCounted && !challengeMode && !ProcessInfo.processInfo.arguments.contains(where: { $0.hasSuffix("-preview") }) {
             progress.recordAttempt(level)
             attemptCounted = true
@@ -892,6 +893,8 @@ final class FestivalScene: SKScene {
         }
         finished = true
         won = success
+        aimTouch = nil
+        aimGesture.cancel()
         for name in ["rainbow", "bomb"] { gameRoot.childNode(withName: name)?.isHidden = true }
         aiming = false
         guide.removeAllChildren()

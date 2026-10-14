@@ -107,11 +107,9 @@ enum LevelCatalog {
             }
         }
         if let authored = AuthoredLayouts.bubbles(for: index) { cells = authored }
-        // New stations and the afternoon's middle stop leave room to recover.
-        let welcomeAllowance = local < 2 ? 4 : 0
-        let recoveryAllowance = local == 5 ? 3 : 0
         let budgetColors = max(colors, Set(cells.values).count)
-        let shots = max(24, cells.count * 2 / 3 + budgetColors * 2 + 5 - local % 3 + welcomeAllowance + recoveryAllowance)
+        // Later areas no longer reset the challenge with welcome/recovery allowances.
+        let shots = max(24, cells.count * 2 / 3 + budgetColors * 2 + 5 - index / 5)
         return GameLevel(index: index, area: area, shots: shots, initialBubbles: cells)
     }
 

@@ -27,7 +27,7 @@ final class OperatorArmTests: XCTestCase {
             let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
             scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
             let wheel = try XCTUnwrap(scene.childNode(withName: "//handwheel"))
-            let buddy = try XCTUnwrap(scene.childNode(withName: "//companion-1"))
+            let buddy = try XCTUnwrap(scene.childNode(withName: "//companion-1") as? SKSpriteNode)
             XCTAssertNil(buddy.childNode(withName: "operator-arm"))
             XCTAssertNil(scene.childNode(withName: "//operator-grip"))
             XCTAssertGreaterThan(wheel.zPosition, buddy.zPosition)

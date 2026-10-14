@@ -16,9 +16,9 @@ struct OperatorArmPose {
                         max(abs(upperLength - lowerLength) + 0.001, distance))
         let angle = atan2(dy, dx)
         let bend = acos(max(-1, min(1, (upperLength * upperLength + reach * reach - lowerLength * lowerLength) / (2 * upperLength * reach))))
-        // Bend toward the character's torso, rather than folding over the wheel.
-        let elbow = BubblePoint(x: shoulder.x + cos(angle + bend) * upperLength,
-                                y: shoulder.y + sin(angle + bend) * upperLength)
+        // The wheel-side elbow stays outside the torso, below the sleeve.
+        let elbow = BubblePoint(x: shoulder.x + cos(angle - bend) * upperLength,
+                                y: shoulder.y + sin(angle - bend) * upperLength)
         let contact = BubblePoint(x: shoulder.x + cos(angle) * reach,
                                   y: shoulder.y + sin(angle) * reach)
         return OperatorArmPose(shoulder: shoulder, elbow: elbow,

@@ -1576,7 +1576,7 @@ private extension FestivalScene {
             operatorBuddyID = friend.id
             gameRoot.childNode(withName: "operator-arm")?.removeFromParent()
             buddy.childNode(withName: "operator-arm")?.removeFromParent()
-            let arm = SKNode(); arm.name = "operator-arm"; arm.zPosition = 12; arm.xScale = -1
+            let arm = SKNode(); arm.name = "operator-arm"; arm.zPosition = 0; arm.xScale = -1
             for part in 1...2 {
                 let sprite = SKSpriteNode(texture: operatorTexture(friend, part: part)); sprite.name = "part-\(part)"
                 // Pivots sit on the painted joint, excluding the transparent crop margins.
@@ -1584,7 +1584,8 @@ private extension FestivalScene {
                 let length = part == 1 ? OperatorArmPose.upperLength : OperatorArmPose.forearmLength
                 let scale = CGFloat(length) / (part == 1 ? hypot(121, 22) : hypot(102, 5))
                 sprite.size = part == 1 ? CGSize(width: 153 * scale, height: 123 * scale) : CGSize(width: 133 * scale, height: 62 * scale)
-                sprite.zPosition = CGFloat(part); arm.addChild(sprite)
+                // Hide the sleeve's open shoulder edge beneath the body artwork.
+                sprite.zPosition = part == 1 ? -1 : 2; arm.addChild(sprite)
             }
             buddy.addChild(arm)
             // Every joint, including the hand, belongs to the same character.

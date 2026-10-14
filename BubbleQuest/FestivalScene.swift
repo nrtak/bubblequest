@@ -1436,7 +1436,8 @@ private extension FestivalScene {
             gameRoot.childNode(withName: "operator-arm")?.removeFromParent()
             buddy.childNode(withName: "operator-arm")?.removeFromParent()
             let arm = SKNode(); arm.name = "operator-arm"; arm.zPosition = 4; arm.xScale = -1
-            for part in 1...3 {
+            knob.childNode(withName: "operator-grip")?.removeFromParent()
+            for part in 1...2 {
                 let sprite = SKSpriteNode(texture: operatorTexture(friend, part: part)); sprite.name = "part-\(part)"
                 // Pivots sit on the painted joint, excluding the transparent crop margins.
                 sprite.anchorPoint = part == 1 ? CGPoint(x: 15.0 / 153, y: 92.0 / 123) : part == 2 ? CGPoint(x: 21.0 / 133, y: 31.0 / 62) : CGPoint(x: 40.0 / 72, y: 31.0 / 59)
@@ -1445,6 +1446,13 @@ private extension FestivalScene {
                 sprite.zPosition = CGFloat(part); arm.addChild(sprite)
             }
             buddy.addChild(arm)
+            // The fist is physically parented to the crank, so no action can pull it away.
+            let grip = SKSpriteNode(texture: operatorTexture(friend, part: 3))
+            grip.name = "operator-grip"
+            grip.anchorPoint = CGPoint(x: 40.0 / 72, y: 31.0 / 59)
+            grip.size = CGSize(width: 19, height: 16)
+            grip.zPosition = 12
+            knob.addChild(grip)
         }
         guard let arm = buddy.childNode(withName: "operator-arm") else { return }
         let shoulder = buddy.convert(socket, to: gameRoot)
@@ -1464,8 +1472,7 @@ private extension FestivalScene {
             forearm.size = CGSize(width: 133 * length / hypot(102, 5), height: 62 * length / hypot(102, 5))
             forearm.zRotation = atan2(wrist.y - b.y, wrist.x - b.x) - atan2(5, 102)
         }
-        arm.childNode(withName: "part-3")?.position = c
-        arm.childNode(withName: "part-3")?.zRotation = atan2(c.y - b.y, c.x - b.x)
+        knob.childNode(withName: "operator-grip")?.zRotation = direction - wheel.zRotation
     }
 
     func operatorTexture(_ friend: Companion, part: Int) -> SKTexture {

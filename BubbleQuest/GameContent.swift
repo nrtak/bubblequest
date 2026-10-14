@@ -39,8 +39,16 @@ struct GameLevel {
         let color = area == 2 ? 1 : area == 3 ? 2 : 0
         let cell = initialBubbles.keys.filter { $0.row > 0 && initialBubbles[$0] == color }
             .sorted { $0.row == $1.row ? $0.column < $1.column : $0.row > $1.row }.first
-        return cell.map { [$0: kind] } ?? [:]
+        var specials = cell.map { [$0: kind] } ?? [:]
+        if area >= 3 && index % 10 >= 6 {
+            let earlier: [SpecialBubble] = area == 3 ? [.lantern] : [.lantern, .riverPearl]
+            let candidates = initialBubbles.keys.filter { $0.row > 0 && specials[$0] == nil && boardWithoutSpecials.connected(from: $0, matchingColor: true).count >= 2 }
+                .sorted { $0.row == $1.row ? $0.column < $1.column : $0.row > $1.row }
+            for (cell, special) in zip(candidates, earlier) { specials[cell] = special }
+        }
+        return specials
     }
+    private var boardWithoutSpecials: BubbleBoard { BubbleBoard(bubbles: initialBubbles) }
     var background: String {
         if area == 0 && index % 10 >= 5 { return "festival-summer-water" }
         if area == 1 && index % 10 >= 4 { return "festival-tea-fields" }
@@ -90,7 +98,7 @@ enum LevelCatalog {
     static let levels: [GameLevel] = (0..<50).map { index in
         let area = index / 10
         let local = index % 10
-        let height = index < 5 ? [2, 2, 3, 3, 3][index] : min(8, 3 + area / 2 + local / 3)
+        let height = index < 5 ? [2, 2, 3, 3, 3][index] : min(8, 3 + index / 8)
         let colors = index < 5 ? [2, 2, 3, 3, 3][index] : min(5, 3 + (area + local / 8) / 2)
         var cells: [Cell: Int] = [:]
         for row in 0..<height {

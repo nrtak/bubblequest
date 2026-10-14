@@ -7,6 +7,12 @@ struct OperatorArmPose {
     static let upperLength = 28.0
     static let forearmLength = 28.0
 
+    static func resting(shoulder: BubblePoint, hand: BubblePoint) -> OperatorArmPose {
+        // A compact, fixed bend. Aiming changes only the wheel beneath the hand.
+        OperatorArmPose(shoulder: shoulder,
+                        elbow: BubblePoint(x: shoulder.x - 3, y: shoulder.y - 12), hand: hand)
+    }
+
     static func aiming(_ angle: Double) -> OperatorArmPose {
         let rotation = -min(BubbleGeometry.maxAngle, max(-BubbleGeometry.maxAngle, angle)) * 2.5
         let hand = BubblePoint(x: 280 - sin(rotation) * 18, y: 173 + cos(rotation) * 18)

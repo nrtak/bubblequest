@@ -58,6 +58,7 @@ struct GameLevel {
         return specials
     }
     var background: String {
+        if let scenery = SummerScenery.forArea(area) { return scenery.background }
         if area % 5 == 0 && index % 10 >= 5 { return "festival-summer-water" }
         if area % 5 == 1 && index % 10 >= 4 { return "festival-tea-fields" }
         return LevelCatalog.areas[area].background
@@ -108,8 +109,10 @@ enum LevelCatalog {
     ]
     static let areas: [FestivalArea] = (0..<levelCount / levelsPerArea).map { index in
         if index < originalAreas.count { return originalAreas[index] }
-        let art = originalAreas[index % originalAreas.count]
-        return FestivalArea(name: "Area \(index + 1)", subtitle: "Levels \(index * levelsPerArea + 1)–\((index + 1) * levelsPerArea)", background: art.background, nightTint: art.nightTint)
+        let scenery = SummerScenery.forArea(index)!
+        let visit = (index - originalAreas.count) / SummerScenery.allCases.count + 1
+        let name = scenery.title + (visit > 1 ? " \(visit)" : "")
+        return FestivalArea(name: name, subtitle: "Levels \(index * levelsPerArea + 1)–\((index + 1) * levelsPerArea)", background: scenery.background, nightTint: false)
     }
     static let levels: [GameLevel] = (0..<levelCount).map { index in
         let area = index / 10
@@ -190,7 +193,10 @@ struct Companion {
         Companion(id: "daichi", name: "Daichi", kind: .human, atlasIndex: 8, unlockAfter: 15),
         Companion(id: "nao", name: "Nao", kind: .human, atlasIndex: 9, unlockAfter: 0, unlockQuest: "pinwheels"),
         Companion(id: "kaito", name: "Kaito", kind: .human, atlasIndex: 10, unlockAfter: 0, unlockQuest: "picnic"),
-        Companion(id: "emi", name: "Emi", kind: .human, atlasIndex: 11, unlockAfter: 35)
+        Companion(id: "emi", name: "Emi", kind: .human, atlasIndex: 11, unlockAfter: 35),
+        Companion(id: "sesame-shiba", name: "Sesame Shiba", kind: .animal, atlasIndex: 12, unlockAfter: 50),
+        Companion(id: "cream-rabbit", name: "Cream Rabbit", kind: .animal, atlasIndex: 13, unlockAfter: 80),
+        Companion(id: "river-otter", name: "River Otter", kind: .animal, atlasIndex: 14, unlockAfter: 110)
     ]
 }
 

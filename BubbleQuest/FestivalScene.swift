@@ -117,6 +117,16 @@ final class FestivalScene: SKScene {
         if ProcessInfo.processInfo.arguments.contains("--lantern-preview") { level = 22 }
         if ProcessInfo.processInfo.arguments.contains("--pearl-preview") { level = 32 }
         if ProcessInfo.processInfo.arguments.contains("--spark-preview") { level = 42 }
+        if ProcessInfo.processInfo.arguments.contains("--beach-preview") { level = 70 }
+        if ProcessInfo.processInfo.arguments.contains("--hill-preview") { level = 90 }
+        if ProcessInfo.processInfo.arguments.contains("--summer-neighbor-preview") { level = 60 }
+        if ProcessInfo.processInfo.arguments.contains("--summer-buddies-preview") { level = 110 }
+        if ProcessInfo.processInfo.arguments.contains("--summer-map-preview") { level = 70 }
+        let summerPreview = ["--beach-preview", "--hill-preview", "--summer-neighbor-preview", "--summer-buddies-preview", "--summer-map-preview"].contains(where: ProcessInfo.processInfo.arguments.contains)
+        if summerPreview {
+            for index in 0..<111 { progress.recordVictory(index: index, score: 200, stars: 1) }
+            if let otter = Companion.all.first(where: { $0.id == "river-otter" }) { progress.select(otter) }
+        }
         mapArea = level / 10
         if ProcessInfo.processInfo.arguments.contains("--buddy-preview") {
             for index in 0..<5 { progress.recordVictory(index: index, score: 200, stars: 1) }
@@ -129,7 +139,10 @@ final class FestivalScene: SKScene {
             if let purple = Companion.all.first(where: { $0.atlasIndex == 9 }) { progress.select(purple) }
         }
         startLevel(restoring: !ProcessInfo.processInfo.arguments.contains(where: { $0.hasSuffix("-preview") }))
-        if ProcessInfo.processInfo.arguments.contains("--players-preview") { showPlayers() }
+        if ProcessInfo.processInfo.arguments.contains("--summer-neighbor-preview") { questArea = mapArea; showNeighbors() }
+        else if ProcessInfo.processInfo.arguments.contains("--summer-buddies-preview") { friendsPage = 2; showMapBuddies() }
+        else if ProcessInfo.processInfo.arguments.contains("--summer-map-preview") { showLevels() }
+        else if ProcessInfo.processInfo.arguments.contains("--players-preview") { showPlayers() }
         else if ProcessInfo.processInfo.arguments.contains("--festival-preview") { showFestival() }
         else if ProcessInfo.processInfo.arguments.contains("--buddy-preview"), let buddy = progress.pendingBuddy { showBuddyWelcome(buddy) }
         else if ProcessInfo.processInfo.arguments.contains("--purple-preview") { updateAim(CGPoint(x: 50, y: 420)) }
@@ -540,7 +553,11 @@ final class FestivalScene: SKScene {
         menuKind = "map"
         mapArea = min(LevelCatalog.areas.count - 1, max(0, mapArea))
         let area = LevelCatalog.areas[mapArea]
-        let overlay = makeMenu(background: !area.nightTint && mapArea % 5 < 2 ? "festival-map-day" : "festival-map")
+        let scenery = SummerScenery.forArea(mapArea)
+        let overlay = makeMenu(background: scenery?.mapArtwork ?? (!area.nightTint && mapArea % 5 < 2 ? "festival-map-day" : "festival-map"))
+        if let scenery, let art = overlay.children.first as? SKSpriteNode {
+            art.texture = SKTexture(rect: scenery.mapRegion, in: SKTexture(imageNamed: scenery.mapArtwork))
+        }
         panel(width: 346, height: 82, point: CGPoint(x: 195, y: 738), parent: overlay)
         label(area.name, size: 23, point: CGPoint(x: 195, y: 750), parent: overlay)
         let current = progress.currentLevel
@@ -549,14 +566,14 @@ final class FestivalScene: SKScene {
         let dayXs: [CGFloat] = [223, 234, 238, 251, 270, 232, 174, 184, 246, 242]
         let nightXs: [CGFloat] = [218, 260, 246, 192, 222, 300, 314, 306, 312, 337]
         let xs = !area.nightTint && mapArea % 5 < 2 ? dayXs : nightXs
-        let positions = xs.enumerated().map { CGPoint(x: $0.element, y: 270 + CGFloat($0.offset) * 44) }
+        let positions = scenery?.markerPositions ?? xs.enumerated().map { CGPoint(x: $0.element, y: 270 + CGFloat($0.offset) * 44) }
         let path = CGMutablePath(); path.move(to: positions[0])
         for position in positions.dropFirst() { path.addLine(to: position) }
         let road = SKShapeNode(path: path); road.strokeColor = UIColor(red: 0.98, green: 0.85, blue: 0.59, alpha: 0.9); road.lineWidth = 17; road.lineCap = .round
         overlay.addChild(road)
         for (local, position) in positions.enumerated() {
             let index = mapArea * 10 + local
-            let entry = SKShapeNode(circleOfRadius: 18)
+            let entry = SKShapeNode(circleOfRadius: scenery == nil ? 18 : 16)
             entry.position = position
             entry.fillColor = index == current ? .systemPink : progress.stars(index) > 0 ? .systemOrange : index <= progress.unlockedLevel ? .systemTeal : .darkGray
             entry.strokeColor = .white
@@ -618,7 +635,7 @@ final class FestivalScene: SKScene {
         }
         let wheelStop = panel(width: 128, height: 52, point: CGPoint(x: 80, y: 270), parent: overlay)
         wheelStop.name = "open-wheel"
-        if FestivalNeighbor.all.contains(where: { $0.area == mapArea }) {
+        if neighborsAvailable(in: mapArea) {
             menuButton("Neighbors", name: "neighbors", point: CGPoint(x: 80, y: 584), parent: overlay, width: 128, height: 40)
         }
         let gift = questIcon("gift.fill", size: 20, color: .systemYellow); gift.position = CGPoint(x: -48, y: 0); wheelStop.addChild(gift)
@@ -1015,14 +1032,18 @@ private extension FestivalScene {
         if (area * 10..<area * 10 + 10).allSatisfy({ progress.stars($0) > 0 }) {
             menuButton("Extra challenge", name: "open-challenge", point: CGPoint(x: 195, y: 272), parent: overlay)
         }
-        if FestivalNeighbor.all.contains(where: { $0.area == area }) {
+        if neighborsAvailable(in: area) {
             menuButton("Meet the neighbors", name: "neighbors", point: CGPoint(x: 195, y: 201), parent: overlay, height: 44)
         }
         menuButton("Back to the map", name: "quest-back", point: CGPoint(x: 195, y: 130), parent: overlay)
     }
 
+    private func neighborsAvailable(in area: Int) -> Bool {
+        area * LevelCatalog.levelsPerArea <= progress.unlockedLevel && FestivalNeighbor.all.contains { $0.area == area }
+    }
+
     func showNeighbors() {
-        guard FestivalNeighbor.all.contains(where: { $0.area == questArea }) else { showLevels(); return }
+        guard neighborsAvailable(in: questArea) else { showLevels(); return }
         menuKind = "neighbors"
         let overlay = makeMenu(background: LevelCatalog.areas[questArea].background)
         panel(width: 342, height: 85, point: CGPoint(x: 195, y: 732), parent: overlay)
@@ -1037,7 +1058,11 @@ private extension FestivalScene {
             label(neighbor.role, size: 12, point: CGPoint(x: 55, y: 0), parent: tile)
             label(progress.hasMet(neighbor) ? "Say hello again" : "Tap to meet", size: 14, point: CGPoint(x: 55, y: -32), parent: tile)
         }
-        menuButton("Festival favors", name: "quest-list", point: CGPoint(x: 195, y: 140), parent: overlay)
+        if FestivalQuest.all.contains(where: { $0.area == questArea }) {
+            menuButton("Festival favors", name: "quest-list", point: CGPoint(x: 195, y: 140), parent: overlay)
+        } else {
+            menuButton("Back to the map", name: "quest-back", point: CGPoint(x: 195, y: 140), parent: overlay)
+        }
     }
 
     func showNeighbor(_ neighbor: FestivalNeighbor) {
@@ -1051,11 +1076,17 @@ private extension FestivalScene {
         portrait.position = CGPoint(x: 195, y: 560); overlay.addChild(portrait)
         panel(width: 342, height: 170, point: CGPoint(x: 195, y: 317), parent: overlay)
         paragraph(met ? neighbor.greeting : neighbor.introduction, y: 350, parent: overlay)
-        menuButton("Visit another neighbor", name: "neighbors", point: CGPoint(x: 195, y: 163), parent: overlay, height: 44)
+        menuButton("Neighbors", name: "neighbors", point: CGPoint(x: 195, y: 163), parent: overlay, height: 44)
         menuButton("Back to the map", name: "quest-back", point: CGPoint(x: 195, y: 92), parent: overlay, height: 44)
     }
 
     func neighborTexture(_ neighbor: FestivalNeighbor) -> SKTexture {
+        if neighbor.portraitIndex >= 8 {
+            let index = neighbor.portraitIndex - 8
+            return SKTexture(rect: CGRect(x: CGFloat(index % 3) / 3, y: CGFloat(1 - index / 3) / 2,
+                                          width: 1.0 / 3, height: 0.5),
+                             in: SKTexture(imageNamed: "festival-summer-neighbors"))
+        }
         if neighbor.portraitIndex >= 6 {
             return SKTexture(rect: CGRect(x: CGFloat(neighbor.portraitIndex - 6) / 2, y: 0, width: 0.5, height: 1),
                              in: SKTexture(imageNamed: "festival-neighbors-extra"))
@@ -1441,6 +1472,14 @@ private extension FestivalScene {
     }
 
     func companionTexture(_ friend: Companion, frame: Int, glance: Bool = false) -> SKTexture {
+        if friend.kind == .animal && friend.atlasIndex >= 12 {
+            let row = friend.atlasIndex - 12
+            let boundaries: [CGFloat] = [0, 397, 755, 1086]
+            return SKTexture(rect: CGRect(x: CGFloat(min(3, max(0, frame))) / 4,
+                                          y: (1086 - boundaries[row + 1]) / 1086,
+                                          width: 0.25, height: (boundaries[row + 1] - boundaries[row]) / 1086),
+                             in: SKTexture(imageNamed: "festival-summer-buddy-motion"))
+        }
         if friend.atlasIndex >= 6 {
             let boundaries: [CGFloat] = [0, 260, 516, 770, 1028, 1287, 1536]
             let row = friend.atlasIndex - 6
@@ -1918,6 +1957,8 @@ private extension FestivalScene {
         guard let overlay = levelMenu else { return }
         panel(width: 360, height: 342, point: CGPoint(x: 195, y: 258), parent: overlay)
         label("Choose your buddies", size: 24, point: CGPoint(x: 195, y: 397), parent: overlay)
+        let pages = (Companion.all.count + 5) / 6
+        friendsPage = min(max(0, friendsPage), pages - 1)
         for (index, friend) in Companion.all.dropFirst(friendsPage * 6).prefix(6).enumerated() {
             let x = CGFloat(81 + (index % 3) * 114), y = CGFloat(327 - (index / 3) * 103)
             let tile = panel(width: 102, height: 96, point: CGPoint(x: x, y: y), parent: overlay)
@@ -1928,7 +1969,7 @@ private extension FestivalScene {
             label(friend.name, size: 12, point: CGPoint(x: 0, y: -22), parent: tile)
             label(available ? progress.selected(friend.kind).id == friend.id ? "Selected ✓" : "Tap to choose" : "Locked", size: 10, point: CGPoint(x: 0, y: -39), parent: tile)
         }
-        menuButton(friendsPage == 0 ? "More" : "First", name: "friends-page", point: CGPoint(x: 81, y: 136), parent: overlay, width: 102, height: 40)
+        menuButton("More \(friendsPage + 1)/\(pages)", name: "friends-page", point: CGPoint(x: 81, y: 136), parent: overlay, width: 102, height: 40)
         menuButton("Pins", name: "accessories", point: CGPoint(x: 195, y: 136), parent: overlay, width: 102, height: 40)
         menuButton("Done", name: "map-buddies-close", point: CGPoint(x: 309, y: 136), parent: overlay, width: 102, height: 40)
     }
@@ -2012,7 +2053,7 @@ private extension FestivalScene {
         }
         if names.contains("accessories") { showAccessories(); return }
         if names.contains("accessory-back") { showMapBuddies(); return }
-        if names.contains("friends-page") { friendsPage = 1 - friendsPage; showMapBuddies(); return }
+        if names.contains("friends-page") { friendsPage = (friendsPage + 1) % ((Companion.all.count + 5) / 6); showMapBuddies(); return }
         if names.contains("pin-none") { progress.adventure.equip(nil); applyCompanionPins(); showAccessories(); return }
         if let name = names.first(where: { $0.hasPrefix("pin-") }), let pin = FestivalPrize(rawValue: String(name.dropFirst(4))) {
             progress.adventure.equip(pin); applyCompanionPins(); showAccessories(); return

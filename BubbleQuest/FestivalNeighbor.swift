@@ -33,7 +33,25 @@ struct FestivalNeighbor {
                          greeting: "I've put together another little bouquet. The warm sunshine has brought out all the blossoms."),
         FestivalNeighbor(id: "shin", name: "Shin", role: "Lantern street helper", area: 2, portraitIndex: 7,
                          introduction: "I'm Shin. I help our neighbors hang their ribbons and lanterns. Aki always finds the nicest colors for this street.",
-                         greeting: "Another ribbon is in place! It's lovely seeing everyone make this street their own.")
+                         greeting: "Another ribbon is in place! It's lovely seeing everyone make this street their own."),
+        FestivalNeighbor(id: "gin", name: "Gin", role: "Gear workshop helper", area: 5, portraitIndex: 8,
+                         introduction: "I help keep our festival machines running. Welcome to the summer river!",
+                         greeting: "The gears are turning smoothly. Ready for another puzzle?"),
+        FestivalNeighbor(id: "rui", name: "Rui", role: "Tea terrace neighbor", area: 6, portraitIndex: 9,
+                         introduction: "I brought fresh tea from these sunny hills. Take your time and enjoy the view.",
+                         greeting: "The tea is ready, and the countryside is glowing today."),
+        FestivalNeighbor(id: "souta", name: "Souta", role: "Seaside kite maker", area: 7, portraitIndex: 10,
+                         introduction: "The sea breeze is perfect for flying kites. Welcome to our beach festival!",
+                         greeting: "My kite is flying high above the bay. Good luck with your next puzzle!"),
+        FestivalNeighbor(id: "midori", name: "Midori", role: "Windmill garden neighbor", area: 8, portraitIndex: 11,
+                         introduction: "I put colorful windmills beside the lake. They spin whenever a little breeze comes by.",
+                         greeting: "The windmills are turning, and the lake looks lovely."),
+        FestivalNeighbor(id: "akane", name: "Akane", role: "Hilltop lantern helper", area: 9, portraitIndex: 12,
+                         introduction: "I brought a few lanterns for our hilltop picnic. There is a wonderful view from up here!",
+                         greeting: "The flowers are bright and the picnic spot is ready."),
+        FestivalNeighbor(id: "rin", name: "Rin", role: "Summer fan maker", area: 10, portraitIndex: 13,
+                         introduction: "I make little flower fans to keep everyone cool. It is nice to meet you by the river!",
+                         greeting: "I found another flower pattern for my fans. Welcome back!")
     ]
 }
 

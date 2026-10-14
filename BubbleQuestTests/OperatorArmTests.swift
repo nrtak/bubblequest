@@ -1,7 +1,26 @@
 import XCTest
+import SpriteKit
 @testable import BubbleQuest
 
 final class OperatorArmTests: XCTestCase {
+    func testCharacterLocalArmStaysConnectedWhenTheBodyMovesOrMirrors() {
+        let root = SKNode()
+        let buddy = SKNode(); root.addChild(buddy)
+        let arm = SKNode(); buddy.addChild(arm)
+        for mirror in [CGFloat(-1), 1] {
+            buddy.xScale = mirror; arm.xScale = mirror
+            for offset in [CGFloat(-6), 0, 6] {
+                buddy.position = CGPoint(x: 319, y: 134 + offset)
+                let shoulder = buddy.convert(CGPoint(x: 29 * -mirror, y: 54), to: root)
+                let pose = OperatorArmPose.connecting(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: 280, y: 191))
+                let local = arm.convert(CGPoint(x: pose.shoulder.x, y: pose.shoulder.y), from: root)
+                let drawn = arm.convert(local, to: root)
+                XCTAssertEqual(drawn.x, shoulder.x, accuracy: 0.000001)
+                XCTAssertEqual(drawn.y, shoulder.y, accuracy: 0.000001)
+                XCTAssertEqual(hypot(pose.elbow.x - pose.shoulder.x, pose.elbow.y - pose.shoulder.y), OperatorArmPose.upperLength, accuracy: 0.000001)
+            }
+        }
+    }
     func testGripStaysOnRotatingKnobWithoutStretchingEitherArmSegment() {
         for step in -120...120 {
             let angle = Double(step) / 100

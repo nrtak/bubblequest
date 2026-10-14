@@ -77,7 +77,7 @@ jobs:
           xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --ending-preview
           sleep 3
           xcrun simctl io "$DEVICE" screenshot build/ending-iphone.png
-          for SCENE in friends quest quest-detail quest-reward wheel lantern pearl spark; do
+          for SCENE in players festival buddy purple pressure friends quest quest-detail quest-reward wheel lantern pearl spark; do
             xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --gameplay-preview "--${SCENE}-preview"
             sleep 3
             xcrun simctl io "$DEVICE" screenshot "build/${SCENE}-iphone.png"

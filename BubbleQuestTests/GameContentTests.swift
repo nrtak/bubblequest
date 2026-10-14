@@ -87,7 +87,8 @@ final class GameContentTests: XCTestCase {
             "festival-title-cast", "festival-hosts", "festival-companion-atlas",
             "festival-companion-motion", "festival-companion-glance", "festival-new-human-motion", "festival-special-bubbles",
             "festival-neighbors", "festival-neighbors-extra", "festival-operator-rig",
-            "festival-logo", "festival-bubbles", "festival-map", "festival-map-day"
+            "festival-logo", "festival-bubbles", "festival-map", "festival-map-day",
+            "festival-summer-map-atlas", "festival-hill-map", "festival-summer-neighbors", "festival-summer-buddy-motion"
         ])
         for name in images { XCTAssertNotNil(UIImage(named: name), "Missing image \(name)") }
         for name in ["pop", "launch", "load", "bomb", "victory", "music-day", "music-evening"] {

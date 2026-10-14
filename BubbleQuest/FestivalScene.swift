@@ -1569,8 +1569,9 @@ private extension FestivalScene {
         let row = friend.atlasIndex - 4
         let boundaries: [CGFloat] = [0, 223, 435, 654, 876, 1099, 1326, 1550, 1774]
         let sockets: [CGPoint] = [CGPoint(x: 192, y: 128), CGPoint(x: 183, y: 344), CGPoint(x: 188, y: 562), CGPoint(x: 194, y: 785), CGPoint(x: 197, y: 1009), CGPoint(x: 194, y: 1232), CGPoint(x: 195, y: 1456), CGPoint(x: 194, y: 1680)]
-        let socket = CGPoint(x: ((sockets[row].x - 35) / 215 - 0.5) * buddy.size.width,
-                             y: (boundaries[row + 1] - sockets[row].y) / (boundaries[row + 1] - boundaries[row]) * buddy.size.height)
+        // Overlap the sleeve at its shoulder seam, above the old cuff socket.
+        let socket = CGPoint(x: ((sockets[row].x - 9 - 35) / 215 - 0.5) * buddy.size.width,
+                             y: (boundaries[row + 1] - sockets[row].y + 12) / (boundaries[row + 1] - boundaries[row]) * buddy.size.height)
         if operatorBuddyID != friend.id || buddy.childNode(withName: "operator-arm") == nil {
             operatorBuddyID = friend.id
             gameRoot.childNode(withName: "operator-arm")?.removeFromParent()
@@ -1597,11 +1598,10 @@ private extension FestivalScene {
         guard let arm = buddy.childNode(withName: "operator-arm") else { return }
         let shoulder = buddy.convert(socket, to: gameRoot)
         // A short rim stroke follows steering without forcing a full crank rotation.
-        let stroke = max(-CGFloat(0.4), min(CGFloat(0.4), wheel.zRotation * 0.13))
-        // The painted palm extends eight points beyond the wrist pivot onto the rim.
-        let hand = CGPoint(x: wheel.position.x + cos(stroke) * 13,
-                           y: wheel.position.y + sin(stroke) * 13)
-        let pose = OperatorArmPose.gripping(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: hand.x, y: hand.y))
+        let stroke = -CGFloat(0.65) + max(-CGFloat(0.2), min(CGFloat(0.2), wheel.zRotation * 0.08))
+        let contact = CGPoint(x: wheel.position.x + cos(stroke) * 21,
+                              y: wheel.position.y + sin(stroke) * 21)
+        let pose = OperatorArmPose.gripping(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: contact.x, y: contact.y), palmLength: OperatorArmPose.palmLength)
         let a = arm.convert(CGPoint(x: pose.shoulder.x, y: pose.shoulder.y), from: gameRoot)
         let b = arm.convert(CGPoint(x: pose.elbow.x, y: pose.elbow.y), from: gameRoot)
         let c = arm.convert(CGPoint(x: pose.hand.x, y: pose.hand.y), from: gameRoot)

@@ -24,11 +24,11 @@ final class LevelReplayTests: XCTestCase {
             var next = draw()
             var rainbow = true
             var bomb = true
-            for _ in 0..<level.shots {
+            for shotNumber in 0..<level.shots {
                 if board.bubbles.isEmpty { break }
                 var landings = Set<Cell>()
                 for angle in stride(from: -1.2, through: 1.2, by: 0.08) {
-                    if let cell = BubbleGeometry.flight(angle: angle, board: board).landing { landings.insert(cell) }
+                    if let cell = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: level.ceilingOffset(after: shotNumber)).landing { landings.insert(cell) }
                 }
                 var choices: [BubbleShot] = [.color(current), .color(next)]
                 if rainbow { choices.append(.rainbow) }
@@ -50,7 +50,7 @@ final class LevelReplayTests: XCTestCase {
                 if selected.shot == .rainbow { rainbow = false }
                 if selected.shot == .bomb { bomb = false }
                 board = selected.board
-                if board.bubbles.keys.contains(where: { BubbleGeometry.point($0).y < BubbleGeometry.lossLine }) { break }
+                if board.bubbles.keys.contains(where: { BubbleGeometry.point($0, ceilingOffset: level.ceilingOffset(after: shotNumber + 1)).y < BubbleGeometry.lossLine }) { break }
                 current = Set(board.bubbles.values).contains(next) ? next : draw()
                 next = draw()
             }

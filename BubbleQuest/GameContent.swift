@@ -27,7 +27,7 @@ struct GameLevel {
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
     var ceilingInterval: Int { max(4, 12 - index / 5) }
-    var ceilingStep: Double { 4 + Double(index) * 0.55 }
+    var ceilingStep: Double { index < 50 ? 4 + Double(index) * 0.55 : 30.95 + 5 * (1 - exp(-Double(index - 49) / 75)) }
     func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
         var state = seed
         var threshold = 0
@@ -42,8 +42,9 @@ struct GameLevel {
     var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials) }
     var initialSpecials: [Cell: SpecialBubble] {
         guard index % 10 >= 2, area >= 2 else { return [:] }
-        let kind: SpecialBubble = area == 2 ? .lantern : area == 3 ? .riverPearl : .blossomSpark
-        let color = area == 2 ? 1 : area == 3 ? 2 : 0
+        let style = area < 5 ? area : 2 + area % 3
+        let kind: SpecialBubble = style == 2 ? .lantern : style == 3 ? .riverPearl : .blossomSpark
+        let color = style == 2 ? 1 : style == 3 ? 2 : 0
         let cell = initialBubbles.keys.filter { $0.row > 0 && initialBubbles[$0] == color }
             .sorted { $0.row == $1.row ? $0.column < $1.column : $0.row > $1.row }.first
         var specials = cell.map { [$0: kind] } ?? [:]
@@ -57,15 +58,15 @@ struct GameLevel {
         return specials
     }
     var background: String {
-        if area == 0 && index % 10 >= 5 { return "festival-summer-water" }
-        if area == 1 && index % 10 >= 4 { return "festival-tea-fields" }
+        if area % 5 == 0 && index % 10 >= 5 { return "festival-summer-water" }
+        if area % 5 == 1 && index % 10 >= 4 { return "festival-tea-fields" }
         return LevelCatalog.areas[area].background
     }
     var hint: String {
         if let special = initialSpecials.values.first { return special.explanation }
         if index < 5 {
             return ["Match three bubbles of the same color and symbol.",
-                    "Swap freely to choose your next shot.",
+                    "Tap the bubble your buddy holds to swap.",
                     "Pop a support to drop the bubbles below it.",
                     "The wall can help you reach another angle.",
                     "Try a booster, or save shots for three stars."][index]
@@ -95,18 +96,28 @@ enum BubbleColorQueue {
 }
 
 enum LevelCatalog {
-    static let areas = [
+    static let levelsPerArea = 10
+    static let levelCount = 200
+    static let maximumStars = levelCount * 3
+    static let originalAreas = [
         FestivalArea(name: "Sunlit Market", subtitle: "A bright beginning", background: "festival-day", nightTint: false),
         FestivalArea(name: "Summer Courtyard", subtitle: "A playful afternoon", background: "festival-courtyard", nightTint: false),
         FestivalArea(name: "Lantern Street", subtitle: "The evening lights up", background: "festival-lantern", nightTint: false),
         FestivalArea(name: "Riverside Festival", subtitle: "Bubbles by the water", background: "festival-riverside", nightTint: false),
         FestivalArea(name: "Firework Night", subtitle: "One last festival cheer", background: "festival-dusk", nightTint: true)
     ]
-    static let levels: [GameLevel] = (0..<50).map { index in
+    static let areas: [FestivalArea] = (0..<levelCount / levelsPerArea).map { index in
+        if index < originalAreas.count { return originalAreas[index] }
+        let art = originalAreas[index % originalAreas.count]
+        return FestivalArea(name: "Area \(index + 1)", subtitle: "Levels \(index * levelsPerArea + 1)–\((index + 1) * levelsPerArea)", background: art.background, nightTint: art.nightTint)
+    }
+    static let levels: [GameLevel] = (0..<levelCount).map { index in
         let area = index / 10
-        let local = index % 10
-        let height = index < 5 ? [2, 2, 3, 3, 3][index] : min(8, 3 + index / 8)
-        let colors = index < 5 ? [2, 2, 3, 3, 3][index] : min(5, 3 + (area + local / 8) / 2)
+        let layoutIndex = index < 50 ? index : 20 + (index - 50) % 30
+        let local = layoutIndex % 10
+        let layoutArea = layoutIndex / 10
+        let height = index < 5 ? [2, 2, 3, 3, 3][index] : min(8, 3 + layoutIndex / 8)
+        let colors = index < 5 ? [2, 2, 3, 3, 3][index] : min(5, 3 + (layoutArea + local / 8) / 2)
         var cells: [Cell: Int] = [:]
         for row in 0..<height {
             let width = BubbleBoard.columns - row % 2
@@ -127,14 +138,25 @@ enum LevelCatalog {
                 }
                 if include {
                     cells[Cell(row: row, column: column)] =
-                        (column / 2 + (row + local % 3) / 2 + area + local) % colors
+                        (column / 2 + (row + local % 3) / 2 + layoutArea + local) % colors
                 }
             }
         }
-        if let authored = AuthoredLayouts.bubbles(for: index) { cells = authored }
+        if let authored = AuthoredLayouts.bubbles(for: layoutIndex) { cells = authored }
+        if index >= 50 {
+            let variation = (index - 50) / 30
+            let permutations = [[1, 2, 3, 0, 4], [2, 0, 3, 1, 4], [3, 1, 0, 2, 4],
+                                [0, 3, 1, 2, 4], [2, 3, 0, 1, 4]]
+            // Reverse the repeated template and the level-161 approach to keep supports reachable.
+            let mirror = (variation % 2 == 0) != (layoutIndex == 43 || index == 160)
+            cells = Dictionary(uniqueKeysWithValues: cells.map { cell, color in
+                let column = mirror ? BubbleBoard.columns - cell.row % 2 - 1 - cell.column : cell.column
+                return (Cell(row: cell.row, column: column), permutations[variation][color])
+            })
+        }
         let budgetColors = max(colors, Set(cells.values).count)
         // Later areas no longer reset the challenge with welcome/recovery allowances.
-        let shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
+        let shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - min(index, 49) / 4)
         return GameLevel(index: index, area: area, shots: shots, initialBubbles: cells)
     }
 
@@ -199,6 +221,10 @@ final class GameProgress {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         adventure = AdventureProgress(defaults: defaults)
+        // Older campaigns capped the unlocked index at 49, even after the finale.
+        if defaults.integer(forKey: "stars-49") > 0 && defaults.integer(forKey: "unlockedLevel") == 49 {
+            defaults.set(50, forKey: "unlockedLevel")
+        }
         if defaults.bool(forKey: "muted") {
             for setting in [GameSetting.music, .effects] where defaults.object(forKey: setting.rawValue) == nil {
                 defaults.set(false, forKey: setting.rawValue)
@@ -262,7 +288,7 @@ final class GameProgress {
     func hasLearned(_ kind: SpecialBubble) -> Bool { defaults.bool(forKey: "learned-\(kind.rawValue)") }
     func markLearned(_ kind: SpecialBubble) { defaults.set(true, forKey: "learned-\(kind.rawValue)") }
     func challengeWon(_ area: Int) -> Bool { defaults.bool(forKey: "challenge-\(area)") }
-    func recordChallenge(_ area: Int) { if (0..<5).contains(area) { defaults.set(true, forKey: "challenge-\(area)") } }
+    func recordChallenge(_ area: Int) { if LevelCatalog.areas.indices.contains(area) { defaults.set(true, forKey: "challenge-\(area)") } }
 
     func stars(_ index: Int) -> Int {
         let saved = min(3, max(0, defaults.integer(forKey: "stars-\(index)")))

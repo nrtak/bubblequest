@@ -8,7 +8,7 @@ final class FestivalAudio {
     private var fadingTracks: [AVAudioPlayer] = []
 
     func update(area: Int, enabled: Bool, volume: Float = 0.22) {
-        let name = area < 2 ? "music-day" : "music-evening"
+        let name = area % LevelCatalog.originalAreas.count < 2 ? "music-day" : "music-evening"
         if track != name {
             track = name
             if let old = music {

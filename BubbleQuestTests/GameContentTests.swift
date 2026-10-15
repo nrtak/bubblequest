@@ -122,7 +122,7 @@ final class GameContentTests: XCTestCase {
             "festival-summer-map-atlas", "festival-hill-map", "festival-summer-neighbors", "festival-summer-buddy-motion"
         ])
         for name in images { XCTAssertNotNil(UIImage(named: name), "Missing image \(name)") }
-        for name in ["pop", "launch", "load", "bomb", "victory", "music-day", "music-evening", "armor-crack", "rescue", "big-drop", "milestone", "stick"] {
+        for name in ["pop", "launch", "load", "bomb", "victory", "music-day", "music-evening", "armor-crack", "rescue", "big-drop", "milestone", "stick", "music-menu", "music-map", "music-water", "music-countryside", "music-challenge", "music-story", "map-chime", "map-water", "buddy-hello"] {
             XCTAssertNotNil(Bundle.main.url(forResource: name, withExtension: "wav"), "Missing audio \(name)")
         }
     }
@@ -203,6 +203,17 @@ final class GameContentTests: XCTestCase {
         XCTAssertEqual(progress.selected(.animal).id, "white-shiba")
         progress.recordVictory(index: 49, score: 100, stars: 2)
         XCTAssertEqual(progress.unlockedLevel, 50)
+    }
+
+    func testMusicFollowsMenusSceneryAndChallengeMode() {
+        XCTAssertEqual(FestivalAudio.track(menu: "title", area: 7, challenge: false), "music-menu")
+        XCTAssertEqual(FestivalAudio.track(menu: "map", area: 7, challenge: false), "music-map")
+        XCTAssertEqual(FestivalAudio.track(menu: "host", area: 0, challenge: false), "music-story")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 0, challenge: true), "music-challenge")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 0, challenge: false), "music-day")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 3, challenge: false), "music-evening")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 7, challenge: false), "music-water")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 6, challenge: false), "music-countryside")
     }
 
     func testSettingsMigrationAndPersistence() {

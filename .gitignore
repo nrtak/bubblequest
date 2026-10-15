@@ -10,3 +10,9 @@ BubbleQuest/music-*.wav
 BubbleQuest/launch.wav
 BubbleQuest/bomb.wav
 BubbleQuest/victory.wav
+
+BubbleQuest/armor-crack.wav
+BubbleQuest/rescue.wav
+BubbleQuest/big-drop.wav
+BubbleQuest/milestone.wav
+BubbleQuest/stick.wav

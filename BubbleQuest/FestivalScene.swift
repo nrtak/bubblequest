@@ -409,7 +409,6 @@ final class FestivalScene: SKScene {
         decoratePuzzleBubbles()
         applyCompanionPins()
         updateControlLayout()
-        updateOperatorAppearance()
         saveCheckpoint()
         showPracticeHint()
         showObstacleIntroduction()
@@ -1577,10 +1576,7 @@ private extension FestivalScene {
         gameRoot.childNode(withName: "board-veil")?.alpha = progress.enabled(.contrast) ? 0.34 : 0.17
         view?.preferredFramesPerSecond = levelMenu != nil || ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60
         let quiet = UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled
-        if quiet, let animal = gameRoot.childNode(withName: "companion-0") as? SKSpriteNode {
-            animal.removeAllActions(); animal.position.y = 134; animal.setScale(1)
-            animal.texture = companionTexture(progress.selected(.animal), frame: 0)
-        }
+        updateCompanionMotion(quiet: quiet)
         gameRoot.childNode(withName: "ambient")?.isHidden = quiet
         gameRoot.childNode(withName: "ambient")?.isPaused = quiet
         for node in Array(nodes.values) + [loaded, nextNode].compactMap({ $0 }) {
@@ -1588,6 +1584,14 @@ private extension FestivalScene {
             rim?.strokeColor = UIColor.white.withAlphaComponent(progress.enabled(.contrast) ? 1 : 0.5)
             rim?.lineWidth = progress.enabled(.contrast) ? 2 : 1
         }
+    }
+
+    internal func updateCompanionMotion(quiet: Bool) {
+        if quiet, let animal = gameRoot.childNode(withName: "companion-0") as? SKSpriteNode {
+            animal.removeAllActions(); animal.position.y = 134; animal.setScale(1)
+            animal.texture = companionTexture(progress.selected(.animal), frame: 0)
+        }
+        updateOperatorAppearance(quietMotion: quiet)
     }
 
     func showSoundLevels() {
@@ -1650,10 +1654,12 @@ private extension FestivalScene {
     internal func animateCompanion(_ kind: Companion.Kind, frames: [Int], repeating: Bool = false) {
         let index = kind == .animal ? 0 : 1
         guard let sprite = gameRoot.childNode(withName: "companion-\(index)") as? SKSpriteNode else { return }
-        guard !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled else {
-            sprite.removeAction(forKey: "loading"); sprite.texture = companionTexture(progress.selected(kind), frame: 0); return
-        }
         let key = kind == .animal ? "loading" : "operating"
+        guard !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled else {
+            sprite.removeAction(forKey: key)
+            sprite.removeAction(forKey: "expression")
+            sprite.texture = companionTexture(progress.selected(kind), frame: 0); return
+        }
         if frames == [1, 2], sprite.action(forKey: key) != nil { return }
         sprite.removeAction(forKey: key)
         let friend = progress.selected(kind)
@@ -1727,20 +1733,27 @@ private extension FestivalScene {
         stand.addChild(cradle)
     }
 
-    func updateOperatorAppearance() {
+    internal func idleExpressionTexture(_ friend: Companion) -> SKTexture {
+        // Newer sheets have no glance atlas. Use their connected, open-eyed gesture
+        // instead of asking for a glance texture that would silently stay unchanged.
+        friend.atlasIndex >= 6 ? companionTexture(friend, frame: 1) : companionTexture(friend, frame: 0, glance: true)
+    }
+
+    func updateOperatorAppearance(quietMotion: Bool? = nil) {
         guard let buddy = gameRoot.childNode(withName: "companion-1") as? SKSpriteNode else { return }
         buddy.removeAction(forKey: "operating"); buddy.removeAction(forKey: "breathing")
         buddy.yScale = 1
         // One complete painted pose keeps the arms attached; the wheel covers the hands.
         buddy.texture = companionTexture(progress.selected(.human), frame: 0)
         buddy.removeAction(forKey: "expression")
-        guard !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled else { return }
+        let quiet = quietMotion ?? (UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled)
+        guard !quiet else { return }
         // Swap complete painted poses, never detach or stretch an individual limb.
         buddy.run(.repeatForever(.sequence([
             .wait(forDuration: 4.8, withRange: 2.0),
             .run { [weak self, weak buddy] in
                 guard let self, buddy?.action(forKey: "operating") == nil else { return }
-                buddy?.texture = self.companionTexture(self.progress.selected(.human), frame: 0, glance: true)
+                buddy?.texture = self.idleExpressionTexture(self.progress.selected(.human))
             },
             .wait(forDuration: 0.3),
             .run { [weak self, weak buddy] in

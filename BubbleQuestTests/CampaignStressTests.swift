@@ -36,6 +36,8 @@ final class CampaignStressTests: XCTestCase {
                     let restored = try JSONDecoder().decode(GameCheckpoint.self, from: data)
                     XCTAssertEqual(restored.board?.bubbles, board.bubbles, "Level \(level.number), seed \(seed), shot \(shotNumber)")
                     XCTAssertEqual(restored.board?.specials, board.specials)
+                    XCTAssertEqual(restored.board?.armor, board.armor)
+                    XCTAssertEqual(restored.board?.blockers, board.blockers)
                 }
             }
         }

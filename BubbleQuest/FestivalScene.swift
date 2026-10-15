@@ -1647,7 +1647,7 @@ private extension FestivalScene {
                          in: SKTexture(imageNamed: glance ? "festival-companion-glance" : "festival-companion-motion"))
     }
 
-    func animateCompanion(_ kind: Companion.Kind, frames: [Int], repeating: Bool = false) {
+    internal func animateCompanion(_ kind: Companion.Kind, frames: [Int], repeating: Bool = false) {
         let index = kind == .animal ? 0 : 1
         guard let sprite = gameRoot.childNode(withName: "companion-\(index)") as? SKSpriteNode else { return }
         guard !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled else {
@@ -1796,7 +1796,7 @@ private extension FestivalScene {
         label(puzzleGoal.kind == .clear && LevelCatalog.level(level).isPrecision ? "Precision • Clear the board" : puzzleGoal.progressText, size: 13, point: CGPoint(x: 8, y: -4), parent: badge)
     }
 
-    func showObjectives() {
+    internal func showObjectives() {
         menuKind = "objectives"
         let overlay = makeMenu(background: LevelCatalog.level(level).background)
         panel(width: 342, height: 550, point: CGPoint(x: 195, y: 443), parent: overlay)

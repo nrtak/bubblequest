@@ -264,8 +264,8 @@ final class FestivalScene: SKScene {
         }
         let barrelPath = CGMutablePath()
         barrelPath.move(to: CGPoint(x: -19, y: -38))
-        barrelPath.addLine(to: CGPoint(x: -23, y: 16))
-        barrelPath.addQuadCurve(to: CGPoint(x: 23, y: 16), control: CGPoint(x: 0, y: 25))
+        barrelPath.addLine(to: CGPoint(x: -27, y: 30))
+        barrelPath.addQuadCurve(to: CGPoint(x: 27, y: 30), control: CGPoint(x: 0, y: 38))
         barrelPath.addLine(to: CGPoint(x: 19, y: -38))
         barrelPath.closeSubpath()
         let cannon = SKShapeNode(path: barrelPath)
@@ -669,6 +669,7 @@ final class FestivalScene: SKScene {
         nextNode?.removeFromParent()
         let node = shotNode(armed ?? .color(currentColor))
         node.position = animateLoading ? CGPoint(x: 113, y: 151) : origin
+        node.zPosition = 1
         gameRoot.addChild(node)
         loaded = node
         if animateLoading {
@@ -1530,29 +1531,40 @@ private extension FestivalScene {
             UIColor(red: 0.39, green: 0.23, blue: 0.43, alpha: 1)
         ]
         let brass = UIColor(red: 0.93, green: 0.73, blue: 0.38, alpha: 1)
-        cannon.fillColor = colors[(level / 10) % colors.count]
+        let lacquer = colors[(level / 10) % colors.count]
+        cannon.fillColor = UIColor(red: 0.70, green: 0.91, blue: 0.96, alpha: 0.14)
         cannon.strokeColor = brass
         cannon.removeAllChildren()
-        let shine = SKShapeNode(rectOf: CGSize(width: 5, height: 37), cornerRadius: 2)
-        shine.position = CGPoint(x: -12, y: -10); shine.fillColor = UIColor.white.withAlphaComponent(0.18)
+        // The bubble sits behind a faint glass wall; the framing stays outside its symbol.
+        let glass = SKShapeNode(); glass.path = cannon.path
+        glass.name = "cannon-glass"; glass.zPosition = 2
+        glass.fillColor = UIColor(red: 0.78, green: 0.95, blue: 1, alpha: 0.10)
+        glass.strokeColor = UIColor.white.withAlphaComponent(0.32); glass.lineWidth = 1
+        cannon.addChild(glass)
+        let shine = SKShapeNode(rectOf: CGSize(width: 3, height: 47), cornerRadius: 1.5)
+        shine.position = CGPoint(x: -22, y: 3); shine.zPosition = 3
+        shine.fillColor = UIColor.white.withAlphaComponent(0.40)
         shine.strokeColor = .clear; cannon.addChild(shine)
-        for y in [CGFloat(-31), -8] {
-            let band = SKShapeNode(rectOf: CGSize(width: y == -31 ? 41 : 46, height: 6), cornerRadius: 2)
+        let base = SKShapeNode(rectOf: CGSize(width: 42, height: 15), cornerRadius: 3)
+        base.position.y = -30; base.fillColor = lacquer; base.strokeColor = brass
+        cannon.addChild(base)
+        for y in [CGFloat(-37), -22] {
+            let band = SKShapeNode(rectOf: CGSize(width: y == -37 ? 41 : 45, height: 6), cornerRadius: 2)
             band.name = "barrel-band"; band.position.y = y
             band.fillColor = brass; band.strokeColor = UIColor(red: 0.47, green: 0.30, blue: 0.12, alpha: 1)
             cannon.addChild(band)
         }
-        let muzzle = SKShapeNode(ellipseOf: CGSize(width: 55, height: 15))
-        muzzle.name = "fireworks-muzzle"; muzzle.position.y = 16
-        muzzle.fillColor = UIColor(red: 0.22, green: 0.16, blue: 0.13, alpha: 1)
+        let muzzle = SKShapeNode(ellipseOf: CGSize(width: 60, height: 13))
+        muzzle.name = "fireworks-muzzle"; muzzle.position.y = 30
+        muzzle.fillColor = UIColor(red: 0.70, green: 0.91, blue: 0.96, alpha: 0.12)
         muzzle.strokeColor = brass; muzzle.lineWidth = 4; cannon.addChild(muzzle)
-        let seal = SKShapeNode(circleOfRadius: 8)
-        seal.position.y = -21; seal.fillColor = cannon.fillColor; seal.strokeColor = brass
+        let seal = SKShapeNode(circleOfRadius: 6)
+        seal.position.y = -30; seal.fillColor = lacquer; seal.strokeColor = brass
         cannon.addChild(seal)
         for ray in 0..<8 {
-            let spark = SKShapeNode(rectOf: CGSize(width: 1.5, height: 5), cornerRadius: 0.5)
+            let spark = SKShapeNode(rectOf: CGSize(width: 1.3, height: 3), cornerRadius: 0.5)
             let angle = CGFloat(ray) * .pi / 4
-            spark.position = CGPoint(x: sin(angle) * 4, y: -21 + cos(angle) * 4)
+            spark.position = CGPoint(x: sin(angle) * 3, y: -30 + cos(angle) * 3)
             spark.zRotation = -angle; spark.fillColor = brass; spark.strokeColor = .clear
             cannon.addChild(spark)
         }

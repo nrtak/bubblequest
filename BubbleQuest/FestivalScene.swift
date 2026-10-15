@@ -29,7 +29,9 @@ final class FestivalScene: SKScene {
     private let audio = FestivalAudio()
     private let gameRoot = SKNode()
     private var mapArea = 0
-    private var menuKind = "title"
+    private var menuKind = "title" { didSet { updateMusic() } }
+    private var lastMapInteraction: TimeInterval = -10
+    private var musicMenu = "title"
     private var returnMenu = "game"
     private var friendsPage = 0
     private var attemptCounted = false
@@ -191,7 +193,13 @@ final class FestivalScene: SKScene {
         gameRoot.childNode(withName: "cancel-cue")?.isHidden = true
         guide.removeAllChildren()
         audio.suspend(!active)
-        audio.update(area: level / 10, enabled: progress.enabled(.music), volume: progress.musicVolume)
+        updateMusic()
+    }
+
+    private func updateMusic() {
+        // Settings and pause sheets keep the current musical context.
+        if !["settings", "sound-levels", "play-results", "game-menu", "retry-prompt", "objectives", "special-help"].contains(menuKind) { musicMenu = menuKind }
+        audio.update(name: FestivalAudio.track(menu: musicMenu, area: musicMenu == "map" ? mapArea : level / 10, challenge: challengeMode), enabled: progress.enabled(.music), volume: progress.musicVolume)
     }
 
     private func label(_ text: String, size: CGFloat, point: CGPoint, parent: SKNode? = nil) {
@@ -374,7 +382,7 @@ final class FestivalScene: SKScene {
         backdrop?.texture = SKTexture(imageNamed: LevelCatalog.level(level).background)
         backdrop?.color = UIColor(red: 0.25, green: 0.27, blue: 0.55, alpha: 1)
         backdrop?.colorBlendFactor = area.nightTint ? 0.18 : 0
-        audio.update(area: level / 10, enabled: progress.enabled(.music), volume: progress.musicVolume)
+        updateMusic()
         if let saved, let restoredBoard = saved.board {
             board = restoredBoard; shots = saved.shots; score = saved.score
             currentColor = saved.currentColor; nextColor = saved.nextColor; colorBag = saved.bag
@@ -425,6 +433,7 @@ final class FestivalScene: SKScene {
         overlay.zPosition = 40
         addChild(overlay)
         levelMenu = overlay
+        updateMusic()
         let art = SKSpriteNode(imageNamed: background)
         art.size = size
         art.position = CGPoint(x: size.width / 2, y: size.height / 2)
@@ -687,11 +696,61 @@ final class FestivalScene: SKScene {
         label("Prize Wheel", size: 15, point: CGPoint(x: 10, y: 3), parent: wheelStop)
         label("Free spins: \(progress.adventure.availableSpins)", size: 14, point: CGPoint(x: 0, y: -15), parent: wheelStop)
         addEarnedSouvenir(to: overlay, markers: positions)
+        addMapDiscoveries(to: overlay)
         menuButton("\(progress.checkpoint == nil ? "Start level" : "Continue level") \(current + 1)", name: "continue-stop", point: CGPoint(x: 195, y: 133), parent: overlay, width: 270, height: 52)
         menuButton("Start Menu", name: "home", point: CGPoint(x: 109, y: 65), parent: overlay, width: 150, height: 44)
         decorateMenuIcon("house.fill", name: "home", parent: overlay, x: -57)
         menuButton("Buddies", name: "friends", point: CGPoint(x: 281, y: 65), parent: overlay, width: 150, height: 44)
         decorateMenuIcon("pawprint.fill", name: "friends", parent: overlay, x: -57)
+    }
+
+    private func addMapDiscoveries(to overlay: SKNode) {
+        let chime = SKShapeNode(circleOfRadius: 25)
+        chime.fillColor = .clear; chime.strokeColor = .clear
+        chime.name = "map-chime"; chime.position = CGPoint(x: 360, y: 665)
+        chime.addChild(questIcon("bell.fill", size: 23, color: .systemYellow))
+        overlay.addChild(chime)
+        let buddy = SKSpriteNode(texture: companionTexture(progress.selected(.animal), frame: 0), size: CGSize(width: 48, height: 48))
+        buddy.name = "map-buddy-hello"; buddy.position = CGPoint(x: 340, y: 240)
+        overlay.addChild(buddy)
+        // A familiar unlocked neighbor occasionally visits; no timer or reward to chase.
+        if progress.completedCount >= 10 && (progress.completedCount + mapArea) % 7 == 0,
+           let visitor = FestivalNeighbor.all.first(where: { progress.neighborIsAvailable($0) }) {
+            let portrait = SKSpriteNode(texture: neighborTexture(visitor), size: CGSize(width: 52, height: 52))
+            portrait.name = "map-visitor"; portrait.position = CGPoint(x: 340, y: 310)
+            overlay.addChild(portrait)
+        }
+    }
+
+    private func handleMapDiscovery(names: [String], location: CGPoint) -> Bool {
+        let target = names.first { ["map-chime", "map-buddy-hello", "map-visitor"].contains($0) }
+        // Only empty scenery responds to water taps, leaving every map control first priority.
+        let water = target == nil && names.isEmpty && location.x > 305 && location.y > 350 && location.y < 550 && (SummerScenery.forArea(mapArea).map { [SummerScenery.river, .beach, .lake].contains($0) } ?? false)
+        guard target != nil || water else { return false }
+        let now = ProcessInfo.processInfo.systemUptime
+        guard now - lastMapInteraction > 1.1, let overlay = levelMenu else { return true }
+        lastMapInteraction = now
+        overlay.childNode(withName: "map-discovery-feedback")?.removeFromParent()
+        let feedback = SKNode(); feedback.name = "map-discovery-feedback"; overlay.addChild(feedback)
+        let quiet = UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled
+        let cue = water ? "map-water" : target == "map-chime" ? "map-chime" : "buddy-hello"
+        audio.effect(cue, enabled: progress.enabled(.effects), volume: progress.effectsVolume)
+        if water {
+            for index in 0..<3 {
+                let ring = SKShapeNode(ellipseOf: CGSize(width: CGFloat(15 + index * 12), height: CGFloat(6 + index * 5)))
+                ring.position = location; ring.strokeColor = .white.withAlphaComponent(0.75); ring.lineWidth = 1.5
+                feedback.addChild(ring)
+                if !quiet { ring.run(.scale(to: 1.5, duration: 0.7)) }
+            }
+        } else {
+            let text = target == "map-visitor" ? "Lovely to see you here!" : target == "map-chime" ? "A little summer breeze" : "Happy to be here!"
+            label(text, size: 14, point: CGPoint(x: 260, y: target == "map-chime" ? 635 : 337), parent: feedback)
+            if let node = overlay.childNode(withName: target ?? ""), !quiet {
+                node.run(.sequence([.rotate(toAngle: -0.08, duration: 0.1), .rotate(toAngle: 0.08, duration: 0.16), .rotate(toAngle: 0, duration: 0.1)]))
+            }
+        }
+        feedback.run(.sequence([.wait(forDuration: 1.0), .fadeOut(withDuration: 0.3), .removeFromParent()]))
+        return true
     }
 
     private func availableColor() -> Int {
@@ -792,7 +851,10 @@ final class FestivalScene: SKScene {
         guard !suspended, !aiming, let touch = touches.first else { return }
         let location = touch.location(in: self)
         let names = interactionNames(at: location)
-        if levelMenu != nil { handleMenu(names); return }
+        if levelMenu != nil {
+            if menuKind == "map", handleMapDiscovery(names: names, location: location) { return }
+            handleMenu(names); return
+        }
         if let control = names.first(where: { ["rainbow", "bomb"].contains($0) }) {
             gameRoot.run(.sequence([.wait(forDuration: 0.55), .run { [weak self] in self?.showControlHelp(control) }]), withKey: "control-help")
         }
@@ -2283,7 +2345,7 @@ private extension FestivalScene {
         if names.contains("festival-menu") { showFestival(); return }
         if names.contains("quick-sound") {
             progress.toggleSound()
-            audio.update(area: level / 10, enabled: progress.enabled(.music), volume: progress.musicVolume)
+            updateMusic()
             showSettings(); return
         }
         if names.contains("wheel-return") { showWheel(); return }
@@ -2307,7 +2369,7 @@ private extension FestivalScene {
         if names.contains("sound-back") { showSettings(); return }
         if let name = names.first(where: { ["music-up", "music-down", "effects-up", "effects-down"].contains($0) }) {
             progress.changeVolume(music: name.hasPrefix("music"), by: name.hasSuffix("up") ? 1 : -1)
-            audio.update(area: level / 10, enabled: progress.enabled(.music), volume: progress.musicVolume)
+            updateMusic()
             showSoundLevels(); return
         }
         if names.contains("accessories") { showAccessories(); return }
@@ -2377,7 +2439,7 @@ private extension FestivalScene {
         else if let name = names.first(where: { $0.hasPrefix("setting-") }), let setting = GameSetting(rawValue: String(name.dropFirst(8))) {
             progress.toggle(setting)
             updateControlLayout()
-            audio.update(area: level / 10, enabled: progress.enabled(.music), volume: progress.musicVolume)
+            updateMusic()
             showSettings()
         }
         else if let name = names.first(where: { $0.hasPrefix("friend-") }), let friend = Companion.all.first(where: { "friend-\($0.id)" == name }) {

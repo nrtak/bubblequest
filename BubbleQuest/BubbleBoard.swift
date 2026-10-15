@@ -14,7 +14,7 @@ enum SpecialBubble: String, Codable {
     }
 }
 
-struct Cell: Hashable {
+struct Cell: Hashable, Codable {
     let row: Int
     let column: Int
 }
@@ -24,6 +24,10 @@ struct BubbleBoard {
     static let rows = 14
     var bubbles: [Cell: Int] = [:]
     var specials: [Cell: SpecialBubble] = [:]
+    var armor: Set<Cell> = []
+    var blockers: Set<Cell> = []
+
+    var playableColors: Set<Int> { Set(bubbles.filter { !blockers.contains($0.key) }.map { $0.value }) }
 
     static func valid(_ cell: Cell) -> Bool {
         cell.row >= 0 && cell.row < rows && cell.column >= 0 &&
@@ -41,12 +45,12 @@ struct BubbleBoard {
     }
 
     func connected(from start: Cell, matchingColor: Bool) -> Set<Cell> {
-        guard let color = bubbles[start] else { return [] }
+        guard let color = bubbles[start], !matchingColor || !blockers.contains(start) else { return [] }
         var visited: Set<Cell> = [start]
         var pending = [start]
         while let cell = pending.popLast() {
             for neighbor in Self.neighbors(of: cell) where !visited.contains(neighbor) {
-                guard let other = bubbles[neighbor], !matchingColor || other == color else { continue }
+                guard let other = bubbles[neighbor], !matchingColor || (other == color && !blockers.contains(neighbor)) else { continue }
                 visited.insert(neighbor)
                 pending.append(neighbor)
             }
@@ -86,9 +90,17 @@ struct BubbleBoard {
             }
             group = affected.intersection(Set(bubbles.keys))
         }
+        // An armored bubble consumes one matching hit before it can pop.
+        let protected = armor
+        let cracked = group.intersection(armor)
+        armor.subtract(cracked)
+        group.subtract(cracked)
         var processed = Set<Cell>()
         while let special = group.subtracting(processed).first {
             processed.insert(special)
+            if protected.contains(special) {
+                armor.remove(special); group.remove(special); continue
+            }
             switch specials[special] {
             case .some(.lantern):
                 group.formUnion(bubbles.keys.filter { $0.row == special.row })
@@ -97,12 +109,16 @@ struct BubbleBoard {
             default: break
             }
         }
+        armor.subtract(group.intersection(protected))
+        group.subtract(protected)
+        armor.subtract(group); blockers.subtract(group)
         for match in group { bubbles.removeValue(forKey: match); specials.removeValue(forKey: match) }
         var anchored = Set<Cell>()
         for ceiling in bubbles.keys where ceiling.row == 0 {
             anchored.formUnion(connected(from: ceiling, matchingColor: false))
         }
         let dropped = Set(bubbles.keys).subtracting(anchored)
+        armor.subtract(dropped); blockers.subtract(dropped)
         for cell in dropped { bubbles.removeValue(forKey: cell); specials.removeValue(forKey: cell) }
         return (group, dropped)
     }

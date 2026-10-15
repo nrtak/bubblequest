@@ -225,7 +225,7 @@ final class FestivalScene: SKScene {
         gameRoot.addChild(shotSymbol)
         label("LEFT", size: 9, point: CGPoint(x: 240, y: 752))
         decorateRail()
-        for (index, x) in [CGFloat(74), CGFloat(319)].enumerated() {
+        for (index, x) in [CGFloat(74), CGFloat(331)].enumerated() {
             let friend = progress.selected(index == 0 ? .animal : .human)
             let companion = SKSpriteNode(texture: companionTexture(friend, frame: 0), size: CGSize(width: 125, height: 125))
             companion.anchorPoint = CGPoint(x: 0.5, y: 0)
@@ -254,7 +254,7 @@ final class FestivalScene: SKScene {
             support.strokeColor = UIColor(red: 0.82, green: 0.58, blue: 0.32, alpha: 1)
             gameRoot.addChild(support)
         }
-        for x in [CGFloat(74), 319] {
+        for x in [CGFloat(74), 331] {
             let shadow = SKShapeNode(ellipseOf: CGSize(width: 70, height: 8))
             shadow.position = CGPoint(x: x, y: 139)
             shadow.zPosition = -0.25

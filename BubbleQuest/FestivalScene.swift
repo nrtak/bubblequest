@@ -764,14 +764,24 @@ final class FestivalScene: SKScene {
         let node = shotNode(armed ?? .color(currentColor))
         let quiet = UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled
         node.position = animateLoading && !quiet ? CGPoint(x: 113, y: 151) : origin
-        node.zPosition = 1
+        node.zPosition = animateLoading && !quiet ? 5 : 1
         gameRoot.addChild(node)
         loaded = node
         if animateLoading {
             loadingBubble = true
             audio.effect("load", enabled: progress.enabled(.effects), volume: progress.effectsVolume)
             animateCompanion(.animal, frames: BuddyPersonality.loadingFrames(id: progress.selected(.animal).id))
-            node.run(.sequence([quiet ? .wait(forDuration: 0.08) : .move(to: origin, duration: 0.3), .run { [weak self] in self?.loadingBubble = false }]))
+            let toss = CGMutablePath()
+            toss.move(to: CGPoint(x: 113, y: 151))
+            toss.addQuadCurve(to: origin, control: CGPoint(x: 152, y: 244))
+            let transfer: SKAction = quiet ? .wait(forDuration: 0.08) : .sequence([
+                .wait(forDuration: 0.16), .follow(toss, asOffset: false, orientToPath: false, duration: 0.4)
+            ])
+            node.run(.sequence([transfer, .run { [weak self, weak node] in
+                node?.zPosition = 1
+                self?.nextNode?.isHidden = false
+                self?.loadingBubble = false
+            }]), withKey: "buddy-toss")
         }
         let next = bubble(nextColor)
         next.name = "swap-bubble"
@@ -780,6 +790,7 @@ final class FestivalScene: SKScene {
         queueRing.fillColor = UIColor.white.withAlphaComponent(0.85); queueRing.strokeColor = .systemYellow
         queueRing.lineWidth = 2; queueRing.zPosition = -1; next.addChild(queueRing)
         next.position = CGPoint(x: 113, y: 151)
+        next.isHidden = animateLoading && !quiet
         gameRoot.addChild(next)
         nextNode = next
     }
@@ -808,6 +819,7 @@ final class FestivalScene: SKScene {
         aim = CGVector(dx: sin(angle), dy: cos(angle))
         gameRoot.childNode(withName: "cannon")?.zRotation = -CGFloat(angle)
         gameRoot.childNode(withName: "handwheel")?.zRotation = -CGFloat(angle) * 2.5
+        animateCompanion(.human, frames: [1, 2])
         guide.removeAllChildren()
         guard progress.enabled(.guide) else { return }
         let flight = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: ceilingOffset)
@@ -1564,10 +1576,7 @@ private extension FestivalScene {
         gameRoot.childNode(withName: "board-veil")?.alpha = progress.enabled(.contrast) ? 0.34 : 0.17
         view?.preferredFramesPerSecond = levelMenu != nil || ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60
         let quiet = UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled
-        if quiet, let animal = gameRoot.childNode(withName: "companion-0") as? SKSpriteNode {
-            animal.removeAllActions(); animal.position.y = 134; animal.setScale(1)
-            animal.texture = companionTexture(progress.selected(.animal), frame: 0)
-        }
+        updateCompanionMotion(quiet: quiet)
         gameRoot.childNode(withName: "ambient")?.isHidden = quiet
         gameRoot.childNode(withName: "ambient")?.isPaused = quiet
         for node in Array(nodes.values) + [loaded, nextNode].compactMap({ $0 }) {
@@ -1575,6 +1584,14 @@ private extension FestivalScene {
             rim?.strokeColor = UIColor.white.withAlphaComponent(progress.enabled(.contrast) ? 1 : 0.5)
             rim?.lineWidth = progress.enabled(.contrast) ? 2 : 1
         }
+    }
+
+    internal func updateCompanionMotion(quiet: Bool) {
+        if quiet, let animal = gameRoot.childNode(withName: "companion-0") as? SKSpriteNode {
+            animal.removeAllActions(); animal.position.y = 134; animal.setScale(1)
+            animal.texture = companionTexture(progress.selected(.animal), frame: 0)
+        }
+        updateOperatorAppearance(quietMotion: quiet)
     }
 
     func showSoundLevels() {
@@ -1634,14 +1651,15 @@ private extension FestivalScene {
                          in: SKTexture(imageNamed: glance ? "festival-companion-glance" : "festival-companion-motion"))
     }
 
-    func animateCompanion(_ kind: Companion.Kind, frames: [Int], repeating: Bool = false) {
-        if kind == .human { return } // Keep the complete operator pose behind the wheel.
+    internal func animateCompanion(_ kind: Companion.Kind, frames: [Int], repeating: Bool = false) {
         let index = kind == .animal ? 0 : 1
         guard let sprite = gameRoot.childNode(withName: "companion-\(index)") as? SKSpriteNode else { return }
-        guard !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled else {
-            sprite.removeAction(forKey: "loading"); sprite.texture = companionTexture(progress.selected(kind), frame: 0); return
-        }
         let key = kind == .animal ? "loading" : "operating"
+        guard !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled else {
+            sprite.removeAction(forKey: key)
+            sprite.removeAction(forKey: "expression")
+            sprite.texture = companionTexture(progress.selected(kind), frame: 0); return
+        }
         if frames == [1, 2], sprite.action(forKey: key) != nil { return }
         sprite.removeAction(forKey: key)
         let friend = progress.selected(kind)
@@ -1715,12 +1733,34 @@ private extension FestivalScene {
         stand.addChild(cradle)
     }
 
-    func updateOperatorAppearance() {
+    internal func idleExpressionTexture(_ friend: Companion) -> SKTexture {
+        // Newer sheets have no glance atlas. Use their connected, open-eyed gesture
+        // instead of asking for a glance texture that would silently stay unchanged.
+        friend.atlasIndex >= 6 ? companionTexture(friend, frame: 1) : companionTexture(friend, frame: 0, glance: true)
+    }
+
+    func updateOperatorAppearance(quietMotion: Bool? = nil) {
         guard let buddy = gameRoot.childNode(withName: "companion-1") as? SKSpriteNode else { return }
         buddy.removeAction(forKey: "operating"); buddy.removeAction(forKey: "breathing")
         buddy.yScale = 1
         // One complete painted pose keeps the arms attached; the wheel covers the hands.
         buddy.texture = companionTexture(progress.selected(.human), frame: 0)
+        buddy.removeAction(forKey: "expression")
+        let quiet = quietMotion ?? (UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled)
+        guard !quiet else { return }
+        // Swap complete painted poses, never detach or stretch an individual limb.
+        buddy.run(.repeatForever(.sequence([
+            .wait(forDuration: 4.8, withRange: 2.0),
+            .run { [weak self, weak buddy] in
+                guard let self, buddy?.action(forKey: "operating") == nil else { return }
+                buddy?.texture = self.idleExpressionTexture(self.progress.selected(.human))
+            },
+            .wait(forDuration: 0.3),
+            .run { [weak self, weak buddy] in
+                guard let self, buddy?.action(forKey: "operating") == nil else { return }
+                buddy?.texture = self.companionTexture(self.progress.selected(.human), frame: 0)
+            }
+        ])), withKey: "expression")
     }
 
     func characterReaction(_ text: String, quiet: Bool) {
@@ -1762,25 +1802,30 @@ private extension FestivalScene {
     func refreshQuestBadge() {
         gameRoot.childNode(withName: "quest-objective")?.removeFromParent()
         guard !finished else { return }
-        let badge = panel(width: 256, height: 26, point: CGPoint(x: 195, y: 722), parent: gameRoot)
+        let badge = panel(width: 256, height: 26, point: CGPoint(x: 195, y: 716), parent: gameRoot)
         badge.name = "quest-objective"
         let icon = questIcon(LevelCatalog.level(level).isMilestone ? "flag.checkered" : puzzleGoal.kind.symbol, size: 16, color: .systemYellow)
         icon.position.x = -112; badge.addChild(icon)
         label(puzzleGoal.kind == .clear && LevelCatalog.level(level).isPrecision ? "Precision • Clear the board" : puzzleGoal.progressText, size: 13, point: CGPoint(x: 8, y: -4), parent: badge)
     }
 
-    func showObjectives() {
+    internal func showObjectives() {
         menuKind = "objectives"
         let overlay = makeMenu(background: LevelCatalog.level(level).background)
-        panel(width: 342, height: 410, point: CGPoint(x: 195, y: 443), parent: overlay)
-        label(puzzleGoal.kind.title, size: 25, point: CGPoint(x: 195, y: 615), parent: overlay)
-        paragraph(puzzleGoal.kind.instruction + " Silver rings need two matches. Wooden blocks can be dropped or bombed. Bank-shot matches earn 50 extra points.", y: 557, parent: overlay)
+        panel(width: 342, height: 550, point: CGPoint(x: 195, y: 443), parent: overlay)
+        label(puzzleGoal.kind.title, size: 25, point: CGPoint(x: 195, y: 675), parent: overlay)
+        let instructions = paragraph(puzzleGoal.kind.instruction + " Silver rings need two matches. Wooden blocks can be dropped or bombed. Bank-shot matches earn 50 extra points.", y: 640, parent: overlay)
+        instructions.verticalAlignmentMode = .top
+        instructions.name = "objective-instructions"
+        var cursor = instructions.frame.minY - 30
         let quests = FestivalQuest.all.filter { $0.area == level / 10 && progress.adventure.accepted($0) && !progress.adventure.completed($0) }
-        for (index, quest) in quests.enumerated() {
-            label(quest.title, size: 19, point: CGPoint(x: 195, y: 433 - CGFloat(index) * 88), parent: overlay)
-            paragraph(quest.steps[progress.adventure.count(quest)], y: 400 - CGFloat(index) * 88, parent: overlay)
+        for quest in quests {
+            label(quest.title, size: 19, point: CGPoint(x: 195, y: cursor), parent: overlay)
+            let detail = paragraph(quest.steps[progress.adventure.count(quest)], y: cursor - 20, parent: overlay)
+            detail.verticalAlignmentMode = .top
+            cursor = detail.frame.minY - 30
         }
-        menuButton("Keep playing", name: "objective-close", point: CGPoint(x: 195, y: 171), parent: overlay, height: 50)
+        menuButton("Keep playing", name: "objective-close", point: CGPoint(x: 195, y: 110), parent: overlay, height: 50)
     }
 
     func showObstacleIntroduction() {
@@ -1942,7 +1987,19 @@ private extension FestivalScene {
                 let block = SKShapeNode(rectOf: CGSize(width: 34, height: 34), cornerRadius: 5)
                 block.name = "puzzle-blocker"; block.fillColor = .brown; block.strokeColor = .systemOrange
                 block.lineWidth = 3; block.zPosition = 3
-                let cross = questIcon("xmark", size: 19, color: .white); block.addChild(cross)
+                // Wood grain and brass nails distinguish an obstacle from a close button.
+                for y in [CGFloat(-8), 0, 8] {
+                    let grain = SKShapeNode(rectOf: CGSize(width: 26, height: 1.5), cornerRadius: 0.7)
+                    grain.position.y = y; grain.fillColor = UIColor(red: 0.39, green: 0.20, blue: 0.08, alpha: 1)
+                    grain.strokeColor = .clear; block.addChild(grain)
+                }
+                for x in [CGFloat(-11), 11] {
+                    for y in [CGFloat(-11), 11] {
+                        let nail = SKShapeNode(circleOfRadius: 1.8)
+                        nail.position = CGPoint(x: x, y: y); nail.fillColor = .systemYellow
+                        nail.strokeColor = .clear; block.addChild(nail)
+                    }
+                }
                 node.addChild(block)
             } else if board.armor.contains(cell) {
                 let ring = SKShapeNode(circleOfRadius: 18)
@@ -2158,7 +2215,8 @@ private extension FestivalScene {
         }
     }
 
-    func paragraph(_ text: String, y: CGFloat, parent: SKNode, width: CGFloat = 300) {
+    @discardableResult
+    func paragraph(_ text: String, y: CGFloat, parent: SKNode, width: CGFloat = 300) -> SKLabelNode {
         let node = SKLabelNode(fontNamed: "AvenirNext-Medium")
         node.text = text
         node.fontSize = 18
@@ -2167,6 +2225,7 @@ private extension FestivalScene {
         node.verticalAlignmentMode = .center
         node.position = CGPoint(x: 195, y: y)
         parent.addChild(node)
+        return node
     }
 
     func showHost(_ host: FestivalHost) {

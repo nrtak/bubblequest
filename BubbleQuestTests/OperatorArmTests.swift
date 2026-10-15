@@ -1,5 +1,6 @@
 import XCTest
 import SpriteKit
+import UIKit
 @testable import BubbleQuest
 
 final class OperatorArmTests: XCTestCase {
@@ -32,8 +33,51 @@ final class OperatorArmTests: XCTestCase {
             XCTAssertNil(scene.childNode(withName: "//operator-grip"))
             XCTAssertGreaterThan(wheel.zPosition, buddy.zPosition)
             XCTAssertNotNil(buddy.texture)
+            scene.animateCompanion(.human, frames: [1, 2])
+            if !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled {
+                XCTAssertNotNil(buddy.action(forKey: "operating"), friend.id)
+                XCTAssertNotNil(buddy.action(forKey: "expression"), friend.id)
+            }
 
         }
+    }
+
+    @MainActor
+    func testObjectiveInstructionsStayBelowTheHeadingAndAboveTheReturnButton() throws {
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844))
+        scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        scene.showObjectives()
+        let body = try XCTUnwrap(scene.childNode(withName: "//objective-instructions") as? SKLabelNode)
+        let overlay = try XCTUnwrap(body.parent)
+        let title = try XCTUnwrap(overlay.children.compactMap { $0 as? SKLabelNode }.first { $0.fontSize == 25 })
+        let button = try XCTUnwrap(overlay.childNode(withName: "objective-close"))
+        XCTAssertLessThan(body.frame.maxY, title.frame.minY)
+        XCTAssertGreaterThan(body.frame.minY, button.calculateAccumulatedFrame().maxY)
+    }
+
+    @MainActor
+    func testNewerHumansHaveADistinctIdlePose() {
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844))
+        for friend in Companion.all where friend.kind == .human && friend.atlasIndex >= 6 {
+            XCTAssertEqual(scene.idleExpressionTexture(friend).textureRect().origin.x, 0.25, accuracy: 0.001, friend.id)
+        }
+    }
+
+    @MainActor
+    func testQuietModeStopsHumanActionsAndNormalModeRestartsIdleExpression() throws {
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844))
+        scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        let human = try XCTUnwrap(scene.childNode(withName: "//companion-1") as? SKSpriteNode)
+        human.run(.repeatForever(.wait(forDuration: 1)), withKey: "operating")
+        human.run(.repeatForever(.wait(forDuration: 1)), withKey: "expression")
+        scene.updateCompanionMotion(quiet: true)
+        XCTAssertNil(human.action(forKey: "operating"))
+        XCTAssertNil(human.action(forKey: "expression"))
+        XCTAssertEqual(human.xScale, -1)
+        XCTAssertEqual(human.yScale, 1)
+        scene.updateCompanionMotion(quiet: false)
+        XCTAssertNotNil(human.action(forKey: "expression"))
+        XCTAssertNil(human.action(forKey: "operating"))
     }
 
     @MainActor

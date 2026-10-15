@@ -20,11 +20,8 @@ final class FestivalScene: SKScene {
     private var returnMenu = "game"
     private var friendsPage = 0
     private var attemptCounted = false
-    private var operatorBuddyID = ""
-    private var operatorFriend: Companion?
     private var aimTouch: UITouch?
     private var pendingFlight: (landing: Cell?, kind: BubbleShot)?
-    private var operatorTextures: [String: SKTexture] = [:]
     private var armed: BubbleShot?
     private var rainbowLeft = 1
     private var bombLeft = 1
@@ -172,7 +169,7 @@ final class FestivalScene: SKScene {
     }
 
     func setActive(_ active: Bool) {
-        if !active { saveCheckpoint(); profiles.persistActive(); synchronizeOperatorRig() }
+        if !active { saveCheckpoint(); profiles.persistActive(); updateOperatorAppearance() }
         suspended = !active
         isPaused = !active
         aiming = false
@@ -228,9 +225,8 @@ final class FestivalScene: SKScene {
         gameRoot.addChild(shotSymbol)
         label("LEFT", size: 9, point: CGPoint(x: 240, y: 752))
         decorateRail()
-        for (index, x) in [CGFloat(74), CGFloat(319)].enumerated() {
+        for (index, x) in [CGFloat(74), CGFloat(331)].enumerated() {
             let friend = progress.selected(index == 0 ? .animal : .human)
-            if index == 1 { operatorFriend = friend }
             let companion = SKSpriteNode(texture: companionTexture(friend, frame: 0), size: CGSize(width: 125, height: 125))
             companion.anchorPoint = CGPoint(x: 0.5, y: 0)
             companion.position = CGPoint(x: x, y: 134)
@@ -258,7 +254,7 @@ final class FestivalScene: SKScene {
             support.strokeColor = UIColor(red: 0.82, green: 0.58, blue: 0.32, alpha: 1)
             gameRoot.addChild(support)
         }
-        for x in [CGFloat(74), 319] {
+        for x in [CGFloat(74), 331] {
             let shadow = SKShapeNode(ellipseOf: CGSize(width: 70, height: 8))
             shadow.position = CGPoint(x: x, y: 139)
             shadow.zPosition = -0.25
@@ -267,10 +263,10 @@ final class FestivalScene: SKScene {
             gameRoot.addChild(shadow)
         }
         let barrelPath = CGMutablePath()
-        barrelPath.move(to: CGPoint(x: -31, y: -39))
-        barrelPath.addLine(to: CGPoint(x: -23, y: 16))
-        barrelPath.addQuadCurve(to: CGPoint(x: 23, y: 16), control: CGPoint(x: 0, y: 25))
-        barrelPath.addLine(to: CGPoint(x: 31, y: -39))
+        barrelPath.move(to: CGPoint(x: -19, y: -38))
+        barrelPath.addLine(to: CGPoint(x: -27, y: 30))
+        barrelPath.addQuadCurve(to: CGPoint(x: 27, y: 30), control: CGPoint(x: 0, y: 38))
+        barrelPath.addLine(to: CGPoint(x: 19, y: -38))
         barrelPath.closeSubpath()
         let cannon = SKShapeNode(path: barrelPath)
         cannon.position = origin
@@ -279,7 +275,6 @@ final class FestivalScene: SKScene {
         cannon.strokeColor = UIColor(red: 1, green: 0.79, blue: 0.43, alpha: 1)
         cannon.lineWidth = 3
         gameRoot.addChild(cannon)
-        label("✿", size: 21, point: CGPoint(x: 0, y: -31), parent: cannon)
         let nextStand = panel(width: 40, height: 28, point: CGPoint(x: 113, y: 151), parent: gameRoot)
         nextStand.fillColor = UIColor(red: 0.45, green: 0.27, blue: 0.16, alpha: 0.65)
         decorateMechanism()
@@ -339,7 +334,6 @@ final class FestivalScene: SKScene {
         for name in ["rainbow", "bomb"] { gameRoot.childNode(withName: name)?.isHidden = false }
         for index in 0..<2 {
             let friend = progress.selected(index == 0 ? .animal : .human)
-            if index == 1 { operatorFriend = friend }
             let sprite = gameRoot.childNode(withName: "companion-\(index)") as? SKSpriteNode
             sprite?.removeAllActions()
             sprite?.texture = companionTexture(friend, frame: 0)
@@ -354,7 +348,6 @@ final class FestivalScene: SKScene {
         attemptCounted = false
         gameRoot.childNode(withName: "handwheel")?.zRotation = 0
         gameRoot.childNode(withName: "cannon")?.zRotation = 0
-        synchronizeOperatorRig()
         completedQuest = nil
         finished = false
         aiming = false
@@ -399,7 +392,6 @@ final class FestivalScene: SKScene {
         aimTouch = nil
         gameRoot.childNode(withName: "cancel-cue")?.isHidden = true
         guide.removeAllChildren()
-        synchronizeOperatorRig()
         gameRoot.isPaused = true
         gameRoot.removeAction(forKey: "control-help")
         view?.preferredFramesPerSecond = 30
@@ -677,6 +669,7 @@ final class FestivalScene: SKScene {
         nextNode?.removeFromParent()
         let node = shotNode(armed ?? .color(currentColor))
         node.position = animateLoading ? CGPoint(x: 113, y: 151) : origin
+        node.zPosition = 1
         gameRoot.addChild(node)
         loaded = node
         if animateLoading {
@@ -720,7 +713,6 @@ final class FestivalScene: SKScene {
         aim = CGVector(dx: sin(angle), dy: cos(angle))
         gameRoot.childNode(withName: "cannon")?.zRotation = -CGFloat(angle)
         gameRoot.childNode(withName: "handwheel")?.zRotation = -CGFloat(angle) * 2.5
-        synchronizeOperatorRig()
         guide.removeAllChildren()
         guard progress.enabled(.guide) else { return }
         let flight = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: ceilingOffset)
@@ -798,7 +790,6 @@ final class FestivalScene: SKScene {
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
         guard let touch = aimTouch, touches.contains(touch) else { return }
-        synchronizeOperatorRig()
         gameRoot.removeAction(forKey: "control-help")
         aiming = false
         aimGesture.cancel()
@@ -814,7 +805,6 @@ final class FestivalScene: SKScene {
         aiming = false
         guide.removeAllChildren()
         gameRoot.childNode(withName: "cancel-cue")?.isHidden = true
-        synchronizeOperatorRig()
         let lift = touch.location(in: self)
         guard let angle = aimGesture.end(at: BubblePoint(x: Double(lift.x), y: Double(lift.y))) else { return }
         launchShot(angle: angle)
@@ -1520,7 +1510,7 @@ private extension FestivalScene {
     }
 
     func animateCompanion(_ kind: Companion.Kind, frames: [Int], repeating: Bool = false) {
-        if kind == .human { return } // The articulated arm owns the operator motion.
+        if kind == .human { return } // Keep the complete operator pose behind the wheel.
         let index = kind == .animal ? 0 : 1
         guard let sprite = gameRoot.childNode(withName: "companion-\(index)") as? SKSpriteNode else { return }
         let key = kind == .animal ? "loading" : "operating"
@@ -1533,105 +1523,76 @@ private extension FestivalScene {
 
     func updateMachineStyle() {
         guard let cannon = gameRoot.childNode(withName: "cannon") as? SKShapeNode else { return }
-        let colors: [UIColor] = [.brown, .systemGreen, .systemOrange, .systemTeal, .systemPurple]
-        let symbols = ["leaf.fill", "sun.max.fill", "lightbulb.fill", "water.waves", "sparkles"]
-        cannon.fillColor = colors[(level / 10) % colors.count]
-        cannon.strokeColor = .systemYellow
+        let colors: [UIColor] = [
+            UIColor(red: 0.62, green: 0.16, blue: 0.13, alpha: 1),
+            UIColor(red: 0.18, green: 0.38, blue: 0.30, alpha: 1),
+            UIColor(red: 0.63, green: 0.30, blue: 0.13, alpha: 1),
+            UIColor(red: 0.18, green: 0.30, blue: 0.48, alpha: 1),
+            UIColor(red: 0.39, green: 0.23, blue: 0.43, alpha: 1)
+        ]
+        let brass = UIColor(red: 0.93, green: 0.73, blue: 0.38, alpha: 1)
+        let lacquer = colors[(level / 10) % colors.count]
+        cannon.fillColor = UIColor(red: 0.70, green: 0.91, blue: 0.96, alpha: 0.14)
+        cannon.strokeColor = brass
         cannon.removeAllChildren()
-        let emblem = questIcon(symbols[(level / 10) % symbols.count], size: 18, color: .white)
-        emblem.position.y = -31; cannon.addChild(emblem)
+        // The bubble sits behind a faint glass wall; the framing stays outside its symbol.
+        let glass = SKShapeNode(); glass.path = cannon.path
+        glass.name = "cannon-glass"; glass.zPosition = 2
+        glass.fillColor = UIColor(red: 0.78, green: 0.95, blue: 1, alpha: 0.10)
+        glass.strokeColor = UIColor.white.withAlphaComponent(0.32); glass.lineWidth = 1
+        cannon.addChild(glass)
+        let shine = SKShapeNode(rectOf: CGSize(width: 3, height: 47), cornerRadius: 1.5)
+        shine.position = CGPoint(x: -22, y: 3); shine.zPosition = 3
+        shine.fillColor = UIColor.white.withAlphaComponent(0.40)
+        shine.strokeColor = .clear; cannon.addChild(shine)
+        let base = SKShapeNode(rectOf: CGSize(width: 42, height: 15), cornerRadius: 3)
+        base.position.y = -30; base.fillColor = lacquer; base.strokeColor = brass
+        cannon.addChild(base)
+        for y in [CGFloat(-37), -22] {
+            let band = SKShapeNode(rectOf: CGSize(width: y == -37 ? 41 : 45, height: 6), cornerRadius: 2)
+            band.name = "barrel-band"; band.position.y = y
+            band.fillColor = brass; band.strokeColor = UIColor(red: 0.47, green: 0.30, blue: 0.12, alpha: 1)
+            cannon.addChild(band)
+        }
+        let muzzle = SKShapeNode(ellipseOf: CGSize(width: 60, height: 13))
+        muzzle.name = "fireworks-muzzle"; muzzle.position.y = 30
+        muzzle.fillColor = UIColor(red: 0.70, green: 0.91, blue: 0.96, alpha: 0.12)
+        muzzle.strokeColor = brass; muzzle.lineWidth = 4; cannon.addChild(muzzle)
+        let seal = SKShapeNode(circleOfRadius: 6)
+        seal.position.y = -30; seal.fillColor = lacquer; seal.strokeColor = brass
+        cannon.addChild(seal)
+        for ray in 0..<8 {
+            let spark = SKShapeNode(rectOf: CGSize(width: 1.3, height: 3), cornerRadius: 0.5)
+            let angle = CGFloat(ray) * .pi / 4
+            spark.position = CGPoint(x: sin(angle) * 3, y: -30 + cos(angle) * 3)
+            spark.zRotation = -angle; spark.fillColor = brass; spark.strokeColor = .clear
+            cannon.addChild(spark)
+        }
+        let fusePath = CGMutablePath()
+        fusePath.move(to: CGPoint(x: -20, y: -28))
+        fusePath.addCurve(to: CGPoint(x: -35, y: -17), control1: CGPoint(x: -40, y: -33), control2: CGPoint(x: -42, y: -24))
+        let fuse = SKShapeNode(path: fusePath)
+        fuse.name = "festival-fuse"; fuse.strokeColor = UIColor(red: 0.89, green: 0.80, blue: 0.58, alpha: 1)
+        fuse.lineWidth = 3; cannon.addChild(fuse)
         gameRoot.childNode(withName: "machine-trim")?.removeFromParent()
-        let trim = SKNode(); trim.name = "machine-trim"; trim.zPosition = -0.1
-        gameRoot.addChild(trim)
-        for side in [-1, 1] {
-            let ornament: SKShapeNode
-            switch (level / 10) % LevelCatalog.originalAreas.count {
-            case 1: ornament = SKShapeNode(ellipseOf: CGSize(width: 12, height: 34))
-            case 2: ornament = SKShapeNode(rectOf: CGSize(width: 15, height: 24), cornerRadius: 6)
-            case 3: ornament = SKShapeNode(ellipseOf: CGSize(width: 26, height: 10))
-            case 4: ornament = SKShapeNode(rectOf: CGSize(width: 15, height: 15), cornerRadius: 2); ornament.zRotation = .pi / 4
-            default: ornament = SKShapeNode(rectOf: CGSize(width: 12, height: 22), cornerRadius: 3)
-            }
-            ornament.position = CGPoint(x: 195 + CGFloat(side) * 36, y: 151)
-            ornament.fillColor = colors[(level / 10) % colors.count]; ornament.strokeColor = .systemYellow
-            trim.addChild(ornament)
+        let stand = SKNode(); stand.name = "machine-trim"; stand.zPosition = -0.1
+        gameRoot.addChild(stand)
+        for x in [CGFloat(167), 223] {
+            let foot = SKShapeNode(rectOf: CGSize(width: 13, height: 27), cornerRadius: 3)
+            foot.position = CGPoint(x: x, y: 147); foot.fillColor = UIColor(red: 0.39, green: 0.23, blue: 0.13, alpha: 1)
+            foot.strokeColor = brass; foot.lineWidth = 2; stand.addChild(foot)
         }
-        synchronizeOperatorRig()
+        let cradle = SKShapeNode(rectOf: CGSize(width: 78, height: 11), cornerRadius: 4)
+        cradle.position = CGPoint(x: 195, y: 139); cradle.fillColor = .brown; cradle.strokeColor = brass
+        stand.addChild(cradle)
     }
 
-    internal func synchronizeOperatorRig() {
-        guard let buddy = gameRoot.childNode(withName: "companion-1") as? SKSpriteNode,
-              let wheel = gameRoot.childNode(withName: "handwheel") else { return }
-        let friend = operatorFriend ?? progress.selected(.human)
-        operatorFriend = friend
-        buddy.removeAction(forKey: "operating"); buddy.removeAction(forKey: "breathing"); buddy.yScale = 1
-        buddy.texture = operatorTexture(friend, part: 0)
-        let row = friend.atlasIndex - 4
-        let boundaries: [CGFloat] = [0, 223, 435, 654, 876, 1099, 1326, 1550, 1774]
-        let sockets: [CGPoint] = [CGPoint(x: 192, y: 128), CGPoint(x: 183, y: 344), CGPoint(x: 188, y: 562), CGPoint(x: 194, y: 785), CGPoint(x: 197, y: 1009), CGPoint(x: 194, y: 1232), CGPoint(x: 195, y: 1456), CGPoint(x: 194, y: 1680)]
-        // Overlap the sleeve at its shoulder seam, above the old cuff socket.
-        let socket = CGPoint(x: ((sockets[row].x - 9 - 35) / 215 - 0.5) * buddy.size.width,
-                             y: (boundaries[row + 1] - sockets[row].y + 12) / (boundaries[row + 1] - boundaries[row]) * buddy.size.height)
-        if operatorBuddyID != friend.id || buddy.childNode(withName: "operator-arm") == nil {
-            operatorBuddyID = friend.id
-            gameRoot.childNode(withName: "operator-arm")?.removeFromParent()
-            buddy.childNode(withName: "operator-arm")?.removeFromParent()
-            let arm = SKNode(); arm.name = "operator-arm"; arm.zPosition = 12; arm.xScale = -1
-            for part in 1...2 {
-                let sprite = SKSpriteNode(texture: operatorTexture(friend, part: part)); sprite.name = "part-\(part)"
-                // Pivots sit on the painted joint, excluding the transparent crop margins.
-                sprite.anchorPoint = part == 1 ? CGPoint(x: 15.0 / 153, y: 92.0 / 123) : CGPoint(x: 21.0 / 133, y: 31.0 / 62)
-                let length = part == 1 ? OperatorArmPose.upperLength : OperatorArmPose.forearmLength
-                let scale = CGFloat(length) / (part == 1 ? hypot(121, 22) : hypot(102, 5))
-                sprite.size = part == 1 ? CGSize(width: 153 * scale, height: 123 * scale) : CGSize(width: 133 * scale, height: 62 * scale)
-                sprite.zPosition = CGFloat(part); arm.addChild(sprite)
-            }
-            buddy.addChild(arm)
-            // Every joint, including the hand, belongs to the same character.
-            let grip = SKSpriteNode(texture: operatorTexture(friend, part: 3))
-            grip.name = "operator-grip"
-            grip.anchorPoint = CGPoint(x: 8.0 / 72, y: 31.0 / 59)
-            grip.size = CGSize(width: 19, height: 16)
-            grip.zPosition = 12
-            arm.addChild(grip)
-        }
-        guard let arm = buddy.childNode(withName: "operator-arm") else { return }
-        let shoulder = buddy.convert(socket, to: gameRoot)
-        // A short rim stroke follows steering without forcing a full crank rotation.
-        let stroke = -CGFloat(0.65) + max(-CGFloat(0.2), min(CGFloat(0.2), wheel.zRotation * 0.08))
-        let contact = CGPoint(x: wheel.position.x + cos(stroke) * 21,
-                              y: wheel.position.y + sin(stroke) * 21)
-        let pose = OperatorArmPose.gripping(shoulder: BubblePoint(x: shoulder.x, y: shoulder.y), hand: BubblePoint(x: contact.x, y: contact.y), palmLength: OperatorArmPose.palmLength)
-        let a = arm.convert(CGPoint(x: pose.shoulder.x, y: pose.shoulder.y), from: gameRoot)
-        let b = arm.convert(CGPoint(x: pose.elbow.x, y: pose.elbow.y), from: gameRoot)
-        let c = arm.convert(CGPoint(x: pose.hand.x, y: pose.hand.y), from: gameRoot)
-        arm.childNode(withName: "part-1")?.position = a
-        arm.childNode(withName: "part-1")?.zRotation = atan2(b.y - a.y, b.x - a.x) - atan2(-22, 121)
-        arm.childNode(withName: "part-2")?.position = b
-        let direction = atan2(c.y - b.y, c.x - b.x)
-        arm.childNode(withName: "part-2")?.zRotation = direction - atan2(5, 102)
-        arm.childNode(withName: "operator-grip")?.position = c
-        arm.childNode(withName: "operator-grip")?.zRotation = direction
-    }
-
-    func operatorTexture(_ friend: Companion, part: Int) -> SKTexture {
-        let key = "\(friend.id)-\(part)"
-        if let cached = operatorTextures[key] { return cached }
-        let row = friend.atlasIndex - 4
-        let boundaries: [CGFloat] = [0, 223, 435, 654, 876, 1099, 1326, 1550, 1774]
-        let sleeveY: [CGFloat] = [54, 262, 474, 702, 919, 1139, 1371, 1595]
-        let forearmY: [CGFloat] = [86, 294, 507, 734, 950, 1172, 1402, 1627]
-        let handY: [CGFloat] = [81, 289, 503, 731, 948, 1169, 1398, 1624]
-        let box: CGRect
-        switch part {
-        case 1: box = CGRect(x: 319, y: sleeveY[row] - 3, width: 153, height: 123)
-        case 2: box = CGRect(x: 525, y: forearmY[row] - 3, width: 133, height: 62)
-        case 3: box = CGRect(x: 744, y: handY[row] - 3, width: 72, height: 59)
-        default: box = CGRect(x: 35, y: boundaries[row], width: 215, height: boundaries[row + 1] - boundaries[row])
-        }
-        let texture = SKTexture(rect: CGRect(x: box.minX / 887, y: (1774 - box.maxY) / 1774, width: box.width / 887, height: box.height / 1774), in: SKTexture(imageNamed: "festival-operator-rig"))
-        operatorTextures[key] = texture
-        return texture
+    func updateOperatorAppearance() {
+        guard let buddy = gameRoot.childNode(withName: "companion-1") as? SKSpriteNode else { return }
+        buddy.removeAction(forKey: "operating"); buddy.removeAction(forKey: "breathing")
+        buddy.yScale = 1
+        // One complete painted pose keeps the arms attached; the wheel covers the hands.
+        buddy.texture = companionTexture(progress.selected(.human), frame: 0)
     }
 
     func characterReaction(_ text: String, quiet: Bool) {
@@ -1708,16 +1669,21 @@ private extension FestivalScene {
         linkage.fillColor = UIColor(red: 0.83, green: 0.61, blue: 0.33, alpha: 1)
         linkage.strokeColor = .brown
         gameRoot.addChild(linkage)
+        let wheelSupport = SKShapeNode(rectOf: CGSize(width: 9, height: 22), cornerRadius: 3)
+        wheelSupport.position = CGPoint(x: 290, y: 159)
+        wheelSupport.fillColor = linkage.fillColor; wheelSupport.strokeColor = .brown
+        gameRoot.addChild(wheelSupport)
         let wheel = SKNode()
         wheel.name = "handwheel"
-        wheel.position = CGPoint(x: 280, y: 173)
-        let rim = SKShapeNode(circleOfRadius: 21)
+        wheel.position = CGPoint(x: 290, y: 173)
+        wheel.zPosition = 3
+        let rim = SKShapeNode(circleOfRadius: 24)
         rim.fillColor = UIColor(red: 0.36, green: 0.23, blue: 0.18, alpha: 1)
         rim.strokeColor = UIColor(red: 1, green: 0.82, blue: 0.5, alpha: 1)
         rim.lineWidth = 5
         wheel.addChild(rim)
         for index in 0..<6 {
-            let spoke = SKShapeNode(rectOf: CGSize(width: 4, height: 33), cornerRadius: 2)
+            let spoke = SKShapeNode(rectOf: CGSize(width: 4, height: 37), cornerRadius: 2)
             spoke.zRotation = CGFloat(index) * .pi / 3
             spoke.fillColor = UIColor(red: 0.89, green: 0.69, blue: 0.4, alpha: 1)
             spoke.strokeColor = .clear
@@ -2146,7 +2112,7 @@ private extension FestivalScene {
         }
         else if let name = names.first(where: { $0.hasPrefix("friend-") }), let friend = Companion.all.first(where: { "friend-\($0.id)" == name }) {
             progress.select(friend)
-            if friend.kind == .human { operatorFriend = progress.selected(.human); synchronizeOperatorRig() }
+            if friend.kind == .human { updateOperatorAppearance() }
             showMapBuddies()
         }
         else if let name = names.first(where: { $0.hasPrefix("level-") }), let selected = Int(name.dropFirst(6)), selected <= progress.unlockedLevel {

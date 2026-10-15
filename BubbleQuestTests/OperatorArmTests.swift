@@ -56,6 +56,31 @@ final class OperatorArmTests: XCTestCase {
     }
 
     @MainActor
+    func testNewerHumansHaveADistinctIdlePose() {
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844))
+        for friend in Companion.all where friend.kind == .human && friend.atlasIndex >= 6 {
+            XCTAssertEqual(scene.idleExpressionTexture(friend).textureRect().origin.x, 0.25, accuracy: 0.001, friend.id)
+        }
+    }
+
+    @MainActor
+    func testQuietModeStopsHumanActionsAndNormalModeRestartsIdleExpression() throws {
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844))
+        scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        let human = try XCTUnwrap(scene.childNode(withName: "//companion-1") as? SKSpriteNode)
+        human.run(.repeatForever(.wait(forDuration: 1)), withKey: "operating")
+        human.run(.repeatForever(.wait(forDuration: 1)), withKey: "expression")
+        scene.updateCompanionMotion(quiet: true)
+        XCTAssertNil(human.action(forKey: "operating"))
+        XCTAssertNil(human.action(forKey: "expression"))
+        XCTAssertEqual(human.xScale, -1)
+        XCTAssertEqual(human.yScale, 1)
+        scene.updateCompanionMotion(quiet: false)
+        XCTAssertNotNil(human.action(forKey: "expression"))
+        XCTAssertNil(human.action(forKey: "operating"))
+    }
+
+    @MainActor
     func testPuzzleMenuPausesWithoutRestartingAndBubbleIsSwapTarget() throws {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844))
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))

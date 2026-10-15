@@ -75,6 +75,37 @@ final class GameContentTests: XCTestCase {
         XCTAssertLessThan(finalArea, firstArea * 0.8)
     }
 
+    func testChallengeContinuesBeyondTheFirstFiftyLevels() {
+        func averageAllowance(_ range: Range<Int>) -> Double {
+            range.map { Double(LevelCatalog.level($0).shots) / Double(LevelCatalog.level($0).initialBubbles.count) }
+                .reduce(0, +) / Double(range.count)
+        }
+        func averageGroupSize(_ range: Range<Int>) -> Double {
+            var sizes: [Int] = []
+            for index in range {
+                let board = LevelCatalog.level(index).board
+                var visited = Set<Cell>()
+                for cell in board.bubbles.keys where !visited.contains(cell) {
+                    let group = board.connected(from: cell, matchingColor: true)
+                    visited.formUnion(group)
+                    sizes.append(group.count)
+                }
+            }
+            return Double(sizes.reduce(0, +)) / Double(sizes.count)
+        }
+        // Prevent a return to recolored copies with the same late-game allowances.
+        XCTAssertLessThan(averageAllowance(50..<100), averageAllowance(10..<30))
+        XCTAssertLessThan(averageAllowance(150..<200), averageAllowance(50..<100))
+        XCTAssertLessThan(averageGroupSize(50..<100), averageGroupSize(0..<10))
+        XCTAssertTrue(LevelCatalog.levels[50..<100].allSatisfy { Set($0.initialBubbles.values).count == 5 })
+        XCTAssertTrue(LevelCatalog.levels[150..<200].filter { !$0.isPrecision }.allSatisfy { $0.initialBubbles.keys.map(\.row).max() == 6 })
+        // The same depth can have different routes, not just a new color permutation.
+        let shapes = Set(LevelCatalog.levels[50..<100].map { Set($0.initialBubbles.keys) })
+        XCTAssertGreaterThan(shapes.count, 5)
+        XCTAssertGreaterThan(LevelCatalog.level(199).ceilingOffset(after: 20, seed: 42),
+                             LevelCatalog.level(59).ceilingOffset(after: 20, seed: 42))
+    }
+
     func testAreaMechanicsBuildFromSingleTypesToCombinations() {
         XCTAssertTrue(LevelCatalog.level(8).initialSpecials.isEmpty)
         XCTAssertEqual(Set(LevelCatalog.level(22).initialSpecials.values), [.lantern])
@@ -91,7 +122,7 @@ final class GameContentTests: XCTestCase {
             "festival-summer-map-atlas", "festival-hill-map", "festival-summer-neighbors", "festival-summer-buddy-motion"
         ])
         for name in images { XCTAssertNotNil(UIImage(named: name), "Missing image \(name)") }
-        for name in ["pop", "launch", "load", "bomb", "victory", "music-day", "music-evening"] {
+        for name in ["pop", "launch", "load", "bomb", "victory", "music-day", "music-evening", "armor-crack", "rescue", "big-drop", "milestone", "stick", "music-menu", "music-map", "music-water", "music-countryside", "music-challenge", "music-story", "map-chime", "map-water", "buddy-hello"] {
             XCTAssertNotNil(Bundle.main.url(forResource: name, withExtension: "wav"), "Missing audio \(name)")
         }
     }
@@ -112,7 +143,7 @@ final class GameContentTests: XCTestCase {
                 XCTAssertTrue((0..<5).contains(color))
                 XCTAssertGreaterThan(BubbleGeometry.point(cell).y, BubbleGeometry.lossLine)
             }
-            XCTAssertGreaterThanOrEqual(level.shots, 18)
+            XCTAssertGreaterThanOrEqual(level.shots, level.isPrecision ? 12 : 18)
         }
     }
 
@@ -172,6 +203,17 @@ final class GameContentTests: XCTestCase {
         XCTAssertEqual(progress.selected(.animal).id, "white-shiba")
         progress.recordVictory(index: 49, score: 100, stars: 2)
         XCTAssertEqual(progress.unlockedLevel, 50)
+    }
+
+    func testMusicFollowsMenusSceneryAndChallengeMode() {
+        XCTAssertEqual(FestivalAudio.track(menu: "title", area: 7, challenge: false), "music-menu")
+        XCTAssertEqual(FestivalAudio.track(menu: "map", area: 7, challenge: false), "music-map")
+        XCTAssertEqual(FestivalAudio.track(menu: "host", area: 0, challenge: false), "music-story")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 0, challenge: true), "music-challenge")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 0, challenge: false), "music-day")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 3, challenge: false), "music-evening")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 7, challenge: false), "music-water")
+        XCTAssertEqual(FestivalAudio.track(menu: "game", area: 6, challenge: false), "music-countryside")
     }
 
     func testSettingsMigrationAndPersistence() {

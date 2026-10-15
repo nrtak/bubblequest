@@ -27,7 +27,7 @@ struct GameLevel {
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
     var ceilingInterval: Int { max(4, 12 - index / 5) }
-    var ceilingStep: Double { index < 50 ? 4 + Double(index) * 0.55 : 30.95 + 5 * (1 - exp(-Double(index - 49) / 75)) }
+    var ceilingStep: Double { 4 + Double(min(index, 49)) * 0.55 + Double(max(0, index - 49)) * 0.04 }
     func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
         var state = seed
         var threshold = 0
@@ -39,7 +39,7 @@ struct GameLevel {
         }
         return min(240, Double(drops) * ceilingStep)
     }
-    var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials) }
+    var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials, armor: initialArmor, blockers: initialBlockers) }
     var initialSpecials: [Cell: SpecialBubble] {
         guard index % 10 >= 2, area >= 2 else { return [:] }
         let style = area < 5 ? area : 2 + area % 3
@@ -86,7 +86,7 @@ struct GameLevel {
 
 enum BubbleColorQueue {
     static func draw<R: RandomNumberGenerator>(board: BubbleBoard, bag: inout [Int], using random: inout R) -> Int {
-        let colors = Set(board.bubbles.values)
+        let colors = board.playableColors
         bag.removeAll { !colors.contains($0) }
         if bag.isEmpty { bag = colors.sorted().shuffled(using: &random) }
         let useful = Set(board.bubbles.keys.filter { board.connected(from: $0, matchingColor: true).count >= 2 }
@@ -116,7 +116,7 @@ enum LevelCatalog {
     }
     static let levels: [GameLevel] = (0..<levelCount).map { index in
         let area = index / 10
-        let layoutIndex = index < 50 ? index : 20 + (index - 50) % 30
+        let layoutIndex = min(index, 49)
         let local = layoutIndex % 10
         let layoutArea = layoutIndex / 10
         let height = index < 5 ? [2, 2, 3, 3, 3][index] : min(8, 3 + layoutIndex / 8)
@@ -146,21 +146,82 @@ enum LevelCatalog {
             }
         }
         if let authored = AuthoredLayouts.bubbles(for: layoutIndex) { cells = authored }
-        if index >= 50 {
-            let variation = (index - 50) / 30
-            let permutations = [[1, 2, 3, 0, 4], [2, 0, 3, 1, 4], [3, 1, 0, 2, 4],
-                                [0, 3, 1, 2, 4], [2, 3, 0, 1, 4]]
-            // Reverse the repeated template and the level-161 approach to keep supports reachable.
-            let mirror = (variation % 2 == 0) != (layoutIndex == 43 || index == 160)
-            cells = Dictionary(uniqueKeysWithValues: cells.map { cell, color in
-                let column = mirror ? BubbleBoard.columns - cell.row % 2 - 1 - cell.column : cell.column
-                return (Cell(row: cell.row, column: column), permutations[variation][color])
-            })
+        if index >= 10 {
+            // Keep authored shapes, but stop carrying large, ready-made color clusters
+            // through the campaign. Later boards use independently colored pairs.
+            cells = challengeBubbles(index: index, template: cells)
         }
-        let budgetColors = max(colors, Set(cells.values).count)
-        // Later areas no longer reset the challenge with welcome/recovery allowances.
-        let shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - min(index, 49) / 4)
-        return GameLevel(index: index, area: area, shots: shots, initialBubbles: cells)
+        let budgetColors = Set(cells.values).count
+        let shots: Int
+        if index < 10 {
+            shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
+        } else {
+            let allowance = max(5, 12 - index / 15)
+            shots = max(18, (cells.count + 2) / 3 + budgetColors + allowance)
+        }
+        let precision = index >= 15 && index % 10 == 5
+        let budget = precision ? max(12, (cells.count + 2) / 3 + budgetColors + 2) : shots
+        let draft = GameLevel(index: index, area: area, shots: budget, initialBubbles: cells)
+        return GameLevel(index: index, area: area,
+                         shots: budget + draft.initialArmor.count * 2 + draft.initialBlockers.count,
+                         initialBubbles: cells)
+    }
+
+    private static func challengeBubbles(index: Int, template: [Cell: Int]) -> [Cell: Int] {
+        var cells = template
+        if index >= 50 {
+            // Increase depth across the later campaign instead of recycling levels 21–50.
+            let height = min(7, 6 + (index - 50) / 75)
+            cells = [:]
+            for row in 0..<height {
+                let width = BubbleBoard.columns - row % 2
+                for column in 0..<width {
+                    // Lower openings vary by level; full upper rows anchor every branch.
+                    let gap = FestivalPattern.forArea(index / 10).gap(row: row, width: width, index: index)
+                    if row >= 3 && row % 2 == index % 2 && column == gap { continue }
+                    cells[Cell(row: row, column: column)] = 0
+                }
+            }
+        }
+        if index >= 10 && (index % 10 == 9 || index % 10 == 3) {
+            cells = cells.filter { cell, _ in
+                guard cell.row > 1 else { return true }
+                let width = BubbleBoard.columns - cell.row % 2
+                return index % 10 == 9 ? cell.column != width / 2 : (cell.column > 0 && cell.column < width - 1)
+            }
+        }
+        if index >= 15 && index % 10 == 5 {
+            let depth = index < 100 ? 4 : 5
+            cells = cells.filter { $0.key.row < depth }
+        }
+        let shell = BubbleBoard(bubbles: cells)
+        var anchored = Set<Cell>()
+        for root in cells.keys where root.row == 0 { anchored.formUnion(shell.connected(from: root, matchingColor: false)) }
+        cells = cells.filter { anchored.contains($0.key) }
+        let palette = index < 30 ? 4 : 5
+        var state = UInt64(index + 1) &* 997
+        var pairColors: [Cell: Int] = [:]
+        let lastRow = cells.keys.map(\.row).max() ?? 0
+        for cell in cells.keys.sorted(by: { $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row }) {
+            let pair = Cell(row: cell.row, column: cell.column / 2)
+            if pairColors[pair] == nil {
+                state = state &* 6364136223846793005 &+ 1442695040888963407
+                var color = Int((state >> 32) % UInt64(palette))
+                // Avoid long stripes that can remove most of a board in one shot.
+                if color == pairColors[Cell(row: cell.row, column: pair.column - 1)] {
+                    color = (color + 1) % palette
+                }
+                pairColors[pair] = color
+            }
+            var color = pairColors[pair]!
+            // Introduce occasional setup shots, then increase them in later areas.
+            let splitInterval = max(4, 12 - index / 20)
+            if index >= 30 && cell.row < lastRow && (cell.row * 8 + cell.column + index) % splitInterval == 0 {
+                color = (color + 1) % palette
+            }
+            cells[cell] = color
+        }
+        return cells
     }
 
     static func level(_ index: Int) -> GameLevel {
@@ -276,12 +337,61 @@ final class GameProgress {
         guard LevelCatalog.levels.indices.contains(index) else { return }
         defaults.set(attempts(index) + 1, forKey: "attempts-\(index)")
     }
-    func recordOutcome(index: Int, won: Bool, shotsRemaining: Int) {
+    func recordOutcome(index: Int, won: Bool, shotsRemaining: Int, shotsFired: Int = 0, bankMatches: Int = 0, boosterShots: Int = 0) {
         guard LevelCatalog.levels.indices.contains(index) else { return }
+        var results = levelResults(index)
+        results.record(won: won, fired: shotsFired, remaining: shotsRemaining, banks: bankMatches, boosters: boosterShots)
+        if let data = try? JSONEncoder().encode(results) { defaults.set(data, forKey: "levelResults-\(index)") }
         defaults.set(won, forKey: "lastWon-\(index)")
         defaults.set(max(0, shotsRemaining), forKey: "lastRemaining-\(index)")
         markSaved()
     }
+    func levelResults(_ index: Int) -> LevelPlayResults {
+        guard let data = defaults.data(forKey: "levelResults-\(index)"),
+              let result = try? JSONDecoder().decode(LevelPlayResults.self, from: data),
+              result.version == LevelPlayResults.balanceVersion else { return LevelPlayResults() }
+        return result
+    }
+    var collection: FestivalCollection {
+        guard let data = defaults.data(forKey: "festivalCollection"),
+              let value = try? JSONDecoder().decode(FestivalCollection.self, from: data) else { return FestivalCollection() }
+        return value
+    }
+    @discardableResult
+    func recordCollection(level: Int, stars: Int, boosters: Int, banks: Int) -> Set<ChallengeMedal> {
+        guard LevelCatalog.levels.indices.contains(level) else { return [] }
+        var value = collection
+        let before = value.medals[level] ?? []
+        value.recordWin(level: level, stars: stars, boosters: boosters, banks: banks)
+        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: "festivalCollection") }
+        return (value.medals[level] ?? []).subtracting(before)
+    }
+    func dismissConversation(area: Int) {
+        guard LevelCatalog.areas.indices.contains(area) else { return }
+        var value = collection; value.readConversations.insert(area)
+        if let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: "festivalCollection") }
+        markSaved()
+    }
+    func medals(for index: Int) -> Set<ChallengeMedal> {
+        var medals = collection.medals[index] ?? []
+        if stars(index) == 3 { medals.insert(.threeStars) }
+        return medals
+    }
+    func hasSouvenir(area: Int) -> Bool { stars(area * LevelCatalog.levelsPerArea + 9) > 0 }
+    func replayLevels(area: Int, filter: ReplayFilter) -> [Int] {
+        guard LevelCatalog.areas.indices.contains(area) else { return [] }
+        let medals = collection.medals
+        return (area * 10..<(area + 1) * 10).filter { index in
+            guard index <= unlockedLevel else { return false }
+            switch filter {
+            case .all: return true
+            case .stars: return stars(index) < 3
+            case .medals: return (medals[index] ?? []).count < ChallengeMedal.allCases.count
+            }
+        }
+    }
+    func hasLearnedObstacle(_ key: String) -> Bool { defaults.bool(forKey: "learned-obstacle-\(key)") }
+    func learnObstacle(_ key: String) { defaults.set(true, forKey: "learned-obstacle-\(key)") }
     var totalStars: Int { LevelCatalog.levels.reduce(0) { $0 + stars($1.index) } }
     var tutorialSeen: Bool {
         get { defaults.bool(forKey: "tutorialSeen") }

@@ -104,4 +104,31 @@ final class SideQuestNavigationTests: XCTestCase {
         XCTAssertNotNil(scene.childNode(withName: "//level-6"), "The numbered main route remains available independently")
     }
 
+    @MainActor
+    func testCompletedQuestDisplaysChosenRewardAndAcceptanceMeetsResident() throws {
+        let suite = "QuestDisplay-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
+        let progress = profiles.makeProgress()
+        progress.tutorialSeen = true
+        for level in 0..<6 { progress.recordVictory(index: level, score: 100, stars: 1) }
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
+        scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        scene.handleMenu(["start-adventure"])
+        scene.handleMenu(["quest-parcels"])
+        scene.handleMenu(["quest-accept"])
+        XCTAssertTrue(profiles.makeProgress().hasMet(FestivalHost.all[0]))
+        let adventure = profiles.makeProgress().adventure
+        let quest = FestivalQuest.all[0]
+        for level in 0..<3 { adventure.recordWin(level: level, play: QuestPlay(collected: [quest.id]), completedLevels: 6) }
+        adventure.chooseStyle(2, for: quest)
+        // Reload progress as the game does when selecting a player.
+        scene.handleMenu(["home"]); scene.handleMenu(["players"]); scene.handleMenu(["player-original"])
+        scene.handleMenu(["start-adventure"])
+        let reward = try XCTUnwrap(scene.childNode(withName: "//quest-display-parcels"))
+        XCTAssertNotNil(reward.parent?.childNode(withName: "courtyard-greeting"))
+    }
+
 }

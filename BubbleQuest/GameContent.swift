@@ -488,6 +488,11 @@ final class GameProgress {
         set { defaults.set(newValue, forKey: "firstMatchLearned") }
     }
     func hasLearned(_ kind: SpecialBubble) -> Bool { defaults.bool(forKey: "learned-\(kind.rawValue)") }
+    func nextSpecialLesson(in board: BubbleBoard) -> SpecialBubble? {
+        [SpecialBubble.lantern, .riverPearl, .blossomSpark].first {
+            board.specials.values.contains($0) && !hasLearned($0)
+        }
+    }
     func markLearned(_ kind: SpecialBubble) { defaults.set(true, forKey: "learned-\(kind.rawValue)") }
     func challengeWon(_ area: Int) -> Bool { defaults.bool(forKey: "challenge-\(area)") }
     func recordChallenge(_ area: Int) { if LevelCatalog.areas.indices.contains(area) { defaults.set(true, forKey: "challenge-\(area)") } }

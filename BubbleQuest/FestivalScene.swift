@@ -1305,7 +1305,7 @@ private extension FestivalScene {
         paragraph(completed ? quest.thanks : progress.adventure.accepted(quest) ? quest.conversation(step: progress.adventure.count(quest)) : quest.objectiveSummary, y: 430, parent: overlay)
         if completed {
             if let friend = Companion.all.first(where: { $0.unlockQuest == quest.id }) {
-                label(progress.unlocked(friend) ? "\(friend.name) has joined your buddies!" : "\(friend.name) joins after area \(friend.unlockAfter / LevelCatalog.levelsPerArea)", size: 15, point: CGPoint(x: 195, y: 357), parent: overlay)
+                label(progress.unlocked(friend) ? "\(friend.name) has joined your team!" : "\(friend.name) joins after area \(friend.unlockAfter / LevelCatalog.levelsPerArea)", size: 15, point: CGPoint(x: 195, y: 357), parent: overlay)
             }
             label("Choose a display color", size: 18, point: CGPoint(x: 195, y: 325), parent: overlay)
             for (index, color) in [UIColor.systemPink, .systemYellow, .systemTeal].enumerated() {
@@ -1411,7 +1411,7 @@ private extension FestivalScene {
         label("80% boosters • 20% keepsakes", size: 13, point: CGPoint(x: 195, y: 260), parent: overlay)
         label("and for each completed side quest.", size: 14, point: CGPoint(x: 195, y: 219), parent: overlay)
         label("Saved boosters: \(progress.adventure.rainbowGifts) rainbow • \(progress.adventure.bombGifts) bomb", size: 13, point: CGPoint(x: 195, y: 196), parent: overlay)
-        menuButton("Spin", name: "wheel-spin", point: CGPoint(x: 195, y: 165), parent: overlay)
+        menuButton("Spin", name: "wheel-spin", point: CGPoint(x: 195, y: 158), parent: overlay, height: 44)
         overlay.childNode(withName: "wheel-spin")?.alpha = progress.adventure.availableSpins > 0 ? 1 : 0.4
         menuButton("Back to the map", name: "quest-back", point: CGPoint(x: 195, y: 92), parent: overlay, height: 44)
     }
@@ -1440,7 +1440,7 @@ private extension FestivalScene {
         menuKind = "buddy-welcome"
         let overlay = makeMenu(background: LevelCatalog.areas[level / LevelCatalog.levelsPerArea].background)
         panel(width: 342, height: 74, point: CGPoint(x: 195, y: 729), parent: overlay)
-        label("A buddy joined the festival!", size: 25, point: CGPoint(x: 195, y: 727), parent: overlay)
+        label(buddy.kind == .human ? "New shooter unlocked!" : "New buddy unlocked!", size: 25, point: CGPoint(x: 195, y: 727), parent: overlay)
         if !UIAccessibility.isReduceMotionEnabled {
             for index in 0..<16 {
                 let piece = SKShapeNode(rectOf: CGSize(width: 5, height: 8))

@@ -75,7 +75,9 @@ extension GameLevel {
         let depth = initialBubbles.keys.map(\.row).max() ?? 0
         let buried = ordered.filter { $0.row > 0 && $0.row < max(2, depth - (index >= 40 ? 1 : 0)) }
         let candidates = objective == .ceiling ? ordered.filter { $0.row == 0 } : (buried.isEmpty ? ordered : buried)
-        let count = min(candidates.count, min(7, (objective == .charms ? 4 : isMilestone ? 4 : 3) + index / 60))
+        // Reaching the ceiling should leave non-target supports worth planning around.
+        let targetCount = objective == .ceiling ? (isMilestone ? 4 : min(5, 3 + index / 100)) : min(7, (objective == .charms ? 4 : 3) + index / 60)
+        let count = min(candidates.count, targetCount)
         let targets = Set((0..<count).map { candidates[$0 * candidates.count / count] })
         return PuzzleGoal(kind: objective, targets: targets)
     }

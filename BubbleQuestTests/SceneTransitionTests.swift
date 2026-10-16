@@ -160,4 +160,16 @@ final class SceneTransitionTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testPrizeWheelSupplyTextDoesNotOverlapSpinButton() throws {
+        try withScene { scene, _ in
+            scene.handleMenu(["start-adventure"])
+            scene.handleMenu(["open-wheel"])
+            let spin = try XCTUnwrap(scene.childNode(withName: "//wheel-spin"))
+            let overlay = try XCTUnwrap(spin.parent)
+            let supply = try XCTUnwrap(overlay.children.compactMap { $0 as? SKLabelNode }.first { $0.text?.hasPrefix("Saved boosters:") == true })
+            XCTAssertGreaterThan(supply.frame.minY - spin.calculateAccumulatedFrame().maxY, 8)
+        }
+    }
+
 }

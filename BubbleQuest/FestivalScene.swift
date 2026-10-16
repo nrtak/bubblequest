@@ -201,6 +201,7 @@ final class FestivalScene: SKScene {
         gameRoot.childNode(withName: "cancel-cue")?.isHidden = true
         guide.removeAllChildren()
         audio.suspend(!active)
+        if active { updateControlLayout() }
         updateMusic()
     }
 
@@ -555,7 +556,7 @@ final class FestivalScene: SKScene {
         level = progress.currentLevel
         mapArea = level / LevelCatalog.levelsPerArea
         gameRoot.removeAllActions()
-        if progress.checkpoint != nil { closeMenu(); startLevel(restoring: true) }
+        if progress.checkpoint != nil { resumeSavedPuzzle() }
         else { beginSelectedLevel() }
     }
 
@@ -879,12 +880,7 @@ final class FestivalScene: SKScene {
         if names.contains("game-menu") { showGameMenu(); return }
         if finished {
             guard names.contains("result-next") else { return }
-            if let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
-            if let completedQuest { showQuest(completedQuest); return }
-            if challengeMode && won { challengeMode = false; mapArea = level / LevelCatalog.levelsPerArea; showLevels(); return }
-            if won && level == LevelCatalog.levelCount - 1 { showEnding(); return }
-            if won { level += 1 }
-            beginSelectedLevel()
+            continueAfterResult()
             return
         }
         guard projectile == nil, !loadingBubble, !ceilingMoving else { return }
@@ -924,6 +920,17 @@ final class FestivalScene: SKScene {
         let lift = touch.location(in: self)
         guard let angle = aimGesture.end(at: BubblePoint(x: Double(lift.x), y: Double(lift.y))) else { return }
         launchShot(angle: angle)
+    }
+
+    internal func continueAfterResult() {
+        guard finished else { return }
+        // The result button promises the quest reward before any separate unlock notice.
+        if let completedQuest { showQuest(completedQuest); return }
+        if let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
+        if challengeMode && won { challengeMode = false; mapArea = level / LevelCatalog.levelsPerArea; showLevels(); return }
+        if won && level == LevelCatalog.levelCount - 1 { showEnding(); return }
+        if won { level += 1 }
+        beginSelectedLevel()
     }
 
     internal func launchShot(angle: Double) {
@@ -2247,12 +2254,25 @@ private extension FestivalScene {
         hasStartedPuzzle = true
         closeMenu()
         startLevel()
+        presentPuzzleIntroduction()
+    }
+
+    private func resumeSavedPuzzle() {
+        guard let saved = progress.checkpoint else { showLevels(); return }
+        hasStartedPuzzle = true
+        level = saved.level
+        closeMenu()
+        startLevel(restoring: true)
+        presentPuzzleIntroduction()
+    }
+
+    private func presentPuzzleIntroduction() {
         if !progress.tutorialSeen {
             tutorialPage = 0
             tutorialFromSettings = false
             returnMenu = "game"
             showTutorial()
-        } else if let special = board.specials.values.first, !progress.hasLearned(special) {
+        } else if let special = progress.nextSpecialLesson(in: board) {
             showSpecialHelp(special)
         }
     }
@@ -2417,6 +2437,7 @@ private extension FestivalScene {
     internal func handleMenu(_ incomingNames: [String]) {
         let names = menuKind == "map-buddies" ? FestivalMenuTargets.buddies(incomingNames) : incomingNames
         if wheelSpinning { return }
+        if names.contains("result-next") { continueAfterResult(); return }
         if names.contains("dialogue-back"), let host = introHost {
             if dialoguePage > 0 { dialoguePage -= 1; showHost(host) }
             else { introHost = nil; restoreMenu() }
@@ -2464,7 +2485,8 @@ private extension FestivalScene {
         if names.contains("new-buddy"), let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
         if names.contains("buddy-choose") || names.contains("buddy-later") {
             if let buddy = progress.pendingBuddy { if names.contains("buddy-choose") { progress.select(buddy) }; progress.welcome(buddy) }
-            if finished && won && level < LevelCatalog.levelCount - 1 && !challengeMode { level += 1; beginSelectedLevel() }
+            if finished, let completedQuest { showQuest(completedQuest) }
+            else if finished && won && level < LevelCatalog.levelCount - 1 && !challengeMode { level += 1; beginSelectedLevel() }
             else if finished { closeMenu() }
             else { showLevels() }
             return
@@ -2491,7 +2513,7 @@ private extension FestivalScene {
         if let name = names.first(where: { $0.hasPrefix("pin-") }), let pin = FestivalPrize(rawValue: String(name.dropFirst(4))) {
             progress.adventure.equip(pin); applyCompanionPins(); showAccessories(); return
         }
-        if names.contains("resume-play") { closeMenu(); startLevel(restoring: true); return }
+        if names.contains("resume-play") { resumeSavedPuzzle(); return }
         if names.contains("retry-confirm") { closeMenu(); startLevel(); return }
         if names.contains("retry-cancel") { closeMenu(); return }
         if names.contains("host-quests") { mapArea = introHost?.area ?? mapArea; showLevels(); return }
@@ -2500,7 +2522,7 @@ private extension FestivalScene {
         if names.contains("open-wheel") { questArea = mapArea; showWheel(); return }
         if names.contains("wheel-spin") { spinWheel(); return }
         if names.contains("start-continue") {
-            if progress.checkpoint != nil { level = progress.currentLevel; closeMenu(); startLevel(restoring: true) }
+            if progress.checkpoint != nil { resumeSavedPuzzle() }
             else { mapArea = progress.currentLevel / LevelCatalog.levelsPerArea; showLevels() }
             return
         }
@@ -2511,7 +2533,7 @@ private extension FestivalScene {
         }
         if names.contains("continue-stop") {
             level = progress.currentLevel
-            if progress.checkpoint != nil { closeMenu(); startLevel(restoring: true) }
+            if progress.checkpoint != nil { resumeSavedPuzzle() }
             else { challengeMode = false; beginSelectedLevel() }
             return
         }
@@ -2573,7 +2595,7 @@ private extension FestivalScene {
         else if let name = names.first(where: { $0.hasPrefix("level-") }), let selected = Int(name.dropFirst(6)), selected <= progress.unlockedLevel {
             level = selected
             challengeMode = false
-            if progress.checkpoint?.level == level { closeMenu(); startLevel(restoring: true) } else { beginSelectedLevel() }
+            if progress.checkpoint?.level == level { resumeSavedPuzzle() } else { beginSelectedLevel() }
         }
     }
 }

@@ -82,9 +82,9 @@ extension GameLevel {
     var initialArmor: Set<Cell> {
         guard index >= 20, ([2, 9].contains(index % 10) || (index >= 40 && [.lanterns, .charms].contains(objective))) else { return [] }
         let excluded = Set(initialSpecials.keys).union(goal.remaining)
+        let targetRow = goal.remaining.map(\.row).max() ?? 0
         let candidates = initialBubbles.keys.filter { $0.row > 0 && !excluded.contains($0) }
             .sorted { a, b in
-                let targetRow = goal.remaining.map(\.row).max() ?? 0
                 let da = abs(a.row - targetRow - 1), db = abs(b.row - targetRow - 1)
                 return da == db ? (a.row == b.row ? a.column < b.column : a.row < b.row) : da < db
             }

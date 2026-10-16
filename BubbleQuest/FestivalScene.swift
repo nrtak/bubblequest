@@ -651,8 +651,9 @@ final class FestivalScene: SKScene {
                 label("\(index + 1)", size: current ? 22 : 17, point: CGPoint(x: 0, y: -6), parent: stop)
                 if current {
                     let avatar = SKSpriteNode(texture: companionTexture(progress.selected(.human), frame: 0), size: CGSize(width: 42, height: 42))
-                    avatar.position.x = -52; stop.addChild(avatar)
-                    label("Next", size: 11, point: CGPoint(x: 50, y: -4), parent: stop)
+                    let side: CGFloat = point.x < 110 ? 1 : -1
+                    avatar.position.x = side * 52; stop.addChild(avatar)
+                    label("Next", size: 11, point: CGPoint(x: -side * 48, y: -4), parent: stop)
                 }
             }
             scrollMap(to: FestivalMapLayout.focusedOffset(local: progress.unlockedLevel - first))

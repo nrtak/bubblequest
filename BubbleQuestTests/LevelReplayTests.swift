@@ -14,7 +14,8 @@ final class LevelReplayTests: XCTestCase {
     // Harder boards may require saving a booster for a blocked support. Retry the
     // same queue and pressure schedule with different booster timing, not more shots.
     func testEveryLevelHasACompletionRouteWithTheActualShotQueue() {
-        for level in LevelCatalog.levels {
+        for base in LevelCatalog.levels {
+            let level = base.randomized(seed: UInt64(base.number) * 991)
             for pressureSeed in [UInt64(0), UInt64(level.number)] {
                 let cleared = [25, 600, 1000].contains { penalty in
                     hasClearingRoute(level: level, pressureSeed: pressureSeed, specialPenalty: penalty)

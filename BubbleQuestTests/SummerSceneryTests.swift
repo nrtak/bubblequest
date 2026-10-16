@@ -7,10 +7,10 @@ final class SummerSceneryTests: XCTestCase {
     func testLaterAreasUseNewSceneryAndMarkersStayInsideMap() {
         XCTAssertNil(SummerScenery.forArea(4))
         XCTAssertNil(SummerScenery.forArea(20))
-        for area in 5..<20 {
+        for area in 5..<10 {
             let scenery = SummerScenery.forArea(area)!
             XCTAssertEqual(LevelCatalog.areas[area].background, scenery.background)
-            XCTAssertTrue((area * 10..<area * 10 + 10).allSatisfy { LevelCatalog.level($0).background == scenery.background })
+            XCTAssertTrue((area * LevelCatalog.levelsPerArea..<(area + 1) * LevelCatalog.levelsPerArea).allSatisfy { LevelCatalog.level($0).background == scenery.background })
             XCTAssertEqual(scenery.markerPositions.count, 10)
             XCTAssertTrue(scenery.markerPositions.allSatisfy { (130...280).contains($0.x) && (235...600).contains($0.y) })
             XCTAssertGreaterThan(scenery.mapRegion.width, 0)
@@ -48,11 +48,12 @@ final class SummerSceneryTests: XCTestCase {
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         scene.handleMenu(["start-adventure"])
         for _ in 0..<20 { scene.handleMenu(["area-prev"]) }
-        for area in 0..<20 {
+        for area in 0..<10 {
             let overlay = try XCTUnwrap(scene.children.last)
-            XCTAssertEqual(overlay.childNode(withName: "neighbors") != nil, FestivalNeighbor.all.contains { $0.area == area })
-            if area >= 5, let neighbor = FestivalNeighbor.all.first(where: { $0.area == area }) {
-                XCTAssertNotNil(overlay.childNode(withName: "neighbor-\(neighbor.id)"))
+            XCTAssertNil(overlay.childNode(withName: "neighbors"))
+            XCTAssertNotNil(overlay.childNode(withName: "courtyard-resident"))
+            if area >= 5 {
+                XCTAssertNotNil(overlay.childNode(withName: "courtyard-resident"))
             }
             scene.handleMenu(["area-next"])
         }

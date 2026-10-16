@@ -3,7 +3,8 @@ import XCTest
 
 final class CampaignStressTests: XCTestCase {
     func testAllLevelsAcrossVariedQueuesAndPressureRemainValidAndSaveable() throws {
-        for level in LevelCatalog.levels {
+        for base in LevelCatalog.levels {
+            let level = base.randomized(seed: UInt64(base.number) * 151)
             for seed in 1...8 {
                 var random = LevelReplayTests.SeededRandom(state: UInt64(seed * 997 + level.number))
                 var board = level.board

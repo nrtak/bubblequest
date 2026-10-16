@@ -20,20 +20,21 @@ final class FestivalCollectionTests: XCTestCase {
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
         let progress = GameProgress(defaults: defaults)
-        defaults.set(12, forKey: "unlockedLevel")
+        defaults.set(22, forKey: "unlockedLevel")
+        for level in 0..<20 { defaults.set(3, forKey: "stars-\(level)") }
         defaults.set(3, forKey: "stars-9")
         XCTAssertTrue(progress.hasSouvenir(area: 0))
         XCTAssertFalse(progress.hasSouvenir(area: 1))
         XCTAssertEqual(progress.medals(for: 9), [.threeStars])
-        XCTAssertEqual(progress.replayLevels(area: 1, filter: .all), [10, 11, 12])
-        XCTAssertEqual(progress.replayLevels(area: 1, filter: .stars), [10, 11, 12])
-        _ = progress.recordCollection(level: 10, stars: 3, boosters: 0, banks: 3)
-        XCTAssertFalse(progress.replayLevels(area: 1, filter: .medals).contains(10))
-        XCTAssertEqual(progress.recordCollection(level: 10, stars: 3, boosters: 0, banks: 3), [])
+        XCTAssertEqual(progress.replayLevels(area: 1, filter: .all), [20, 21, 22])
+        XCTAssertEqual(progress.replayLevels(area: 1, filter: .stars), [20, 21, 22])
+        _ = progress.recordCollection(level: 20, stars: 3, boosters: 0, banks: 3)
+        XCTAssertFalse(progress.replayLevels(area: 1, filter: .medals).contains(20))
+        XCTAssertEqual(progress.recordCollection(level: 20, stars: 3, boosters: 0, banks: 3), [])
         progress.dismissConversation(area: 0)
         let restored = GameProgress(defaults: defaults)
         XCTAssertTrue(restored.collection.readConversations.contains(0))
-        XCTAssertEqual(restored.collection.medals[10]?.count, 3)
+        XCTAssertEqual(restored.collection.medals[20]?.count, 3)
         XCTAssertTrue(restored.replayLevels(area: 99, filter: .all).isEmpty)
     }
 
@@ -55,7 +56,7 @@ final class FestivalCollectionTests: XCTestCase {
     }
 
     func testSouvenirTokensLeaveTheLevelMarkersAndLeftHandMapControlsClear() throws {
-        for area in 5..<20 {
+        for area in 5..<10 {
             let markers = try XCTUnwrap(SummerScenery.forArea(area)).markerPositions
             let token = try XCTUnwrap(FestivalMapLayout.souvenirPosition(markers: markers))
             XCTAssertGreaterThanOrEqual(token.x, 160)

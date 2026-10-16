@@ -18,7 +18,7 @@ final class OperatorArmTests: XCTestCase {
             var play = QuestPlay()
             play.collected.insert(quest.id); play.bounces = 1; play.dropped = 1
             play.colors = Set(0..<6)
-            for level in quest.area * 10..<quest.area * 10 + quest.steps.count {
+            for level in quest.area * LevelCatalog.levelsPerArea..<quest.area * LevelCatalog.levelsPerArea + quest.steps.count {
                 progress.adventure.recordWin(level: level, play: play, completedLevels: 200)
             }
         }

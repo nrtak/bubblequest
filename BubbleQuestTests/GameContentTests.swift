@@ -5,18 +5,24 @@ import SpriteKit
 
 final class GameContentTests: XCTestCase {
     @MainActor
-    func testAllTwentyMapPagesOpenAndShowTheirLevels() {
-        let scene = FestivalScene(size: CGSize(width: 390, height: 844))
+    func testAllTenCourtyardsShowTwentyLevels() {
+        let suite = "CourtyardPages-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
+        profiles.makeProgress().recordVictory(index: 199, score: 100, stars: 1)
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         scene.handleMenu(["start-adventure"])
         for _ in 0..<20 { scene.handleMenu(["area-prev"]) }
-        for area in 0..<20 {
+        for area in LevelCatalog.areas.indices {
             let overlay = scene.children.last!
             let headings = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
-            XCTAssertTrue(headings.contains { $0.hasPrefix("Area \(area + 1)/20") })
+            XCTAssertTrue(headings.contains { $0.hasPrefix("Area \(area + 1)/10") })
             let markers = overlay.children.flatMap { $0.children.compactMap { ($0 as? SKLabelNode)?.text } }
-            XCTAssertTrue(markers.contains("\(area * 10 + 1)"))
-            XCTAssertTrue(markers.contains("\(area * 10 + 10)"))
+            XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 1)"))
+            XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 10)"))
             scene.handleMenu(["area-next"])
         }
     }
@@ -32,7 +38,7 @@ final class GameContentTests: XCTestCase {
     }
 
     func testExpandedCampaignMigratesOldFinaleAndPersistsLateProgress() throws {
-        XCTAssertEqual(LevelCatalog.areas.count, 20)
+        XCTAssertEqual(LevelCatalog.areas.count, 10)
         XCTAssertEqual(LevelCatalog.levels.last?.number, 200)
         XCTAssertEqual(LevelCatalog.maximumStars, 600)
         let suite = "BubbleQuestCampaign-\(UUID().uuidString)"
@@ -46,7 +52,7 @@ final class GameContentTests: XCTestCase {
         XCTAssertEqual(progress.stars(49), 3)
         XCTAssertEqual(progress.bestScore(49), 750)
         progress.recordVictory(index: 198, score: 500, stars: 2)
-        progress.recordChallenge(19)
+        progress.recordChallenge(9)
         let last = LevelCatalog.level(199)
         progress.save(GameCheckpoint(level: 199, board: last.board, shots: last.shots,
                                      score: 0, current: 0, next: 1, bag: [], rainbow: 1, bomb: 1, play: QuestPlay()))
@@ -54,7 +60,7 @@ final class GameContentTests: XCTestCase {
         XCTAssertEqual(reopened.unlockedLevel, 199)
         XCTAssertEqual(reopened.currentLevel, 199)
         XCTAssertNotNil(reopened.checkpoint?.board)
-        XCTAssertTrue(reopened.challengeWon(19))
+        XCTAssertTrue(reopened.challengeWon(9))
         XCTAssertEqual(LevelCatalog.level(999).index, 199)
     }
 
@@ -108,9 +114,9 @@ final class GameContentTests: XCTestCase {
 
     func testAreaMechanicsBuildFromSingleTypesToCombinations() {
         XCTAssertTrue(LevelCatalog.level(8).initialSpecials.isEmpty)
-        XCTAssertEqual(Set(LevelCatalog.level(22).initialSpecials.values), [.lantern])
-        XCTAssertTrue(Set(LevelCatalog.level(36).initialSpecials.values).isSuperset(of: [.lantern, .riverPearl]))
-        XCTAssertEqual(Set(LevelCatalog.level(48).initialSpecials.values), [.lantern, .riverPearl, .blossomSpark])
+        XCTAssertEqual(Set(LevelCatalog.level(42).initialSpecials.values), [.lantern])
+        XCTAssertTrue(Set(LevelCatalog.level(66).initialSpecials.values).isSuperset(of: [.lantern, .riverPearl]))
+        XCTAssertEqual(Set(LevelCatalog.level(88).initialSpecials.values), [.lantern, .riverPearl, .blossomSpark])
     }
 
     func testEveryRuntimeImageAndAudioCueIsBundled() {

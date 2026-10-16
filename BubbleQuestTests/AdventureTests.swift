@@ -8,9 +8,9 @@ final class AdventureTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let progress = GameProgress(defaults: defaults)
         XCTAssertNil(progress.pendingBuddy)
-        for index in 0..<5 { progress.recordVictory(index: index, score: 100, stars: 1) }
-        XCTAssertEqual(GameProgress(defaults: defaults).pendingBuddy?.id, "haru")
-        progress.welcome(progress.pendingBuddy!)
+        for index in 0..<20 { progress.recordVictory(index: index, score: 100, stars: 1) }
+        XCTAssertEqual(GameProgress(defaults: defaults).pendingBuddy?.id, "white-shiba")
+        while let buddy = progress.pendingBuddy { progress.welcome(buddy) }
         XCTAssertNil(GameProgress(defaults: defaults).pendingBuddy)
         progress.toggleSound()
         XCTAssertTrue(GameProgress(defaults: defaults).soundMuted)
@@ -25,15 +25,15 @@ final class AdventureTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let adventure = AdventureProgress(defaults: defaults)
         let quest = FestivalQuest.all.first { $0.id == "lanterns" }!
-        adventure.accept(quest, unlockedLevel: 20)
+        adventure.accept(quest, unlockedLevel: 40)
         var play = QuestPlay(); play.collected.insert(quest.id)
-        for index in 20..<23 { adventure.recordWin(level: index, play: play, completedLevels: 3) }
+        for index in 40..<43 { adventure.recordWin(level: index, play: play, completedLevels: 3) }
         adventure.chooseStyle(2, for: quest)
         let restored = AdventureProgress(defaults: defaults)
         XCTAssertTrue(restored.completed(quest))
         XCTAssertEqual(restored.style(quest), 2)
         XCTAssertEqual(restored.availableSpins, 1)
-        XCTAssertTrue(restored.recordWin(level: 23, play: play, completedLevels: 3).isEmpty)
+        XCTAssertTrue(restored.recordWin(level: 43, play: play, completedLevels: 3).isEmpty)
         XCTAssertEqual(restored.availableSpins, 1)
     }
 
@@ -76,7 +76,7 @@ final class AdventureTests: XCTestCase {
         let shin = FestivalNeighbor.all.first { $0.id == "shin" }!
         progress.markMet(aya)
         XCTAssertFalse(progress.hasMet(aya), "Locked neighbors cannot be marked as met")
-        for index in 0..<10 { progress.recordVictory(index: index, score: 100, stars: 1) }
+        for index in 0..<20 { progress.recordVictory(index: index, score: 100, stars: 1) }
         XCTAssertTrue(progress.neighborIsAvailable(aya))
         XCTAssertFalse(progress.neighborIsAvailable(shin))
         progress.markMet(aya)
@@ -95,7 +95,7 @@ final class AdventureTests: XCTestCase {
         let haru = newFriends.first { $0.id == "haru" }!
         for _ in 0..<5 { progress.recordVictory(index: 0, score: 100, stars: 3) }
         XCTAssertFalse(progress.unlocked(haru), "Replays must not count as new level clears")
-        for index in 1..<5 { progress.recordVictory(index: index, score: 100, stars: 3) }
+        for index in 1..<20 { progress.recordVictory(index: index, score: 100, stars: 3) }
         XCTAssertTrue(progress.unlocked(haru))
         let mei = newFriends.first { $0.id == "mei" }!
         progress.select(mei)
@@ -108,6 +108,8 @@ final class AdventureTests: XCTestCase {
         progress.adventure.recordWin(level: 0, play: play, completedLevels: 5)
         XCTAssertFalse(progress.unlocked(mei), "Repeated quest puzzles must not advance the story")
         progress.adventure.recordWin(level: 2, play: play, completedLevels: 5)
+        XCTAssertFalse(progress.unlocked(mei), "Quest rewards wait for the area's character milestone")
+        for index in 20..<40 { progress.recordVictory(index: index, score: 100, stars: 1) }
         XCTAssertTrue(progress.unlocked(mei))
         progress.select(mei)
         XCTAssertEqual(GameProgress(defaults: defaults).selected(.human).id, "mei")

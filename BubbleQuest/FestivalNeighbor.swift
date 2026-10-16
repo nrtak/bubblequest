@@ -14,7 +14,7 @@ struct FestivalNeighbor {
                          introduction: "I'm Miki. I brought tea from the countryside for our little market. Follow the path whenever you're ready!",
                          greeting: "The kettle is warm and the market is bustling. It's lovely to see you again."),
         FestivalNeighbor(id: "toma", name: "Toma", role: "Toy boat maker", area: 0, portraitIndex: 1,
-                         introduction: "Hi, I'm Toma! I make tiny boats that sail across the summer pond. Shiba likes watching them drift past.",
+                         introduction: "Hi, I'm Toma! I make tiny boats that sail across the summer pond. They look lovely drifting past the stalls.",
                          greeting: "I've been testing a new little boat. Perhaps we'll sail it together after your next puzzle."),
         FestivalNeighbor(id: "chiyo", name: "Chiyo", role: "Courtyard gardener", area: 1, portraitIndex: 2,
                          introduction: "I'm Chiyo. I've cared for this courtyard for years. Ren's pinwheels look wonderful among the flowers, don't they?",

@@ -14,12 +14,25 @@ final class LevelReplayTests: XCTestCase {
     // Harder boards may require saving a booster for a blocked support. Retry the
     // same queue and pressure schedule with different booster timing, not more shots.
     func testEveryLevelHasACompletionRouteWithTheActualShotQueue() {
-        for level in LevelCatalog.levels {
+        for base in LevelCatalog.levels {
+            let level = base.randomized(seed: UInt64(base.number) * 991)
             for pressureSeed in [UInt64(0), UInt64(level.number)] {
                 let cleared = [25, 600, 1000].contains { penalty in
                     hasClearingRoute(level: level, pressureSeed: pressureSeed, specialPenalty: penalty)
                 }
                 XCTAssertTrue(cleared, "Level \(level.number) needs a better layout or shot budget")
+            }
+        }
+    }
+
+    func testDifficultyMilestonesHaveRoutesAcrossDifferentLayouts() {
+        for index in [0, 19, 39, 59, 79, 99, 139, 179, 199] {
+            for seed in 1...4 {
+                let level = LevelCatalog.level(index).randomized(seed: UInt64(seed))
+                let cleared = [25, 600, 1000].contains {
+                    hasClearingRoute(level: level, pressureSeed: UInt64(seed), specialPenalty: $0)
+                }
+                XCTAssertTrue(cleared, "Level \(index + 1), layout seed \(seed) needs balance adjustment")
             }
         }
     }

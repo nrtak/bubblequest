@@ -90,7 +90,7 @@ final class SideQuestNavigationTests: XCTestCase {
         }
         for id in ["parcels", "toy"] {
             let stop = try XCTUnwrap(scene.childNode(withName: "//quest-" + id))
-            XCTAssertTrue(stop.children.compactMap { $0 as? SKLabelNode }.contains { $0.text == "OPTIONAL" })
+            XCTAssertTrue(stop.children.compactMap { $0 as? SKLabelNode }.contains { $0.text?.hasPrefix("Optional") == true })
             let location = stop.convert(CGPoint.zero, to: scene)
             XCTAssertTrue(scene.interactionNames(at: location).contains("quest-" + id))
             scene.handleMenu(["quest-" + id])

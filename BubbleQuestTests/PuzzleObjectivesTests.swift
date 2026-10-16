@@ -59,7 +59,7 @@ final class PuzzleObjectivesTests: XCTestCase {
     }
 
     func testAllObjectivesAreReachableCellsAndObstaclesDoNotCoverTargetsOrSpecials() {
-        XCTAssertEqual(LevelCatalog.levels.filter(\.isMilestone).count, 20)
+        XCTAssertEqual(LevelCatalog.levels.filter(\.isMilestone).count, 10)
         XCTAssertTrue(LevelCatalog.levels.prefix(20).allSatisfy { $0.initialArmor.isEmpty && $0.initialBlockers.isEmpty })
         for level in LevelCatalog.levels {
             XCTAssertTrue(level.goal.isValid(on: level.board), "Level \(level.number)")

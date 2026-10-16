@@ -10,7 +10,7 @@ struct FestivalQuest {
     let steps: [String]
     let goals: [Goal]
     let thanks: String
-    var unlockLevel: Int { id == "parcels" ? 3 : id == "toy" ? 6 : area * 10 }
+    var unlockLevel: Int { id == "parcels" ? 3 : id == "toy" ? 6 : area * LevelCatalog.levelsPerArea }
     var rewardSymbol: String { id == "toy" ? "star.fill" : "gift.fill" }
     var rewardSummary: String {
         if id == "toy" { return "Star pin + free spin" }
@@ -19,7 +19,7 @@ struct FestivalQuest {
     var objectiveSummary: String {
         switch id {
         case "parcels": return "Find parcel tags in three market puzzles."
-        case "toy": return "Find clues in three market puzzles to recover Shiba's toy."
+        case "toy": return "Help Hana recover a missing toy in three market puzzles."
         case "pinwheels": return "Win three courtyard puzzles using wall bounces and bubble drops."
         case "lanterns": return "Recover charms in three lantern street puzzles."
         case "picnic": return "Win three riverside puzzles and make a bubble drop."
@@ -34,7 +34,7 @@ struct FestivalQuest {
         case "pinwheels": return step == 1 ? "That clever bounce gave us our first pinwheel. Let's send a group tumbling!" : "The garden is coming together. One more clever bounce will finish it."
         case "picnic": return step == 1 ? "The cloth is ready by the river. Can you help bring down our basket?" : "Our basket is packed. Let's gather the last surprise for our friends."
         case "sparks": return step == 1 ? "Those blue sparks are lovely. Let's add a little coral glow." : "A touch of gold will make our rehearsal shine!"
-        default: return step == 1 ? "Those little paw prints lead past Hana's stall. Shiba is getting excited!" : "A scrap of ribbon! Shiba thinks the toy must be very close."
+        default: return step == 1 ? "The first clue leads past my stall. Let's follow it!" : "A scrap of ribbon! The missing toy must be close."
         }
     }
     func artifact(step: Int) -> String {
@@ -65,10 +65,10 @@ struct FestivalQuest {
                       invitation: "Let's gather three colors for a little fireworks rehearsal.",
                       steps: ["Win after clearing blue sparks", "Win after clearing coral sparks", "Win after clearing golden sparks"],
                       goals: [.color(2), .color(0), .color(1)], thanks: "What beautiful colors! Pick the glow for our finale."),
-        FestivalQuest(id: "toy", title: "Shiba's lost toy", area: 0, symbol: "pawprint.fill",
-                      invitation: "Shiba left a favorite toy somewhere along the market path. Follow the little clues!",
-                      steps: ["Find the first paw-print clue", "Follow the next paw-print clue", "Find Shiba's favorite toy"],
-                      goals: [.clear, .clear, .clear], thanks: "You found it! Shiba has a new lucky star pin and a big thank-you." )
+        FestivalQuest(id: "toy", title: "Hana's missing toy", area: 0, symbol: "tennisball.fill",
+                      invitation: "A little toy went missing along the market path. Can you help me follow the clues?",
+                      steps: ["Find the first clue", "Follow the next clue", "Recover the missing toy"],
+                      goals: [.clear, .clear, .clear], thanks: "You found it! Please take this lucky star pin as a thank-you." )
     ]
 }
 
@@ -150,8 +150,8 @@ final class AdventureProgress {
     func nextLevel(_ quest: FestivalQuest, unlockedLevel: Int) -> Int? {
         guard available(quest, unlockedLevel: unlockedLevel) else { return nil }
         let used = state.wins[quest.id] ?? []
-        if unlockedLevel / 10 == quest.area && !used.contains(unlockedLevel) { return unlockedLevel }
-        return (quest.area * 10..<quest.area * 10 + 10).first {
+        if unlockedLevel / LevelCatalog.levelsPerArea == quest.area && !used.contains(unlockedLevel) { return unlockedLevel }
+        return (quest.area * LevelCatalog.levelsPerArea..<quest.area * LevelCatalog.levelsPerArea + LevelCatalog.levelsPerArea).first {
             $0 <= unlockedLevel && !(state.wins[quest.id] ?? []).contains($0)
         }
     }
@@ -175,7 +175,7 @@ final class AdventureProgress {
         guard LevelCatalog.levels.indices.contains(level) else { return [] }
         state.completedLevels = max(state.completedLevels, completedLevels)
         var newlyFinished: [FestivalQuest] = []
-        for quest in FestivalQuest.all where accepted(quest) && !completed(quest) && quest.area == level / 10 {
+        for quest in FestivalQuest.all where accepted(quest) && !completed(quest) && quest.area == level / LevelCatalog.levelsPerArea {
             let previous = state.wins[quest.id] ?? []
             guard !previous.contains(level) else { continue }
             let goal = quest.goals[previous.count]

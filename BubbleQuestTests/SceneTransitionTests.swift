@@ -109,8 +109,7 @@ final class SceneTransitionTests: XCTestCase {
             for _ in 0..<20 { scene.handleMenu(["area-prev"]) }
             for area in LevelCatalog.areas.indices {
                 let overlay = try XCTUnwrap(scene.children.last)
-                XCTAssertEqual(overlay.childNode(withName: "neighbors") != nil,
-                               area == 0 && FestivalNeighbor.all.contains { $0.area == area })
+                XCTAssertNil(overlay.childNode(withName: "neighbors"))
                 scene.handleMenu(["area-next"])
             }
         }

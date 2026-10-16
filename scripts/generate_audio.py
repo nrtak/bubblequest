@@ -10,13 +10,13 @@ ROOT = pathlib.Path(__file__).resolve().parents[1] / 'BubbleQuest'
 # Root MIDI note, tempo, melody (pentatonic degrees; -1 is a rest), lead voice.
 TRACKS = {
     'music-menu': (60, 94, [0, 2, 4, 2, 1, 0, -1, 1, 2, 4, 5, 4, 2, 1, 2, -1], 'bell'),
-    'music-map': (62, 90, [0, -1, 1, 2, 4, 2, 1, -1, 2, 3, 4, -1, 3, 1, 0, -1], 'flute'),
+    'music-map': (62, 104, [0, -1, 1, 2, 4, 2, 1, -1, 2, 3, 4, -1, 3, 1, 0, -1], 'flute'),
     'music-day': (60, 104, [0, 1, 2, -1, 4, 2, 1, 0, 2, 4, 5, 4, 2, -1, 1, 2], 'pluck'),
-    'music-evening': (57, 92, [2, -1, 4, 3, 2, 1, 0, -1, 1, 2, 4, -1, 3, 2, 1, 0], 'bell'),
+    'music-evening': (60, 100, [2, -1, 4, 3, 2, 1, 0, -1, 1, 2, 4, -1, 3, 2, 1, 0], 'bell'),
     'music-water': (65, 96, [4, 2, 1, -1, 0, 1, 2, -1, 3, 4, 5, 4, 2, 1, 2, -1], 'flute'),
-    'music-countryside': (67, 88, [0, 2, -1, 1, 2, 3, 2, -1, 4, 3, 2, 1, 0, -1, 1, 0], 'pluck'),
+    'music-countryside': (67, 100, [0, 2, -1, 1, 2, 3, 2, -1, 4, 3, 2, 1, 0, -1, 1, 0], 'pluck'),
     'music-challenge': (62, 112, [0, 2, 1, 3, 2, -1, 4, 2, 1, 3, 2, 4, 5, 4, 2, -1], 'pluck'),
-    'music-story': (60, 78, [2, -1, 1, -1, 0, 2, -1, -1, 1, -1, 3, 2, 1, -1, 0, -1], 'flute'),
+    'music-story': (60, 92, [2, -1, 1, -1, 0, 2, -1, -1, 1, -1, 3, 2, 1, -1, 0, -1], 'flute'),
 }
 
 
@@ -65,20 +65,30 @@ def render_track(name, root, tempo, melody, voice):
     duration = 24 * 4 * beat
     buffer = array.array('f', [0]) * (round(duration * RATE) * 2)
     scale = [0, 2, 4, 7, 9]
-    chords = [(0, 4, 7), (-3, 0, 4), (-5, -1, 2), (-7, -3, 0)]
+    chords = [(0, 4, 7), (5, 9, 12), (7, 11, 14), (0, 4, 7)]
     rng = random.Random(name)
     for bar in range(24):
         chord = chords[(bar // 2) % 4]
         start = bar * 4 * beat
         for j, note in enumerate(chord):
             add_note(buffer, start + j * .025, beat * 3.5, root + note, .042, 'flute', (j - 1) * .7)
-        for pulse in [0, 2]:
-            add_note(buffer, start + pulse * beat, beat * 1.3, root + chord[0] - 12, .10, 'pluck', -.1)
+        for pulse, bass in enumerate([chord[0], chord[2], chord[0] + 12, chord[1]]):
+            add_note(buffer, start + pulse * beat, beat * .68, root + bass - 24, .085, 'pluck', -.1)
+        # A quiet bouncing accompaniment fills the spaces without masking bubble cues.
+        for pulse in range(8):
+            add_note(buffer, start + (pulse + .5) * beat / 2, beat * .36,
+                     root + chord[pulse % 3] + 12, .026, 'bell', -.45)
+        if bar % 4 in [1, 3]:
+            for pulse, degree in [(2.5, 2), (3.5, 4)]:
+                add_note(buffer, start + pulse * beat, beat * .4,
+                         root + 12 + scale[degree], .035, 'pluck', -.6)
         # A / B / A' phrases leave space between melody notes and change register gently.
         phrase = bar // 8
         for step in range(4):
             degree = melody[(bar % 8 * 2 + step) % len(melody)]
-            if degree < 0 or (phrase == 1 and step == 3):
+            if degree < 0:
+                degree = (bar + step) % 3 if step == 3 else -1
+            if degree < 0:
                 continue
             if phrase == 1:
                 degree = (degree + 2) % 7
@@ -88,6 +98,16 @@ def render_track(name, root, tempo, melody, voice):
         for step in [1, 3]:
             add_note(buffer, start + (step + .5) * beat, beat * .45, root + chord[1] + 12, .038, 'pluck', -.5)
         if name != 'music-story':
+            # Soft low drum and rim taps add motion, with no sharp cymbal or heavy beat.
+            for pulse in [0, 2]:
+                offset = round((start + pulse * beat) * RATE)
+                for i in range(int(.10 * RATE)):
+                    t = i / RATE
+                    value = math.sin(2 * math.pi * (70 * t - 100 * t * t)) * math.exp(-t * 38) * .045
+                    at = ((offset + i) % (len(buffer) // 2)) * 2
+                    buffer[at] += value; buffer[at + 1] += value
+            for pulse in [1, 3]:
+                add_note(buffer, start + pulse * beat, .055, root + 24, .025, 'pluck', .3)
             for step in range(4):
                 offset = round((start + (step + .5) * beat) * RATE)
                 previous = 0

@@ -1455,7 +1455,7 @@ private extension FestivalScene {
         panel(width: 342, height: 147, point: CGPoint(x: 195, y: 351), parent: overlay)
         label(buddy.name, size: 28, point: CGPoint(x: 195, y: 389), parent: overlay)
         paragraph("Hi! I'd love to help you bring more color to the festival. Let's pop some bubbles together!", y: 341, parent: overlay)
-        menuButton("Choose this buddy", name: "buddy-choose", point: CGPoint(x: 195, y: 201), parent: overlay, height: 52)
+        menuButton(buddy.kind == .human ? "Choose shooter" : "Choose buddy", name: "buddy-choose", point: CGPoint(x: 195, y: 201), parent: overlay, height: 52)
         menuButton("Maybe later", name: "buddy-later", point: CGPoint(x: 195, y: 128), parent: overlay, height: 48)
     }
 
@@ -1646,13 +1646,13 @@ private extension FestivalScene {
         menuKind = "accessories"
         let overlay = makeMenu(background: "festival-courtyard")
         panel(width: 342, height: 160, point: CGPoint(x: 195, y: 690), parent: overlay)
-        label("Buddy pins", size: 30, point: CGPoint(x: 195, y: 728), parent: overlay)
+        label("Team pins", size: 30, point: CGPoint(x: 195, y: 728), parent: overlay)
         paragraph("Little gifts from the festival prize wheel and our friends.", y: 651, parent: overlay)
         menuButton("No pin", name: "pin-none", point: CGPoint(x: 195, y: 550), parent: overlay)
         for (index, prize) in progress.adventure.unlockedPins.enumerated() {
             menuButton(prize.title + (progress.adventure.equippedPin == prize ? " ✓" : ""), name: "pin-\(prize.rawValue)", point: CGPoint(x: 195, y: 478 - CGFloat(index) * 72), parent: overlay)
         }
-        menuButton("Buddies", name: "accessory-back", point: CGPoint(x: 195, y: 120), parent: overlay, height: 44)
+        menuButton("Back to Team", name: "accessory-back", point: CGPoint(x: 195, y: 120), parent: overlay, height: 44)
     }
 
     func companionTexture(_ friend: Companion, frame: Int, glance: Bool = false) -> SKTexture {

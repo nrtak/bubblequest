@@ -25,6 +25,21 @@ final class SideQuestNavigationTests: XCTestCase {
         XCTAssertTrue(restored.available(first, unlockedLevel: 0), "Previously accepted quests remain available")
     }
 
+    func testQuestIntroductionIsDelayedAndOnlyShownOncePerPlayer() throws {
+        let suite = "QuestIntroduction-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let adventure = AdventureProgress(defaults: defaults)
+        XCTAssertNil(adventure.takeMapIntroduction(unlockedLevel: 2, area: 0))
+        XCTAssertEqual(adventure.takeMapIntroduction(unlockedLevel: 3, area: 0)?.id, "parcels")
+        XCTAssertNil(AdventureProgress(defaults: defaults).takeMapIntroduction(unlockedLevel: 6, area: 0))
+        XCTAssertFalse(adventure.accepted(FestivalQuest.all[0]))
+        for quest in FestivalQuest.all {
+            XCTAssertFalse(quest.objectiveSummary.isEmpty)
+            XCTAssertTrue(quest.rewardSummary.contains("spin"))
+        }
+    }
+
     @MainActor
     func testBackFromHostAndQuestNeverAcceptsTheRequest() throws {
         let suite = "SideQuestBack-\(UUID().uuidString)"
@@ -72,7 +87,8 @@ final class SideQuestNavigationTests: XCTestCase {
             let location = stop.convert(CGPoint.zero, to: scene)
             XCTAssertTrue(scene.interactionNames(at: location).contains("quest-" + id))
             scene.handleMenu(["quest-" + id])
-            XCTAssertNotNil(scene.childNode(withName: "//quest-dialogue-back"))
+            let later = try XCTUnwrap(scene.childNode(withName: "//quest-dialogue-back"))
+            XCTAssertTrue(later.children.compactMap { $0 as? SKLabelNode }.contains { $0.text == "Maybe later" })
             scene.handleMenu(["quest-dialogue-back"])
             XCTAssertNotNil(scene.childNode(withName: "//quest-" + id), "Leaving a quest keeps its map branch available")
         }

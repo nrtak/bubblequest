@@ -147,4 +147,20 @@ final class AdventureTests: XCTestCase {
         XCTAssertGreaterThan(helpful, 740)
         XCTAssertLessThan(helpful, 860)
     }
+    func testSpecialLessonsSkipKnownTypesAndUseAStableOrder() {
+        let suite = "SpecialLessons-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let progress = GameProgress(defaults: defaults)
+        let board = LevelCatalog.level(88).board
+        XCTAssertEqual(progress.nextSpecialLesson(in: board), .lantern)
+        progress.markLearned(.lantern)
+        XCTAssertEqual(progress.nextSpecialLesson(in: board), .riverPearl)
+        progress.markLearned(.riverPearl)
+        XCTAssertEqual(progress.nextSpecialLesson(in: board), .blossomSpark)
+        progress.markLearned(.blossomSpark)
+        XCTAssertNil(progress.nextSpecialLesson(in: board))
+        XCTAssertNil(progress.nextSpecialLesson(in: LevelCatalog.level(0).board))
+    }
+
 }

@@ -172,4 +172,97 @@ final class SceneTransitionTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testForegroundingRefreshesMotionAfterSettingsChange() throws {
+        try withScene { scene, _ in
+            let human = try XCTUnwrap(scene.childNode(withName: "//companion-1"))
+            scene.setActive(false)
+            scene.updateCompanionMotion(quiet: true)
+            XCTAssertNil(human.action(forKey: "expression"))
+            scene.setActive(true)
+            if UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled {
+                XCTAssertNil(human.action(forKey: "expression"))
+            } else {
+                XCTAssertNotNil(human.action(forKey: "expression"))
+            }
+        }
+    }
+
+    @MainActor
+    func testResumingAnInterruptedTutorialKeepsThePuzzleAndShowsInstructions() throws {
+        let suite = "InterruptedTutorial-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
+        let first = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
+        first.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        first.handleMenu(["continue-stop"])
+        XCTAssertNotNil(first.childNode(withName: "//tutorial-next"))
+        first.setActive(false)
+        let saved = try XCTUnwrap(profiles.makeProgress().checkpoint)
+        let reopened = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
+        reopened.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        reopened.handleMenu(["start-continue"])
+        XCTAssertNotNil(reopened.childNode(withName: "//tutorial-next"))
+        XCTAssertFalse(profiles.makeProgress().tutorialSeen)
+        XCTAssertEqual(profiles.makeProgress().checkpoint?.layoutSeed, saved.layoutSeed)
+        XCTAssertEqual(profiles.makeProgress().checkpoint?.board?.bubbles, saved.board?.bubbles)
+        XCTAssertEqual(profiles.makeProgress().checkpoint?.shots, saved.shots)
+    }
+
+    @MainActor
+    func testResumeExplainsAnUnlearnedSpecialAlongsideKnownBubbles() throws {
+        let suite = "ResumeSpecial-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
+        let progress = profiles.makeProgress()
+        progress.tutorialSeen = true; progress.markLearned(.lantern)
+        progress.recordVictory(index: 66, score: 100, stars: 1)
+        progress.save(GameCheckpoint(level: 66, board: LevelCatalog.level(66).board, shots: 20, score: 100,
+                                     current: 0, next: 1, bag: [0, 1], rainbow: 1, bomb: 1, play: QuestPlay()))
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
+        scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        scene.handleMenu(["start-continue"])
+        let ready = try XCTUnwrap(scene.childNode(withName: "//special-ready"))
+        XCTAssertTrue(ready.parent!.children.compactMap { ($0 as? SKLabelNode)?.text }.contains(SpecialBubble.riverPearl.explanation))
+        scene.handleMenu(["special-ready"])
+        XCTAssertTrue(profiles.makeProgress().hasLearned(.riverPearl))
+    }
+
+    @MainActor
+    func testQuestRewardTakesPriorityOverASimultaneousCharacterUnlock() throws {
+        let suite = "QuestAndBuddy-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
+        let progress = profiles.makeProgress()
+        progress.tutorialSeen = true
+        for level in 0..<19 { progress.recordVictory(index: level, score: 100, stars: 1) }
+        let quest = FestivalQuest.all[0]
+        progress.adventure.accept(quest, unlockedLevel: 19)
+        for level in 0..<2 { progress.adventure.recordWin(level: level, play: QuestPlay(collected: [quest.id]), completedLevels: 19) }
+        let board = BubbleBoard(bubbles: [Cell(row: 0, column: 3): 0, Cell(row: 0, column: 4): 0])
+        progress.save(GameCheckpoint(level: 19, board: board, shots: 20, score: 0, current: 0, next: 0,
+                                     bag: [0], rainbow: 1, bomb: 1, play: QuestPlay(collected: [quest.id])))
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
+        scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        scene.handleMenu(["start-continue"])
+        scene.launchShot(angle: 0)
+        scene.setActive(false); scene.setActive(true)
+        XCTAssertTrue(profiles.makeProgress().adventure.completed(quest))
+        XCTAssertNotNil(profiles.makeProgress().pendingBuddy)
+        scene.handleMenu(["result-next"])
+        XCTAssertNotNil(scene.childNode(withName: "//quest-style-0"))
+        XCTAssertNil(scene.childNode(withName: "//buddy-choose"))
+        scene.handleMenu(["new-buddy"])
+        XCTAssertNotNil(scene.childNode(withName: "//buddy-choose"))
+        scene.handleMenu(["buddy-later"])
+        XCTAssertNotNil(scene.childNode(withName: "//quest-style-0"))
+        XCTAssertEqual(profiles.makeProgress().completedCount, 20)
+    }
+
 }

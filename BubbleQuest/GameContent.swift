@@ -27,7 +27,7 @@ struct GameLevel {
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
     var ceilingInterval: Int { index < 3 ? 10 : max(4, 10 - index / 5) }
-    var ceilingStep: Double { index < 3 ? 6 : 6 + Double(min(index, 49)) * 0.60 + Double(max(0, index - 49)) * 0.05 }
+    var ceilingStep: Double { index < 3 ? 6 + Double(index) * 0.2 : 6 + Double(min(index, 49)) * 0.60 + Double(max(0, index - 49)) * 0.05 }
     func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
         var state = seed
         var threshold = 0

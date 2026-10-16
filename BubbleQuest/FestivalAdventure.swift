@@ -10,6 +10,7 @@ struct FestivalQuest {
     let steps: [String]
     let goals: [Goal]
     let thanks: String
+    var unlockLevel: Int { id == "parcels" ? 3 : id == "toy" ? 6 : area * 10 }
     func conversation(step: Int) -> String {
         guard step > 0 else { return invitation }
         switch id {
@@ -110,8 +111,11 @@ final class AdventureProgress {
     func accepted(_ quest: FestivalQuest) -> Bool { state.accepted.contains(quest.id) }
     func count(_ quest: FestivalQuest) -> Int { min(quest.steps.count, state.wins[quest.id]?.count ?? 0) }
     func completed(_ quest: FestivalQuest) -> Bool { count(quest) == quest.steps.count }
+    func available(_ quest: FestivalQuest, unlockedLevel: Int) -> Bool {
+        accepted(quest) || unlockedLevel >= quest.unlockLevel
+    }
     func accept(_ quest: FestivalQuest, unlockedLevel: Int) {
-        guard unlockedLevel >= quest.area * 10 else { return }
+        guard available(quest, unlockedLevel: unlockedLevel) else { return }
         state.accepted.insert(quest.id); save()
     }
     func synchronize(completedLevels: Int) { state.completedLevels = max(state.completedLevels, completedLevels); save() }
@@ -121,7 +125,10 @@ final class AdventureProgress {
     var equippedPin: FestivalPrize? { state.equippedPin }
     var lastPrize: FestivalPrize? { state.lastPrize }
     func nextLevel(_ quest: FestivalQuest, unlockedLevel: Int) -> Int? {
-        (quest.area * 10..<quest.area * 10 + 10).first {
+        guard available(quest, unlockedLevel: unlockedLevel) else { return nil }
+        let used = state.wins[quest.id] ?? []
+        if unlockedLevel / 10 == quest.area && !used.contains(unlockedLevel) { return unlockedLevel }
+        return (quest.area * 10..<quest.area * 10 + 10).first {
             $0 <= unlockedLevel && !(state.wins[quest.id] ?? []).contains($0)
         }
     }

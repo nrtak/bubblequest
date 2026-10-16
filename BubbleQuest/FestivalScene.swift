@@ -43,6 +43,8 @@ final class FestivalScene: SKScene {
     private var colorBag: [Int] = []
     private var introHost: FestivalHost?
     private var dialoguePage = 0
+    private var neighborFromMap = false
+    private var questReturnMenu = "map"
     private var tutorialPage = 0
     private var tutorialFromSettings = false
     private var suspended = false
@@ -648,7 +650,7 @@ final class FestivalScene: SKScene {
             let card = panel(width: 140, height: 62, point: CGPoint(x: 86, y: 646), parent: overlay)
             card.name = "map-objective"
             let icon = questIcon(quest.symbol, size: 21, color: .systemOrange); icon.position = CGPoint(x: -50, y: 10); card.addChild(icon)
-            label("Active favor", size: 14, point: CGPoint(x: 10, y: 8), parent: card)
+            label("Side quest", size: 14, point: CGPoint(x: 10, y: 8), parent: card)
             label("\(progress.adventure.count(quest))/3 • Details", size: 13, point: CGPoint(x: 0, y: -17), parent: card)
         }
         if FestivalHost.all.indices.contains(mapArea) {
@@ -660,7 +662,7 @@ final class FestivalScene: SKScene {
         host.position = CGPoint(x: 0, y: 23)
         station.addChild(host)
         label("Meet \(FestivalHost.all[mapArea].name)", size: 19, point: CGPoint(x: 0, y: -69), parent: station)
-        label("Stories & favors", size: 12, point: CGPoint(x: 0, y: -89), parent: station)
+        label(FestivalQuest.all.contains(where: { $0.area == mapArea && progress.adventure.available($0, unlockedLevel: progress.unlockedLevel) }) ? "Optional side quests" : "Say hello", size: 12, point: CGPoint(x: 0, y: -89), parent: station)
         station.alpha = progress.hostIsAvailable(FestivalHost.all[mapArea]) ? 1 : 0.55
         if progress.hostIsAvailable(FestivalHost.all[mapArea]) && !progress.hasMet(FestivalHost.all[mapArea]) && !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled {
             station.run(.repeatForever(.sequence([.scale(to: 1.025, duration: 1.1), .scale(to: 1, duration: 1.1)])))
@@ -1157,9 +1159,10 @@ private extension FestivalScene {
         menuKind = "quests"
         let overlay = makeMenu(background: LevelCatalog.areas[area].background)
         panel(width: 342, height: 150, point: CGPoint(x: 195, y: 702), parent: overlay)
-        label("Festival favors", size: 30, point: CGPoint(x: 195, y: 744), parent: overlay)
-        paragraph("A little help for our friends. Choose a story whenever you like.", y: 675, parent: overlay)
-        let quests = FestivalQuest.all.filter { $0.area == area }
+        label("Side quests", size: 30, point: CGPoint(x: 195, y: 744), parent: overlay)
+        paragraph("Optional: play regular levels to help neighbors and earn extra rewards.", y: 675, parent: overlay)
+        let quests = FestivalQuest.all.filter { $0.area == area && progress.adventure.available($0, unlockedLevel: progress.unlockedLevel) }
+        if quests.isEmpty { paragraph("Enjoy the first three levels. Your first side quest appears afterward.", y: 520, parent: overlay) }
         for (index, quest) in quests.enumerated() {
             let card = panel(width: 342, height: 112, point: CGPoint(x: 195, y: 555 - CGFloat(index) * 136), parent: overlay)
             card.name = "quest-\(quest.id)"
@@ -1200,15 +1203,17 @@ private extension FestivalScene {
             label(neighbor.role, size: 12, point: CGPoint(x: 55, y: 0), parent: tile)
             label(progress.hasMet(neighbor) ? "Say hello again" : "Tap to meet", size: 14, point: CGPoint(x: 55, y: -32), parent: tile)
         }
-        if FestivalQuest.all.contains(where: { $0.area == questArea }) {
-            menuButton("Festival favors", name: "quest-list", point: CGPoint(x: 195, y: 140), parent: overlay)
+        if FestivalQuest.all.contains(where: { $0.area == questArea && progress.adventure.available($0, unlockedLevel: progress.unlockedLevel) }) {
+            menuButton("Side quests", name: "quest-list", point: CGPoint(x: 195, y: 140), parent: overlay)
+            menuButton("Back", name: "quest-back", point: CGPoint(x: 195, y: 70), parent: overlay, height: 44)
         } else {
             menuButton("Back to the map", name: "quest-back", point: CGPoint(x: 195, y: 140), parent: overlay)
         }
     }
 
-    func showNeighbor(_ neighbor: FestivalNeighbor) {
+    internal func showNeighbor(_ neighbor: FestivalNeighbor) {
         guard progress.neighborIsAvailable(neighbor) else { return }
+        if menuKind != "neighbor-detail" { neighborFromMap = menuKind == "map" }
         let met = progress.hasMet(neighbor)
         progress.markMet(neighbor)
         menuKind = "neighbor-detail"
@@ -1219,7 +1224,7 @@ private extension FestivalScene {
         panel(width: 342, height: 170, point: CGPoint(x: 195, y: 317), parent: overlay)
         paragraph(met ? neighbor.greeting : neighbor.introduction, y: 350, parent: overlay)
         menuButton("Neighbors", name: "neighbors", point: CGPoint(x: 195, y: 163), parent: overlay, height: 44)
-        menuButton("Back to the map", name: "quest-back", point: CGPoint(x: 195, y: 92), parent: overlay, height: 44)
+        menuButton("Back", name: "neighbor-back", point: CGPoint(x: 195, y: 92), parent: overlay, height: 44)
     }
 
     func neighborTexture(_ neighbor: FestivalNeighbor) -> SKTexture {
@@ -1236,11 +1241,14 @@ private extension FestivalScene {
         return atlasTexture("festival-neighbors", index: neighbor.portraitIndex)
     }
 
-    func showQuest(_ quest: FestivalQuest) {
+    internal func showQuest(_ quest: FestivalQuest) {
+        guard progress.adventure.available(quest, unlockedLevel: progress.unlockedLevel) else { return }
+        if menuKind != "quest-detail" { questReturnMenu = menuKind }
         selectedQuest = quest; questArea = quest.area; menuKind = "quest-detail"
         let overlay = makeMenu(background: LevelCatalog.areas[quest.area].background)
         panel(width: 342, height: 62, point: CGPoint(x: 195, y: 742), parent: overlay)
         label(quest.title, size: 24, point: CGPoint(x: 195, y: 745), parent: overlay)
+        label("Optional Side Quest", size: 15, point: CGPoint(x: 195, y: 710), parent: overlay)
         let portrait = quest.id == "toy" ? SKSpriteNode(texture: companionTexture(Companion.all[0], frame: 0)) : SKSpriteNode(texture: atlasTexture("festival-hosts", index: quest.area))
         portrait.size = CGSize(width: 190, height: 190); portrait.position = CGPoint(x: 195, y: 595)
         overlay.addChild(portrait)
@@ -1288,9 +1296,9 @@ private extension FestivalScene {
             label("\(step)/3 • \(quest.steps[step])", size: 15, point: CGPoint(x: 195, y: 343), parent: overlay)
             let buddy = Companion.all.first { $0.unlockQuest == quest.id }
             label(buddy.map { "Reward: \($0.name) joins as a buddy" } ?? "Reward: a festival decoration + free spin", size: 14, point: CGPoint(x: 195, y: 302), parent: overlay)
-            menuButton(progress.adventure.accepted(quest) ? "Play a puzzle" : "I'll help!", name: progress.adventure.accepted(quest) ? "quest-play" : "quest-accept", point: CGPoint(x: 195, y: 222), parent: overlay)
+            menuButton(progress.adventure.accepted(quest) ? "Play regular levels" : "Accept Side Quest", name: progress.adventure.accepted(quest) ? "quest-play" : "quest-accept", point: CGPoint(x: 195, y: 222), parent: overlay)
         }
-        menuButton("Stories", name: "quest-list", point: CGPoint(x: 195, y: 104), parent: overlay, width: 160, height: 44)
+        menuButton("Back", name: "quest-dialogue-back", point: CGPoint(x: 195, y: 104), parent: overlay, width: 160, height: 44)
     }
 
     func addQuestDecorations(to station: SKNode) {
@@ -1515,7 +1523,7 @@ private extension FestivalScene {
         paragraph("Replay this station's opening puzzle with fewer shots and no boosters. Can you earn three stars?", y: 510, parent: overlay)
         label(progress.challengeWon(questArea) ? "Challenge completed ✓" : "An optional festival challenge", size: 17, point: CGPoint(x: 195, y: 375), parent: overlay)
         menuButton("Try the challenge", name: "challenge-play", point: CGPoint(x: 195, y: 248), parent: overlay)
-        menuButton("Stories", name: "quest-list", point: CGPoint(x: 195, y: 160), parent: overlay, height: 44)
+        menuButton("Side quests", name: "quest-list", point: CGPoint(x: 195, y: 160), parent: overlay, height: 44)
     }
 
     func saveCheckpoint() {
@@ -1819,6 +1827,10 @@ private extension FestivalScene {
         instructions.name = "objective-instructions"
         var cursor = instructions.frame.minY - 30
         let quests = FestivalQuest.all.filter { $0.area == level / 10 && progress.adventure.accepted($0) && !progress.adventure.completed($0) }
+        if !quests.isEmpty {
+            label("Optional side quests", size: 16, point: CGPoint(x: 195, y: cursor), parent: overlay)
+            cursor -= 32
+        }
         for quest in quests {
             label(quest.title, size: 19, point: CGPoint(x: 195, y: cursor), parent: overlay)
             let detail = paragraph(quest.steps[progress.adventure.count(quest)], y: cursor - 20, parent: overlay)
@@ -2228,7 +2240,7 @@ private extension FestivalScene {
         return node
     }
 
-    func showHost(_ host: FestivalHost) {
+    internal func showHost(_ host: FestivalHost) {
         guard progress.hostIsAvailable(host) else {
             status.text = "Reach level \(host.area * 10 + 1) to meet \(host.name)"
             return
@@ -2252,9 +2264,11 @@ private extension FestivalScene {
         panel(width: 340, height: 155, point: CGPoint(x: 195, y: 302), parent: overlay)
         paragraph(host.introduction[min(dialoguePage, host.introduction.count - 1)], y: 311, parent: overlay)
         label("\(dialoguePage + 1)/\(host.introduction.count)", size: 13, point: CGPoint(x: 195, y: 247), parent: overlay)
-        menuButton("Festival favors", name: "host-quests", point: CGPoint(x: 195, y: 195), parent: overlay, height: 44)
+        if FestivalQuest.all.contains(where: { $0.area == host.area && progress.adventure.available($0, unlockedLevel: progress.unlockedLevel) }) {
+            menuButton("Optional side quests", name: "host-quests", point: CGPoint(x: 195, y: 195), parent: overlay, height: 44)
+        }
         menuButton(dialoguePage == host.introduction.count - 1 ? "Let's go!" : "Next", name: "dialogue-next", point: CGPoint(x: 195, y: 142), parent: overlay, height: 44)
-        menuButton("Skip", name: "dialogue-skip", point: CGPoint(x: 195, y: 84), parent: overlay, width: 132, height: 44)
+        menuButton("Back", name: "dialogue-back", point: CGPoint(x: 195, y: 84), parent: overlay, width: 132, height: 44)
     }
 
     func finishIntroduction() {
@@ -2375,6 +2389,17 @@ private extension FestivalScene {
     internal func handleMenu(_ incomingNames: [String]) {
         let names = menuKind == "map-buddies" ? FestivalMenuTargets.buddies(incomingNames) : incomingNames
         if wheelSpinning { return }
+        if names.contains("dialogue-back"), let host = introHost {
+            if dialoguePage > 0 { dialoguePage -= 1; showHost(host) }
+            else { introHost = nil; restoreMenu() }
+            return
+        }
+        if names.contains("neighbor-back") { if neighborFromMap { showLevels() } else { showNeighbors() }; return }
+        if names.contains("quest-dialogue-back") {
+            if questReturnMenu == "quests" { showQuests(area: questArea) }
+            else { mapArea = questArea; showLevels() }
+            return
+        }
         if names.contains("album-open") { albumTab = "souvenirs"; albumPage = 0; albumArea = mapArea; albumSelection = mapArea; showAlbum(); return }
         if names.contains("album-back") { showLevels(); return }
         if names.contains("album-prev") { if albumTab == "cast" { albumPage = max(0, albumPage - 1) } else { albumArea = max(0, albumArea - 1) }; showAlbum(); return }

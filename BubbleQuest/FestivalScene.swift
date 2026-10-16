@@ -657,7 +657,7 @@ final class FestivalScene: SKScene {
         }
         menuButton(mapArea > 0 ? "← Previous area" : "First area", name: mapArea > 0 ? "area-prev" : "area-unavailable", point: CGPoint(x: 99, y: 197), parent: overlay, width: 166, height: 44)
         if let button = overlay.childNode(withName: mapArea > 0 ? "area-prev" : "area-unavailable") as? SKShapeNode { button.fillColor = .systemTeal; button.strokeColor = .white }
-        if mapArea < LevelCatalog.areas.count - 1 {
+        if mapArea < LevelCatalog.areas.count - 1 && !mystery {
             menuButton(mapArea >= unlockedArea ? "Next: Mystery →" : "Next area →", name: "area-next", point: CGPoint(x: 291, y: 197), parent: overlay, width: 166, height: 44)
         }
         menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 65), parent: overlay, width: 250, height: 44)

@@ -367,14 +367,18 @@ final class GameProgress {
         var seed = UInt64.random(in: 1...UInt64.max)
         var candidate = base.randomized(seed: seed)
         func fingerprint(_ value: GameLevel) -> String {
-            value.initialBubbles.keys.sorted { $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row }
+            let text = value.initialBubbles.keys.sorted { $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row }
                 .map { "\($0.row),\($0.column),\(value.initialBubbles[$0]!)" }.joined(separator: ";")
+            var hash: UInt64 = 14695981039346656037
+            for byte in text.utf8 { hash = (hash ^ UInt64(byte)) &* 1099511628211 }
+            return String(hash, radix: 16)
         }
-        for _ in 0..<128 {
-            if !history.contains(fingerprint(candidate)) { break }
+        let seen = Set(history)
+        for _ in 0..<1024 {
+            if !seen.contains(fingerprint(candidate)) { break }
             seed = seed &+ 1; candidate = base.randomized(seed: seed)
         }
-        defaults.set(Array((history + [fingerprint(candidate)]).suffix(8)), forKey: key)
+        defaults.set(history + [fingerprint(candidate)], forKey: key)
         return (candidate, seed)
     }
     var unlockedLevel: Int {

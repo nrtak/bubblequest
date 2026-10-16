@@ -10,6 +10,22 @@ struct FestivalQuest {
     let steps: [String]
     let goals: [Goal]
     let thanks: String
+    var unlockLevel: Int { id == "parcels" ? 3 : id == "toy" ? 6 : area * 10 }
+    var rewardSymbol: String { id == "toy" ? "star.fill" : "gift.fill" }
+    var rewardSummary: String {
+        if id == "toy" { return "Star pin + free spin" }
+        return Companion.all.contains(where: { $0.unlockQuest == id }) ? "Buddy + decor + spin" : "Decoration + free spin"
+    }
+    var objectiveSummary: String {
+        switch id {
+        case "parcels": return "Find parcel tags in three market puzzles."
+        case "toy": return "Find clues in three market puzzles to recover Shiba's toy."
+        case "pinwheels": return "Win three courtyard puzzles using wall bounces and bubble drops."
+        case "lanterns": return "Recover charms in three lantern street puzzles."
+        case "picnic": return "Win three riverside puzzles and make a bubble drop."
+        default: return "Win three fireworks puzzles, clearing blue, coral, then gold."
+        }
+    }
     func conversation(step: Int) -> String {
         guard step > 0 else { return invitation }
         switch id {
@@ -89,6 +105,7 @@ enum FestivalPrize: String, Codable, CaseIterable {
 
 final class AdventureProgress {
     private struct State: Codable {
+        var mapIntroduced: Bool?
         var accepted: Set<String> = []
         var wins: [String: [Int]] = [:]
         var styles: [String: Int] = [:]
@@ -107,11 +124,21 @@ final class AdventureProgress {
         state = defaults.data(forKey: "festivalAdventure").flatMap { try? JSONDecoder().decode(State.self, from: $0) } ?? State()
     }
     private func save() { if let data = try? JSONEncoder().encode(state) { defaults.set(data, forKey: "festivalAdventure") } }
+    func takeMapIntroduction(unlockedLevel: Int, area: Int) -> FestivalQuest? {
+        guard state.mapIntroduced != true,
+              let quest = FestivalQuest.all.first(where: { $0.area == area && available($0, unlockedLevel: unlockedLevel) && !accepted($0) }) else { return nil }
+        state.mapIntroduced = true
+        save()
+        return quest
+    }
     func accepted(_ quest: FestivalQuest) -> Bool { state.accepted.contains(quest.id) }
     func count(_ quest: FestivalQuest) -> Int { min(quest.steps.count, state.wins[quest.id]?.count ?? 0) }
     func completed(_ quest: FestivalQuest) -> Bool { count(quest) == quest.steps.count }
+    func available(_ quest: FestivalQuest, unlockedLevel: Int) -> Bool {
+        accepted(quest) || unlockedLevel >= quest.unlockLevel
+    }
     func accept(_ quest: FestivalQuest, unlockedLevel: Int) {
-        guard unlockedLevel >= quest.area * 10 else { return }
+        guard available(quest, unlockedLevel: unlockedLevel) else { return }
         state.accepted.insert(quest.id); save()
     }
     func synchronize(completedLevels: Int) { state.completedLevels = max(state.completedLevels, completedLevels); save() }
@@ -121,7 +148,10 @@ final class AdventureProgress {
     var equippedPin: FestivalPrize? { state.equippedPin }
     var lastPrize: FestivalPrize? { state.lastPrize }
     func nextLevel(_ quest: FestivalQuest, unlockedLevel: Int) -> Int? {
-        (quest.area * 10..<quest.area * 10 + 10).first {
+        guard available(quest, unlockedLevel: unlockedLevel) else { return nil }
+        let used = state.wins[quest.id] ?? []
+        if unlockedLevel / 10 == quest.area && !used.contains(unlockedLevel) { return unlockedLevel }
+        return (quest.area * 10..<quest.area * 10 + 10).first {
             $0 <= unlockedLevel && !(state.wins[quest.id] ?? []).contains($0)
         }
     }

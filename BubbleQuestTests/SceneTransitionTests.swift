@@ -19,7 +19,9 @@ final class SceneTransitionTests: XCTestCase {
             try? FileManager.default.removeItem(at: directory)
         }
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
-        scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        view.presentScene(scene)
+        defer { view.presentScene(nil) }
         scene.handleMenu(["continue-stop"])
         try check(scene, profiles)
     }
@@ -114,4 +116,48 @@ final class SceneTransitionTests: XCTestCase {
             }
         }
     }
+    @MainActor
+    func testChallengeVictoryDoesNotChangeCampaignOrSideQuestProgress() throws {
+        try withScene { scene, profiles in
+            let progress = profiles.makeProgress()
+            for index in 0..<20 { progress.recordVictory(index: index, score: 100, stars: 1) }
+            let quest = FestivalQuest.all[0]
+            progress.adventure.accept(quest, unlockedLevel: progress.unlockedLevel)
+            let board = BubbleBoard(bubbles: [Cell(row: 0, column: 3): 0, Cell(row: 0, column: 4): 0])
+            // Go through the same restore route as reopening an unfinished challenge.
+            scene.handleMenu(["home"])
+            progress.save(GameCheckpoint(level: 0, board: board, shots: 20, score: 0, current: 0, next: 0,
+                                         bag: [0], rainbow: 0, bomb: 0, play: QuestPlay(collected: [quest.id]), challenge: true))
+            scene.handleMenu(["start-continue"])
+            scene.launchShot(angle: 0)
+            scene.setActive(false); scene.setActive(true)
+            let restored = profiles.makeProgress()
+            XCTAssertTrue(restored.challengeWon(0))
+            XCTAssertEqual(restored.stars(0), 1)
+            XCTAssertEqual(restored.bestScore(0), 100)
+            XCTAssertEqual(restored.adventure.count(quest), 0)
+            XCTAssertEqual(restored.completedCount, 20)
+        }
+    }
+
+    @MainActor
+    func testNestedMapControlsKeepCompactTouchTargets() throws {
+        try withScene { scene, profiles in
+            for index in 0..<6 { profiles.makeProgress().recordVictory(index: index, score: 100, stars: 1) }
+            scene.handleMenu(["start-adventure"])
+            // A 320pt display scales the 844pt scene to about 67 percent.
+            let compact = try XCTUnwrap(scene.view)
+            compact.frame = CGRect(x: 0, y: 0, width: 320, height: 568)
+            for name in ["quest-parcels", "friends", "album-open"] {
+                let control = try XCTUnwrap(scene.childNode(withName: "//" + name))
+                let edge = control.convert(CGPoint(x: 0, y: name == "album-open" ? -27 : 27), to: scene)
+                XCTAssertTrue(scene.interactionNames(at: edge).contains(name), "Expanded nested target: \(name)")
+            }
+            scene.handleMenu(["friends"])
+            let hiddenMapLevel = try XCTUnwrap(scene.childNode(withName: "//level-6"))
+            let point = hiddenMapLevel.convert(.zero, to: scene)
+            XCTAssertFalse(FestivalMenuTargets.buddies(scene.interactionNames(at: point)).contains("level-6"))
+        }
+    }
+
 }

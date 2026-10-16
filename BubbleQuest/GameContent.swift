@@ -84,6 +84,7 @@ struct GameLevel {
                 if candidates.count >= count { columns = candidates.shuffled(using: &random).prefix(count).sorted() }
                 else { columns = initialBubbles.keys.filter { $0.row == row }.map(\.column).sorted() }
             }
+            if isBankRoute { columns = initialBubbles.keys.filter { $0.row == row }.map(\.column).sorted() }
             var color = -1
             var remaining = 0
             for column in columns {
@@ -215,8 +216,10 @@ enum LevelCatalog {
         }
         let budgetColors = Set(cells.values).count
         let shots: Int
-        if index < 10 {
+        if index < 3 {
             shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
+        } else if index < 10 {
+            shots = max(14, (cells.count + 2) / 3 + budgetColors + 6)
         } else {
             let allowance = max(1, 6 - index / 30)
             shots = max(16, (cells.count + 2) / 3 + budgetColors + allowance)

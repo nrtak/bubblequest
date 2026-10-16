@@ -199,6 +199,7 @@ final class FestivalScene: SKScene {
     func setActive(_ active: Bool) {
         if !active { saveCheckpoint(); profiles.persistActive(); updateOperatorAppearance() }
         suspended = !active
+        mapTouch = nil
         gameRoot.removeAction(forKey: "control-help")
         isPaused = !active
         aiming = false

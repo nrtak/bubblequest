@@ -81,6 +81,13 @@ final class SideQuestNavigationTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         scene.handleMenu(["start-adventure"])
+        let map = try XCTUnwrap(scene.childNode(withName: "//quest-parcels")?.parent)
+        let cards = map.children.compactMap { $0 as? SKShapeNode }.filter { $0.name?.hasPrefix("quest-") == true }
+        for (index, card) in cards.enumerated() {
+            for other in cards.dropFirst(index + 1) {
+                XCTAssertFalse(card.frame.intersects(other.frame), "Quest signs and the introduction must not overlap")
+            }
+        }
         for id in ["parcels", "toy"] {
             let stop = try XCTUnwrap(scene.childNode(withName: "//quest-" + id))
             XCTAssertTrue(stop.children.compactMap { $0 as? SKLabelNode }.contains { $0.text == "OPTIONAL" })

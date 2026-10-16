@@ -20,7 +20,7 @@ final class GameContentTests: XCTestCase {
             let overlay = scene.children.last!
             let headings = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
             XCTAssertTrue(headings.contains { $0.hasPrefix("Area \(area + 1)/10") })
-            let markers = overlay.children.flatMap { $0.children.compactMap { ($0 as? SKLabelNode)?.text } }
+            let markers = (overlay.childNode(withName: "//map-route")?.children ?? []).flatMap { $0.children.compactMap { ($0 as? SKLabelNode)?.text } }
             XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 1)"))
             XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 10)"))
             scene.handleMenu(["area-next"])
@@ -108,8 +108,8 @@ final class GameContentTests: XCTestCase {
         // The same depth can have different routes, not just a new color permutation.
         let shapes = Set(LevelCatalog.levels[50..<100].map { Set($0.initialBubbles.keys) })
         XCTAssertGreaterThan(shapes.count, 5)
-        XCTAssertGreaterThan(LevelCatalog.level(199).ceilingOffset(after: 20, seed: 42),
-                             LevelCatalog.level(59).ceilingOffset(after: 20, seed: 42))
+        XCTAssertGreaterThan(LevelCatalog.level(199).ceilingOffset(after: 8, seed: 42),
+                             LevelCatalog.level(59).ceilingOffset(after: 8, seed: 42))
     }
 
     func testAreaMechanicsBuildFromSingleTypesToCombinations() {

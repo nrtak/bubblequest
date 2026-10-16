@@ -265,4 +265,92 @@ final class SceneTransitionTests: XCTestCase {
         XCTAssertEqual(profiles.makeProgress().completedCount, 20)
     }
 
+    @MainActor
+    func testPuzzleMenuCanVisitMapAndResumeTheSameAttempt() throws {
+        try withScene { scene, profiles in
+            scene.launchShot(angle: 0)
+            scene.showGameMenu()
+            let saved = try XCTUnwrap(profiles.makeProgress().checkpoint)
+            let mapButton = try XCTUnwrap(scene.childNode(withName: "//game-map"))
+            let controls = try XCTUnwrap(mapButton.parent).children.filter { ["game-resume", "game-map", "game-restart", "settings", "home"].contains($0.name ?? "") }
+            for (index, control) in controls.enumerated() {
+                for other in controls.dropFirst(index + 1) {
+                    XCTAssertFalse(control.calculateAccumulatedFrame().intersects(other.calculateAccumulatedFrame()))
+                }
+            }
+            scene.handleMenu(["game-map"])
+            XCTAssertNotNil(scene.childNode(withName: "//level-0"))
+            XCTAssertNil(scene.childNode(withName: "//game-resume"))
+            scene.handleMenu(["level-0"])
+            let resumed = try XCTUnwrap(profiles.makeProgress().checkpoint)
+            XCTAssertEqual(resumed.layoutSeed, saved.layoutSeed)
+            XCTAssertEqual(resumed.board?.bubbles, saved.board?.bubbles)
+            XCTAssertEqual(resumed.shots, saved.shots)
+            XCTAssertEqual(resumed.shotsFired, saved.shotsFired)
+            XCTAssertEqual(resumed.pressureSeed, saved.pressureSeed)
+        }
+    }
+
+    @MainActor
+    func testLockedTeamChoicesExplainRequirementsWithoutChangingSelection() throws {
+        try withScene { scene, profiles in
+            let selected = profiles.makeProgress().selected(.human).id
+            scene.handleMenu(["start-adventure"]); scene.handleMenu(["friends"])
+            scene.handleMenu(["friends-page"])
+            for id in ["haru", "mei"] {
+                XCTAssertNotNil(scene.childNode(withName: "//friend-" + id))
+                scene.handleMenu(["friend-" + id])
+                let notice = try XCTUnwrap(scene.childNode(withName: "//team-unlock-notice"))
+                let words = notice.children.compactMap { ($0 as? SKLabelNode)?.text }
+                XCTAssertTrue(words.contains { $0.lowercased().contains("area") })
+                XCTAssertEqual(profiles.makeProgress().selected(.human).id, selected)
+                XCTAssertNotNil(scene.childNode(withName: "//map-buddies-close"))
+                scene.handleMenu(["team-unlock-notice"])
+                XCTAssertNotNil(scene.childNode(withName: "//team-unlock-notice"))
+            }
+        }
+    }
+
+    @MainActor
+    func testChoosingUnlockedTeamMembersAcknowledgesTheirWelcome() throws {
+        try withScene { scene, profiles in
+            for level in 0..<20 { profiles.makeProgress().recordVictory(index: level, score: 100, stars: 1) }
+            scene.handleMenu(["start-adventure"]); scene.handleMenu(["friends"])
+            scene.handleMenu(["friend-white-shiba"])
+            XCTAssertEqual(profiles.makeProgress().selected(.animal).id, "white-shiba")
+            XCTAssertNotEqual(profiles.makeProgress().pendingBuddy?.id, "white-shiba")
+            scene.handleMenu(["friends-page"])
+            scene.handleMenu(["friend-haru"])
+            XCTAssertEqual(profiles.makeProgress().selected(.human).id, "haru")
+            XCTAssertNil(profiles.makeProgress().pendingBuddy)
+        }
+    }
+
+    @MainActor
+    func testCancellingBoosterHoldOrBackgroundingClearsDelayedHelp() throws {
+        try withScene { scene, _ in
+            let game = try XCTUnwrap(scene.childNode(withName: "//handwheel")?.parent)
+            game.run(.wait(forDuration: 100), withKey: "control-help")
+            scene.touchesCancelled([], with: nil)
+            XCTAssertNil(game.action(forKey: "control-help"))
+            game.run(.wait(forDuration: 100), withKey: "control-help")
+            scene.setActive(false)
+            XCTAssertNil(game.action(forKey: "control-help"))
+            scene.setActive(true)
+        }
+    }
+
+    @MainActor
+    func testAnimalWelcomeUsesDescriptionInsteadOfHumanDialogue() throws {
+        try withScene { scene, profiles in
+            for level in 0..<20 { profiles.makeProgress().recordVictory(index: level, score: 100, stars: 1) }
+            scene.handleMenu(["new-buddy"])
+            let choose = try XCTUnwrap(scene.childNode(withName: "//buddy-choose"))
+            let overlay = try XCTUnwrap(choose.parent)
+            let words = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
+            XCTAssertTrue(words.contains { $0.contains("ready to help load") })
+            XCTAssertFalse(words.contains { $0.hasPrefix("Hi!") })
+        }
+    }
+
 }

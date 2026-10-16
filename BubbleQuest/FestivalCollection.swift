@@ -100,6 +100,17 @@ enum BuddyPersonality {
 }
 
 enum FestivalMapLayout {
+    static let viewport = CGRect(x: 16, y: 326, width: 358, height: 356)
+    static func position(_ local: Int) -> CGPoint {
+        CGPoint(x: 195 + sin(CGFloat(local) * 0.95) * 112, y: 350 + CGFloat(local) * 66)
+    }
+    static func scrollOffset(_ value: CGFloat) -> CGFloat {
+        min(0, max(viewport.maxY - position(19).y - 36, value))
+    }
+    static func focusedOffset(local: Int) -> CGFloat {
+        scrollOffset(480 - position(min(19, max(0, local))).y)
+    }
+
     static func souvenirPosition(markers: [CGPoint]) -> CGPoint? {
         guard let start = markers.first else { return nil }
         let candidates = [CGFloat(-42), CGFloat(42)].map { CGPoint(x: start.x + $0, y: start.y + 20) }

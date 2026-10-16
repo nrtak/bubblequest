@@ -26,18 +26,21 @@ struct GameLevel {
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
-    var ceilingInterval: Int { index < 3 ? 10 : max(4, 10 - index / 5) }
-    var ceilingStep: Double { index < 3 ? 6 + Double(index) * 0.2 : 6 + Double(min(index, 49)) * 0.60 + Double(max(0, index - 49)) * 0.05 }
-    func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
+    var ceilingInterval: Int { index < 3 ? 10 : max(3, 8 - index / 8) }
+    var ceilingStep: Double { index < 3 ? 6 + Double(index) * 0.2 : 14 + Double(min(index, 59)) * 0.5 + Double(max(0, index - 59)) * 0.06 }
+    func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0, balanceVersion: Int = LevelPlayResults.balanceVersion) -> Double {
+        // An unfinished puzzle retains the ceiling schedule it started with.
+        let interval = balanceVersion < 4 ? (index < 3 ? 10 : max(4, 10 - index / 5)) : ceilingInterval
+        let step = balanceVersion < 4 ? (index < 3 ? 6 + Double(index) * 0.2 : 6 + Double(min(index, 49)) * 0.60 + Double(max(0, index - 49)) * 0.05) : ceilingStep
         var state = seed
         var threshold = 0
         var drops = 0
         while threshold <= shotsFired {
             state = state &* 6364136223846793005 &+ 1442695040888963407
-            threshold += ceilingInterval - 1 + Int((state >> 32) % 4)
+            threshold += interval - 1 + Int((state >> 32) % 4)
             if threshold <= shotsFired { drops += 1 }
         }
-        return min(240, Double(drops) * ceilingStep)
+        return min(240, Double(drops) * step)
     }
     var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials, armor: initialArmor, blockers: initialBlockers) }
     var initialSpecials: [Cell: SpecialBubble] {
@@ -85,10 +88,22 @@ struct GameLevel {
             var remaining = 0
             for column in columns {
                 if remaining == 0 {
-                    remaining = Int.random(in: (index < 5 ? 2 : 1)...3, using: &random)
+                    let maximum = index < 10 ? 3 : 2
+                    remaining = Int.random(in: (index < 5 ? 2 : 1)...maximum, using: &random)
                     if colorBag.isEmpty { colorBag = palette.shuffled(using: &random) }
                     if colorBag.last == color && colorBag.count > 1 { colorBag.swapAt(0, colorBag.count - 1) }
                     color = colorBag.removeLast()
+                    if index >= 20 {
+                        // Avoid accidental vertical color chains across randomized rows.
+                        let above = BubbleBoard.neighbors(of: Cell(row: row, column: column))
+                            .filter { $0.row < row }.compactMap { values[$0] }
+                        if above.contains(color), let alternative = palette.shuffled(using: &random).first(where: { !above.contains($0) }) {
+                            color = alternative
+                        }
+                    }
+                }
+                if index >= 60 && remaining == 1 && (row * 8 + column + index) % max(3, 9 - index / 30) == 0 {
+                    color = palette[(palette.firstIndex(of: color)! + 1) % palette.count]
                 }
                 values[Cell(row: row, column: column)] = color
                 remaining -= 1
@@ -203,14 +218,14 @@ enum LevelCatalog {
         if index < 10 {
             shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
         } else {
-            let allowance = max(2, 8 - index / 20)
-            shots = max(18, (cells.count + 2) / 3 + budgetColors + allowance)
+            let allowance = max(1, 6 - index / 30)
+            shots = max(16, (cells.count + 2) / 3 + budgetColors + allowance)
         }
         let precision = index >= 15 && index % 10 == 5
         let budget = precision ? max(12, (cells.count + 2) / 3 + budgetColors + 2) : shots
         let draft = GameLevel(index: index, area: area, shots: budget, initialBubbles: cells)
         return GameLevel(index: index, area: area,
-                         shots: budget + draft.initialArmor.count * 2 + draft.initialBlockers.count,
+                         shots: budget + draft.initialArmor.count + draft.initialBlockers.count,
                          initialBubbles: cells)
     }
 

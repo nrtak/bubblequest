@@ -29,7 +29,7 @@ enum PuzzleObjective: String, Codable {
     }
     var instruction: String {
         self == .clear ? "Match bubbles or remove their supports to clear the board." :
-            "Match or drop every marked bubble. The other bubbles can stay."
+            "Free every object inside a glowing bubble: match its color or remove its supports. The other bubbles can stay."
     }
 }
 
@@ -68,20 +68,27 @@ extension GameLevel {
     var goal: PuzzleGoal {
         guard objective != .clear else { return PuzzleGoal() }
         let ordered = initialBubbles.keys.sorted {
-            if $0.row != $1.row { return objective == .ceiling ? $0.row < $1.row : $0.row > $1.row }
+            if $0.row != $1.row { return $0.row < $1.row }
             return $0.column < $1.column
         }
-        let candidates = objective == .ceiling ? ordered.filter { $0.row == 0 } : Array(ordered.prefix(max(6, ordered.count / 2)))
-        let count = min(candidates.count, objective == .charms ? 5 : isMilestone ? 4 : 3)
+        // Rescue objects sit inside the board, behind lower supporting layers.
+        let depth = initialBubbles.keys.map(\.row).max() ?? 0
+        let buried = ordered.filter { $0.row > 0 && $0.row < max(2, depth - (index >= 40 ? 1 : 0)) }
+        let candidates = objective == .ceiling ? ordered.filter { $0.row == 0 } : (buried.isEmpty ? ordered : buried)
+        let count = min(candidates.count, min(7, (objective == .charms ? 4 : isMilestone ? 4 : 3) + index / 60))
         let targets = Set((0..<count).map { candidates[$0 * candidates.count / count] })
         return PuzzleGoal(kind: objective, targets: targets)
     }
     var initialArmor: Set<Cell> {
-        guard index >= 20, [2, 9].contains(index % 10) else { return [] }
+        guard index >= 20, ([2, 9].contains(index % 10) || (index >= 40 && [.lanterns, .charms].contains(objective))) else { return [] }
         let excluded = Set(initialSpecials.keys).union(goal.remaining)
         let candidates = initialBubbles.keys.filter { $0.row > 0 && !excluded.contains($0) }
-            .sorted { $0.row == $1.row ? $0.column < $1.column : $0.row > $1.row }
-        return Set(candidates.prefix(min(3, 1 + index / 70)))
+            .sorted { a, b in
+                let targetRow = goal.remaining.map(\.row).max() ?? 0
+                let da = abs(a.row - targetRow - 1), db = abs(b.row - targetRow - 1)
+                return da == db ? (a.row == b.row ? a.column < b.column : a.row < b.row) : da < db
+            }
+        return Set(candidates.prefix(min(5, 1 + index / 45)))
     }
     var initialBlockers: Set<Cell> {
         guard index >= 40, [3, 8, 9].contains(index % 10) else { return [] }
@@ -92,7 +99,7 @@ extension GameLevel {
 }
 
 struct LevelPlayResults: Codable, Equatable {
-    static let balanceVersion = 3
+    static let balanceVersion = 4
     var version = LevelPlayResults.balanceVersion
     var wins = 0
     var losses = 0

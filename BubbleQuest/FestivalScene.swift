@@ -687,11 +687,11 @@ final class FestivalScene: SKScene {
         wheelStop.name = "open-wheel"
         let introducedQuest = progress.adventure.takeMapIntroduction(unlockedLevel: progress.unlockedLevel, area: mapArea)
         if let introducedQuest {
-            let tip = panel(width: 132, height: 76, point: CGPoint(x: 80, y: 425), parent: overlay)
+            let tip = panel(width: 132, height: 60, point: CGPoint(x: 80, y: 420), parent: overlay)
             tip.name = "quest-" + introducedQuest.id
-            label("Optional detour", size: 13, point: CGPoint(x: 0, y: 20), parent: tip)
+            label("Optional detour", size: 13, point: CGPoint(x: 0, y: 16), parent: tip)
             label("Come back anytime", size: 11, point: CGPoint(x: 0, y: 0), parent: tip)
-            label("Tap a teal sign to help", size: 10, point: CGPoint(x: 0, y: -21), parent: tip)
+            label("Tap a teal sign to help", size: 10, point: CGPoint(x: 0, y: -20), parent: tip)
             if let sign = overlay.childNode(withName: "quest-" + introducedQuest.id) as? SKShapeNode {
                 sign.lineWidth = 4; sign.strokeColor = .systemYellow
             }
@@ -1974,15 +1974,16 @@ private extension FestivalScene {
         guard let area = mapConversationArea else { return false }
         let host = FestivalHost.all.first { $0.area == area }
         let neighbor = FestivalNeighbor.all.first { $0.area == area }
-        let card = panel(width: 112, height: 76, point: CGPoint(x: 70, y: mapArea < FestivalHost.all.count ? 425 : 576), parent: overlay)
+        let compact = mapArea < FestivalHost.all.count
+        let card = panel(width: 112, height: compact ? 60 : 76, point: CGPoint(x: 70, y: compact ? 420 : 576), parent: overlay)
         card.name = "map-chat-dismiss"
-        label(host?.name ?? neighbor?.name ?? "Your buddies", size: 14, point: CGPoint(x: 0, y: 21), parent: card)
+        label(host?.name ?? neighbor?.name ?? "Your buddies", size: 14, point: CGPoint(x: 0, y: compact ? 16 : 21), parent: card)
         let words = SKLabelNode(fontNamed: "AvenirNext-Medium")
         let greeting = host?.encouragement ?? neighbor?.greeting ?? "What a lovely festival stop!"
         words.text = greeting.count <= 28 ? greeting : "What a lovely festival stop!"
-        words.fontSize = 14; words.numberOfLines = 2; words.preferredMaxLayoutWidth = 100
-        words.verticalAlignmentMode = .center; words.position.y = -4; card.addChild(words)
-        label("Tap to close", size: 10, point: CGPoint(x: 0, y: -32), parent: card)
+        words.fontSize = compact ? 12 : 14; words.numberOfLines = 2; words.preferredMaxLayoutWidth = 100
+        words.verticalAlignmentMode = .center; words.position.y = compact ? -2 : -4; card.addChild(words)
+        label("Tap to close", size: 10, point: CGPoint(x: 0, y: compact ? -24 : -32), parent: card)
         return true
     }
 

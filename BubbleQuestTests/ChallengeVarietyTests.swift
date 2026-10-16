@@ -3,6 +3,14 @@ import SpriteKit
 @testable import BubbleQuest
 
 final class ChallengeVarietyTests: XCTestCase {
+    func testBankShotOpeningsSurviveRandomization() {
+        for base in LevelCatalog.levels where base.isBankRoute {
+            for seed in 1...6 {
+                XCTAssertEqual(Set(base.randomized(seed: UInt64(seed)).initialBubbles.keys), Set(base.initialBubbles.keys))
+            }
+        }
+        XCTAssertLessThan(LevelCatalog.level(4).shots, 24)
+    }
     func testRandomizedBoardsRetainIncreasingColorSeparationAndPressure() {
         func averageGroup(_ range: Range<Int>) -> Double {
             var total = 0, groups = 0

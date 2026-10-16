@@ -25,6 +25,18 @@ final class LevelReplayTests: XCTestCase {
         }
     }
 
+    func testDifficultyMilestonesHaveRoutesAcrossDifferentLayouts() {
+        for index in [0, 19, 39, 59, 79, 99, 139, 179, 199] {
+            for seed in 1...4 {
+                let level = LevelCatalog.level(index).randomized(seed: UInt64(seed))
+                let cleared = [25, 600, 1000].contains {
+                    hasClearingRoute(level: level, pressureSeed: UInt64(seed), specialPenalty: $0)
+                }
+                XCTAssertTrue(cleared, "Level \(index + 1), layout seed \(seed) needs balance adjustment")
+            }
+        }
+    }
+
     private func hasClearingRoute(level: GameLevel, pressureSeed: UInt64, specialPenalty: Int) -> Bool {
         var random = SeededRandom(state: UInt64(level.number))
         var board = level.board

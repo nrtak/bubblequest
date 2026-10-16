@@ -32,7 +32,7 @@ final class CourtyardRefreshTests: XCTestCase {
         for _ in 0..<20 {
             let fresh = progress.freshLayout(for: 0)
             XCTAssertFalse(recent.contains { $0 == fresh.level.initialBubbles })
-            recent = Array((recent + [fresh.level.initialBubbles]).suffix(8))
+            recent.append(fresh.level.initialBubbles)
         }
         let freshDefaults = UserDefaults(suiteName: suite + "-new")!
         defer { freshDefaults.removePersistentDomain(forName: suite + "-new") }
@@ -63,14 +63,17 @@ final class CourtyardRefreshTests: XCTestCase {
         let labels = scene.children.last!.children.compactMap { ($0 as? SKLabelNode)?.text }
         XCTAssertTrue(labels.contains("Mystery Courtyard"))
         XCTAssertNotNil(scene.childNode(withName: "//area-prev"))
+        XCTAssertNil(scene.childNode(withName: "//area-next"))
         scene.handleMenu(["area-prev"])
         scene.handleMenu(["level-0"])
-        scene.saveCheckpoint()
+        scene.setActive(false)
+        scene.setActive(true)
         let before = try XCTUnwrap(profiles.makeProgress().checkpoint)
         XCTAssertNotNil(before.layoutSeed)
         scene.handleMenu(["home"])
         scene.handleMenu(["start-continue"])
-        scene.saveCheckpoint()
+        scene.setActive(false)
+        scene.setActive(true)
         let after = try XCTUnwrap(profiles.makeProgress().checkpoint)
         XCTAssertEqual(after.layoutSeed, before.layoutSeed)
         XCTAssertEqual(after.board?.bubbles, before.board?.bubbles)

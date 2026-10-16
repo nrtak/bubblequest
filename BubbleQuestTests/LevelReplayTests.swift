@@ -17,8 +17,8 @@ final class LevelReplayTests: XCTestCase {
         for base in LevelCatalog.levels {
             let level = base.randomized(seed: UInt64(base.number) * 991)
             for pressureSeed in [UInt64(0), UInt64(level.number)] {
-                let cleared = [25, 600, 1000].contains { penalty in
-                    hasClearingRoute(level: level, pressureSeed: pressureSeed, specialPenalty: penalty)
+                let cleared = [(25, 2000), (600, 300), (1000, 0)].contains { strategy in
+                    hasClearingRoute(level: level, pressureSeed: pressureSeed, specialPenalty: strategy.0, targetPriority: strategy.1)
                 }
                 XCTAssertTrue(cleared, "Level \(level.number) needs a better layout or shot budget")
             }
@@ -29,15 +29,15 @@ final class LevelReplayTests: XCTestCase {
         for index in [0, 19, 39, 59, 79, 99, 139, 179, 199] {
             for seed in 1...4 {
                 let level = LevelCatalog.level(index).randomized(seed: UInt64(seed))
-                let cleared = [25, 600, 1000].contains {
-                    hasClearingRoute(level: level, pressureSeed: UInt64(seed), specialPenalty: $0)
+                let cleared = [(25, 2000), (600, 300), (1000, 0)].contains { strategy in
+                    hasClearingRoute(level: level, pressureSeed: UInt64(seed), specialPenalty: strategy.0, targetPriority: strategy.1)
                 }
                 XCTAssertTrue(cleared, "Level \(index + 1), layout seed \(seed) needs balance adjustment")
             }
         }
     }
 
-    private func hasClearingRoute(level: GameLevel, pressureSeed: UInt64, specialPenalty: Int) -> Bool {
+    private func hasClearingRoute(level: GameLevel, pressureSeed: UInt64, specialPenalty: Int, targetPriority: Int) -> Bool {
         var random = SeededRandom(state: UInt64(level.number))
         var board = level.board
         var goal = level.goal
@@ -67,7 +67,7 @@ final class LevelReplayTests: XCTestCase {
                     let setup = candidate.connected(from: cell, matchingColor: true).count
                     let specialCost = shot == .rainbow || shot == .bomb ? specialPenalty : 0
                     let removed = cleared.matched.union(cleared.dropped)
-                    let objectiveValue = goal.remaining.intersection(removed).count * 2000
+                    let objectiveValue = goal.remaining.intersection(removed).count * targetPriority
                     let cracks = board.armor.subtracting(candidate.armor).count * 80
                     let quality = objectiveValue + (cleared.matched.count + cleared.dropped.count) * 100 + cracks + setup * 10 - cell.row - specialCost
                     if best == nil || quality > best!.quality { best = (quality, shot, candidate, removed) }

@@ -68,6 +68,32 @@ final class ChallengeVarietyTests: XCTestCase {
     }
 
     @MainActor
+    func testResumingAnOlderLargerBudgetDoesNotLoseShotsOnAMatch() throws {
+        let suite = "RescueBudget-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
+        let progress = profiles.makeProgress(); progress.tutorialSeen = true
+        progress.recordVictory(index: 66, score: 100, stars: 1)
+        progress.markLearned(.riverPearl)
+        let pearl = Cell(row: 0, column: 3)
+        let board = BubbleBoard(bubbles: [pearl: 2, Cell(row: 0, column: 4): 2, Cell(row: 0, column: 7): 1], specials: [pearl: .riverPearl])
+        progress.save(GameCheckpoint(level: 66, board: board, shots: 40, score: 0, current: 2, next: 1,
+                                     bag: [1, 2], rainbow: 1, bomb: 1, play: QuestPlay(), goal: PuzzleGoal(), balanceVersion: 3))
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        view.presentScene(scene); defer { view.presentScene(nil) }
+        scene.handleMenu(["start-continue"])
+        scene.launchShot(angle: 0)
+        scene.setActive(false)
+        let saved = try XCTUnwrap(profiles.makeProgress().checkpoint)
+        XCTAssertEqual(saved.shots, 40, "One shot spent and one pearl shot refunded")
+        XCTAssertEqual(saved.shotBudget, 40)
+        XCTAssertEqual(saved.balanceVersion, 3)
+    }
+
+    @MainActor
     func testMapFocusesNextLevelAndClipsScrollingControls() throws {
         let suite = "ChallengeMap-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

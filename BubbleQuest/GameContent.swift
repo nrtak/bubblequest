@@ -516,12 +516,11 @@ final class GameProgress {
     @discardableResult
     func recordVictory(index: Int, score: Int, stars earned: Int) -> [Companion] {
         guard LevelCatalog.levels.indices.contains(index) else { return [] }
-        let before = completedCount
+        let previouslyUnlocked = Set(Companion.all.filter { unlocked($0) }.map(\.id))
         defaults.set(max(bestScore(index), score), forKey: "bestScore-\(index)")
         defaults.set(max(stars(index), min(3, max(1, earned))), forKey: "stars-\(index)")
         defaults.set(max(unlockedLevel, min(LevelCatalog.levels.count - 1, index + 1)), forKey: "unlockedLevel")
-        let after = completedCount
-        return Companion.all.filter { $0.unlockQuest == nil && $0.unlockAfter > before && $0.unlockAfter <= after }
+        return Companion.all.filter { !previouslyUnlocked.contains($0.id) && unlocked($0) }
     }
 
     func unlocked(_ companion: Companion) -> Bool {

@@ -172,7 +172,7 @@ final class FestivalScene: SKScene {
         else if ProcessInfo.processInfo.arguments.contains("--quest-preview") { showQuests(area: 2) }
         else if ProcessInfo.processInfo.arguments.contains("--quest-detail-preview") { showQuest(FestivalQuest.all[2]) }
         else if ProcessInfo.processInfo.arguments.contains("--quest-reward-preview") {
-            for index in 0..<23 { progress.recordVictory(index: index, score: 200, stars: 1) }
+            for index in 0..<43 { progress.recordVictory(index: index, score: 200, stars: 1) }
             let quest = FestivalQuest.all[2]
             progress.adventure.accept(quest, unlockedLevel: progress.unlockedLevel)
             for index in 40..<43 { progress.adventure.recordWin(level: index, play: QuestPlay(collected: [quest.id]), completedLevels: progress.completedCount) }
@@ -182,7 +182,10 @@ final class FestivalScene: SKScene {
         else if ProcessInfo.processInfo.arguments.contains("--ending-preview") { showEnding() }
         else if ProcessInfo.processInfo.arguments.contains("--settings-preview") { returnMenu = "title"; showSettings() }
         else if ProcessInfo.processInfo.arguments.contains("--map-preview") { showLevels() }
-        else if ProcessInfo.processInfo.arguments.contains("--host-preview") { showHost(FestivalHost.all[mapArea]) }
+        else if ProcessInfo.processInfo.arguments.contains("--host-preview") {
+            if let host = FestivalHost.all.first(where: { $0.area == mapArea }) { showHost(host) }
+            else if let neighbor = FestivalNeighbor.all.first(where: { $0.area == mapArea }) { showNeighbor(neighbor) }
+        }
         else if ProcessInfo.processInfo.arguments.contains("--cancel-preview") { updateAim(CGPoint(x: 195, y: 220)) }
         else if ProcessInfo.processInfo.arguments.contains("--gameplay-preview") || ProcessInfo.processInfo.arguments.contains("--beach-preview") || ProcessInfo.processInfo.arguments.contains("--hill-preview") { updateAim(CGPoint(x: 242, y: 600)) }
         else { showTitle() }

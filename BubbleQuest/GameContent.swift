@@ -26,8 +26,8 @@ struct GameLevel {
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
-    var ceilingInterval: Int { max(4, 12 - index / 5) }
-    var ceilingStep: Double { 4 + Double(min(index, 49)) * 0.55 + Double(max(0, index - 49)) * 0.04 }
+    var ceilingInterval: Int { index < 3 ? 10 : max(3, 8 - index / 20) }
+    var ceilingStep: Double { index < 3 ? 6 : 10 + Double(min(index, 119)) * 0.20 + Double(max(0, index - 119)) * 0.03 }
     func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
         var state = seed
         var threshold = 0
@@ -63,6 +63,42 @@ struct GameLevel {
         if area % 5 == 1 && index % 10 >= 4 { return "festival-tea-fields" }
         return LevelCatalog.areas[area].background
     }
+    /// Seeded generation keeps the level's depth, row populations, palette and budget.
+    func randomized(seed: UInt64) -> GameLevel {
+        var random = LayoutRandom(state: seed)
+        var values: [Cell: Int] = [:]
+        let palette = Array(Set(initialBubbles.values)).sorted()
+        var colorBag = palette.shuffled(using: &random)
+        for row in Set(initialBubbles.keys.map(\.row)).sorted() {
+            let width = BubbleBoard.columns - row % 2
+            let count = initialBubbles.keys.filter { $0.row == row }.count
+            var columns = Array(0..<width).shuffled(using: &random).prefix(count).sorted()
+            // Every lower bubble must touch an anchored bubble in the preceding row.
+            if row > 0 {
+                let candidates = Array(0..<width).filter { column in
+                    BubbleBoard.neighbors(of: Cell(row: row, column: column)).contains { values[$0] != nil }
+                }
+                if candidates.count >= count { columns = candidates.shuffled(using: &random).prefix(count).sorted() }
+                else { columns = initialBubbles.keys.filter { $0.row == row }.map(\.column).sorted() }
+            }
+            var color = -1
+            var remaining = 0
+            for column in columns {
+                if remaining == 0 {
+                    remaining = Int.random(in: (index < 5 ? 2 : 1)...3, using: &random)
+                    if colorBag.isEmpty { colorBag = palette.shuffled(using: &random) }
+                    if colorBag.last == color && colorBag.count > 1 { colorBag.swapAt(0, colorBag.count - 1) }
+                    color = colorBag.removeLast()
+                }
+                values[Cell(row: row, column: column)] = color
+                remaining -= 1
+            }
+        }
+        let shell = BubbleBoard(bubbles: values)
+        let anchored = values.keys.filter { $0.row == 0 }.reduce(into: Set<Cell>()) { $0.formUnion(shell.connected(from: $1, matchingColor: false)) }
+        if anchored.count != values.count { values = initialBubbles }
+        return GameLevel(index: index, area: area, shots: shots, initialBubbles: values)
+    }
     var hint: String {
         if let special = initialSpecials.values.first { return special.explanation }
         if index < 5 {
@@ -84,6 +120,17 @@ struct GameLevel {
     }
 }
 
+struct LayoutRandom: RandomNumberGenerator {
+    var state: UInt64
+    mutating func next() -> UInt64 {
+        state = state &+ 0x9E3779B97F4A7C15
+        var value = state
+        value = (value ^ (value >> 30)) &* 0xBF58476D1CE4E5B9
+        value = (value ^ (value >> 27)) &* 0x94D049BB133111EB
+        return value ^ (value >> 31)
+    }
+}
+
 enum BubbleColorQueue {
     static func draw<R: RandomNumberGenerator>(board: BubbleBoard, bag: inout [Int], using random: inout R) -> Int {
         let colors = board.playableColors
@@ -91,13 +138,13 @@ enum BubbleColorQueue {
         if bag.isEmpty { bag = colors.sorted().shuffled(using: &random) }
         let useful = Set(board.bubbles.keys.filter { board.connected(from: $0, matchingColor: true).count >= 2 }
             .compactMap { board.bubbles[$0] })
-        if let index = bag.lastIndex(where: useful.contains) { return bag.remove(at: index) }
+        if board.bubbles.count <= 12, let index = bag.lastIndex(where: useful.contains) { return bag.remove(at: index) }
         return bag.popLast() ?? 0
     }
 }
 
 enum LevelCatalog {
-    static let levelsPerArea = 10
+    static let levelsPerArea = 20
     static let levelCount = 200
     static let maximumStars = levelCount * 3
     static let originalAreas = [
@@ -115,7 +162,7 @@ enum LevelCatalog {
         return FestivalArea(name: name, subtitle: "Levels \(index * levelsPerArea + 1)–\((index + 1) * levelsPerArea)", background: scenery.background, nightTint: false)
     }
     static let levels: [GameLevel] = (0..<levelCount).map { index in
-        let area = index / 10
+        let area = index / levelsPerArea
         let layoutIndex = min(index, 49)
         let local = layoutIndex % 10
         let layoutArea = layoutIndex / 10
@@ -156,7 +203,7 @@ enum LevelCatalog {
         if index < 10 {
             shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
         } else {
-            let allowance = max(5, 12 - index / 15)
+            let allowance = max(2, 8 - index / 20)
             shots = max(18, (cells.count + 2) / 3 + budgetColors + allowance)
         }
         let precision = index >= 15 && index % 10 == 5
@@ -171,13 +218,13 @@ enum LevelCatalog {
         var cells = template
         if index >= 50 {
             // Increase depth across the later campaign instead of recycling levels 21–50.
-            let height = min(7, 6 + (index - 50) / 75)
+            let height = min(7, 6 + (index - 50) / 50)
             cells = [:]
             for row in 0..<height {
                 let width = BubbleBoard.columns - row % 2
                 for column in 0..<width {
                     // Lower openings vary by level; full upper rows anchor every branch.
-                    let gap = FestivalPattern.forArea(index / 10).gap(row: row, width: width, index: index)
+                    let gap = FestivalPattern.forArea(index / levelsPerArea).gap(row: row, width: width, index: index)
                     if row >= 3 && row % 2 == index % 2 && column == gap { continue }
                     cells[Cell(row: row, column: column)] = 0
                 }
@@ -215,7 +262,7 @@ enum LevelCatalog {
             }
             var color = pairColors[pair]!
             // Introduce occasional setup shots, then increase them in later areas.
-            let splitInterval = max(4, 12 - index / 20)
+            let splitInterval = max(3, 10 - index / 20)
             if index >= 30 && cell.row < lastRow && (cell.row * 8 + cell.column + index) % splitInterval == 0 {
                 color = (color + 1) % palette
             }
@@ -238,26 +285,26 @@ struct Companion {
     let unlockAfter: Int
     var unlockQuest: String? = nil
     var unlockDescription: String {
-        if let id = unlockQuest, let quest = FestivalQuest.all.first(where: { $0.id == id }) { return "Finish \(quest.title)" }
-        return "Clear \(unlockAfter) stops"
+        if let id = unlockQuest, let quest = FestivalQuest.all.first(where: { $0.id == id }) { return "Area \(unlockAfter / LevelCatalog.levelsPerArea) + \(quest.title)" }
+        return "Clear area \(max(1, unlockAfter / LevelCatalog.levelsPerArea))"
     }
 
     static let all = [
         Companion(id: "shiba", name: "Shiba", kind: .animal, atlasIndex: 0, unlockAfter: 0),
-        Companion(id: "white-shiba", name: "White Shiba", kind: .animal, atlasIndex: 1, unlockAfter: 10),
-        Companion(id: "calico", name: "Calico Cat", kind: .animal, atlasIndex: 2, unlockAfter: 20),
-        Companion(id: "rabbit", name: "Rabbit", kind: .animal, atlasIndex: 3, unlockAfter: 30),
+        Companion(id: "white-shiba", name: "White Shiba", kind: .animal, atlasIndex: 1, unlockAfter: 20),
+        Companion(id: "calico", name: "Calico Cat", kind: .animal, atlasIndex: 2, unlockAfter: 40),
+        Companion(id: "rabbit", name: "Rabbit", kind: .animal, atlasIndex: 3, unlockAfter: 60),
         Companion(id: "guide", name: "Festival Guide", kind: .human, atlasIndex: 4, unlockAfter: 0),
-        Companion(id: "host", name: "Festival Host", kind: .human, atlasIndex: 5, unlockAfter: 40),
-        Companion(id: "haru", name: "Haru", kind: .human, atlasIndex: 6, unlockAfter: 5),
-        Companion(id: "mei", name: "Mei", kind: .human, atlasIndex: 7, unlockAfter: 0, unlockQuest: "parcels"),
-        Companion(id: "daichi", name: "Daichi", kind: .human, atlasIndex: 8, unlockAfter: 15),
-        Companion(id: "nao", name: "Nao", kind: .human, atlasIndex: 9, unlockAfter: 0, unlockQuest: "pinwheels"),
-        Companion(id: "kaito", name: "Kaito", kind: .human, atlasIndex: 10, unlockAfter: 0, unlockQuest: "picnic"),
-        Companion(id: "emi", name: "Emi", kind: .human, atlasIndex: 11, unlockAfter: 35),
-        Companion(id: "sesame-shiba", name: "Sesame Shiba", kind: .animal, atlasIndex: 12, unlockAfter: 50),
-        Companion(id: "cream-rabbit", name: "Cream Rabbit", kind: .animal, atlasIndex: 13, unlockAfter: 80),
-        Companion(id: "river-otter", name: "River Otter", kind: .animal, atlasIndex: 14, unlockAfter: 110)
+        Companion(id: "host", name: "Festival Host", kind: .human, atlasIndex: 5, unlockAfter: 140),
+        Companion(id: "haru", name: "Haru", kind: .human, atlasIndex: 6, unlockAfter: 20),
+        Companion(id: "mei", name: "Mei", kind: .human, atlasIndex: 7, unlockAfter: 40, unlockQuest: "parcels"),
+        Companion(id: "daichi", name: "Daichi", kind: .human, atlasIndex: 8, unlockAfter: 60),
+        Companion(id: "nao", name: "Nao", kind: .human, atlasIndex: 9, unlockAfter: 80, unlockQuest: "pinwheels"),
+        Companion(id: "kaito", name: "Kaito", kind: .human, atlasIndex: 10, unlockAfter: 100, unlockQuest: "picnic"),
+        Companion(id: "emi", name: "Emi", kind: .human, atlasIndex: 11, unlockAfter: 120),
+        Companion(id: "sesame-shiba", name: "Sesame Shiba", kind: .animal, atlasIndex: 12, unlockAfter: 80),
+        Companion(id: "cream-rabbit", name: "Cream Rabbit", kind: .animal, atlasIndex: 13, unlockAfter: 100),
+        Companion(id: "river-otter", name: "River Otter", kind: .animal, atlasIndex: 14, unlockAfter: 120)
     ]
 }
 
@@ -288,6 +335,18 @@ final class GameProgress {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         adventure = AdventureProgress(defaults: defaults)
+        if defaults.integer(forKey: "courtyardProgressVersion") < 1 {
+            let legacy: [String: Int] = ["white-shiba": 10, "calico": 20, "rabbit": 30, "host": 40, "haru": 5, "daichi": 15, "emi": 35, "sesame-shiba": 50, "cream-rabbit": 80, "river-otter": 110]
+            let cleared = LevelCatalog.levels.filter { defaults.integer(forKey: "stars-\($0.index)") > 0 || defaults.integer(forKey: "bestScore-\($0.index)") > 0 }.count
+            let earned = Companion.all.filter { companion in
+                if let questID = companion.unlockQuest {
+                    return FestivalQuest.all.first(where: { $0.id == questID }).map { adventure.completed($0) } ?? false
+                }
+                return legacy[companion.id].map { cleared >= $0 } ?? false
+            }.map(\.id)
+            defaults.set(earned, forKey: "unlockedCompanions")
+            defaults.set(1, forKey: "courtyardProgressVersion")
+        }
         // Older campaigns capped the unlocked index at 49, even after the finale.
         if defaults.integer(forKey: "stars-49") > 0 && defaults.integer(forKey: "unlockedLevel") == 49 {
             defaults.set(50, forKey: "unlockedLevel")
@@ -299,6 +358,23 @@ final class GameProgress {
         }
     }
 
+    func freshLayout(for level: Int) -> (level: GameLevel, seed: UInt64) {
+        let base = LevelCatalog.level(level)
+        let key = "layoutHistory-\(level)"
+        let history = defaults.stringArray(forKey: key) ?? []
+        var seed = UInt64.random(in: 1...UInt64.max)
+        var candidate = base.randomized(seed: seed)
+        func fingerprint(_ value: GameLevel) -> String {
+            value.initialBubbles.keys.sorted { $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row }
+                .map { "\($0.row),\($0.column),\(value.initialBubbles[$0]!)" }.joined(separator: ";")
+        }
+        for _ in 0..<128 {
+            if !history.contains(fingerprint(candidate)) { break }
+            seed = seed &+ 1; candidate = base.randomized(seed: seed)
+        }
+        defaults.set(Array((history + [fingerprint(candidate)]).suffix(8)), forKey: key)
+        return (candidate, seed)
+    }
     var unlockedLevel: Int {
         min(LevelCatalog.levels.count - 1, max(0, defaults.integer(forKey: "unlockedLevel")))
     }
@@ -377,11 +453,11 @@ final class GameProgress {
         if stars(index) == 3 { medals.insert(.threeStars) }
         return medals
     }
-    func hasSouvenir(area: Int) -> Bool { stars(area * LevelCatalog.levelsPerArea + 9) > 0 }
+    func hasSouvenir(area: Int) -> Bool { (area * LevelCatalog.levelsPerArea..<(area + 1) * LevelCatalog.levelsPerArea).allSatisfy { stars($0) > 0 } }
     func replayLevels(area: Int, filter: ReplayFilter) -> [Int] {
         guard LevelCatalog.areas.indices.contains(area) else { return [] }
         let medals = collection.medals
-        return (area * 10..<(area + 1) * 10).filter { index in
+        return (area * LevelCatalog.levelsPerArea..<(area + 1) * LevelCatalog.levelsPerArea).filter { index in
             guard index <= unlockedLevel else { return false }
             switch filter {
             case .all: return true
@@ -439,8 +515,9 @@ final class GameProgress {
     }
 
     func unlocked(_ companion: Companion) -> Bool {
+        if (defaults.stringArray(forKey: "unlockedCompanions") ?? []).contains(companion.id) { return true }
         if let id = companion.unlockQuest {
-            return FestivalQuest.all.first(where: { $0.id == id }).map { adventure.completed($0) } ?? false
+            return completedCount >= companion.unlockAfter && (FestivalQuest.all.first(where: { $0.id == id }).map { adventure.completed($0) } ?? false)
         }
         return completedCount >= companion.unlockAfter
     }
@@ -452,7 +529,7 @@ final class GameProgress {
             ?? Companion.all.first { $0.kind == kind && $0.unlockAfter == 0 }!
     }
 
-    func neighborIsAvailable(_ neighbor: FestivalNeighbor) -> Bool { unlockedLevel >= neighbor.area * 10 }
+    func neighborIsAvailable(_ neighbor: FestivalNeighbor) -> Bool { unlockedLevel >= neighbor.area * LevelCatalog.levelsPerArea }
     func hasMet(_ neighbor: FestivalNeighbor) -> Bool { defaults.bool(forKey: "neighborMet-\(neighbor.id)") }
     func markMet(_ neighbor: FestivalNeighbor) {
         guard neighborIsAvailable(neighbor) else { return }

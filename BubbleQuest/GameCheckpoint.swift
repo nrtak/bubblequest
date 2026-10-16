@@ -21,6 +21,7 @@ struct GameCheckpoint: Codable {
     let ceilingOffset: Double?
     let shotsFired: Int?
     let pressureSeed: UInt64?
+    let layoutSeed: UInt64?
     let armor: Set<Cell>?
     let blockers: Set<Cell>?
     let goal: PuzzleGoal?
@@ -29,14 +30,14 @@ struct GameCheckpoint: Codable {
 
     init(level: Int, board: BubbleBoard, shots: Int, score: Int, current: Int, next: Int,
          bag: [Int], rainbow: Int, bomb: Int, play: QuestPlay, challenge: Bool = false,
-         freeRainbow: Bool = true, freeBomb: Bool = true, ceilingOffset: Double = 0, shotsFired: Int = 0, pressureSeed: UInt64 = 0, goal: PuzzleGoal? = nil, bankMatches: Int = 0, boosterShots: Int = 0) {
+         freeRainbow: Bool = true, freeBomb: Bool = true, ceilingOffset: Double = 0, shotsFired: Int = 0, pressureSeed: UInt64 = 0, layoutSeed: UInt64? = nil, goal: PuzzleGoal? = nil, bankMatches: Int = 0, boosterShots: Int = 0) {
         version = 1; self.level = level; self.shots = shots; self.score = score
         currentColor = current; nextColor = next; self.bag = bag
         self.rainbow = rainbow; self.bomb = bomb; self.play = play
         self.challenge = challenge
         self.freeRainbow = freeRainbow; self.freeBomb = freeBomb
         self.ceilingOffset = ceilingOffset; self.shotsFired = shotsFired
-        self.pressureSeed = pressureSeed
+        self.pressureSeed = pressureSeed; self.layoutSeed = layoutSeed
         armor = board.armor; blockers = board.blockers; self.goal = goal
         self.bankMatches = bankMatches; self.boosterShots = boosterShots
         bubbles = board.bubbles.map { Bubble(row: $0.key.row, column: $0.key.column, color: $0.value) }

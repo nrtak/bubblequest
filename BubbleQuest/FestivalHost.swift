@@ -35,6 +35,6 @@ struct FestivalHost {
 
 extension GameProgress {
     func hostIsAvailable(_ host: FestivalHost) -> Bool {
-        unlockedLevel >= host.area * 10
+        unlockedLevel >= host.area * LevelCatalog.levelsPerArea
     }
 }

@@ -54,7 +54,7 @@ struct PuzzleGoal: Codable, Equatable {
 
 extension GameLevel {
     var isBankRoute: Bool { index >= 10 && index % 10 == 3 }
-    var isMilestone: Bool { number.isMultiple(of: 10) }
+    var isMilestone: Bool { number.isMultiple(of: LevelCatalog.levelsPerArea) }
     var objective: PuzzleObjective {
         if index < 5 { return .clear }
         if isMilestone { return .ceiling }
@@ -92,7 +92,7 @@ extension GameLevel {
 }
 
 struct LevelPlayResults: Codable, Equatable {
-    static let balanceVersion = 2
+    static let balanceVersion = 3
     var version = LevelPlayResults.balanceVersion
     var wins = 0
     var losses = 0

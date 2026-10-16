@@ -75,7 +75,7 @@ final class GameProfiles {
     /// Named, atomic on-device snapshot alongside the normal autosave store.
     @discardableResult
     func persistActive() -> Bool {
-        let keys = Set(["courtyardProgressVersion", "unlockedCompanions", "festivalCollection", "unlockedLevel", "unfinishedPuzzle", "lastSaved", "tutorialSeen", "firstMatchLearned", "selectedAnimal", "selectedHuman", "festivalAdventure", "muted", "musicVolume", "effectsVolume"])
+        let keys = Set(["courtyardLegacySouvenirs", "courtyardProgressVersion", "unlockedCompanions", "festivalCollection", "unlockedLevel", "unfinishedPuzzle", "lastSaved", "tutorialSeen", "firstMatchLearned", "selectedAnimal", "selectedHuman", "festivalAdventure", "muted", "musicVolume", "effectsVolume"])
             .union(GameSetting.allCases.map(\.rawValue))
         let prefixes = ["layoutHistory-", "levelResults-", "stars-", "bestScore-", "attempts-", "lastWon-", "lastRemaining-", "buddyWelcomed-", "learned-", "challenge-", "neighborMet-", "hostMet-"]
         let values = defaults(for: active).dictionaryRepresentation().filter { keys.contains($0.key) || prefixes.contains(where: $0.key.hasPrefix) }

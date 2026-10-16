@@ -1168,9 +1168,6 @@ private extension FestivalScene {
         if (area * LevelCatalog.levelsPerArea..<area * LevelCatalog.levelsPerArea + LevelCatalog.levelsPerArea).allSatisfy({ progress.stars($0) > 0 }) {
             menuButton("Extra challenge", name: "open-challenge", point: CGPoint(x: 195, y: 272), parent: overlay)
         }
-        if neighborsAvailable(in: area) {
-            menuButton("Meet the neighbors", name: "neighbors", point: CGPoint(x: 195, y: 201), parent: overlay, height: 44)
-        }
         menuButton("Back to the map", name: "quest-back", point: CGPoint(x: 195, y: 130), parent: overlay)
     }
 
@@ -2259,9 +2256,6 @@ private extension FestivalScene {
         panel(width: 340, height: 155, point: CGPoint(x: 195, y: 302), parent: overlay)
         paragraph(host.introduction[min(dialoguePage, host.introduction.count - 1)], y: 311, parent: overlay)
         label("\(dialoguePage + 1)/\(host.introduction.count)", size: 13, point: CGPoint(x: 195, y: 247), parent: overlay)
-        if FestivalQuest.all.contains(where: { $0.area == host.area && progress.adventure.available($0, unlockedLevel: progress.unlockedLevel) }) {
-            menuButton("Optional side quests", name: "host-quests", point: CGPoint(x: 195, y: 195), parent: overlay, height: 44)
-        }
         menuButton(dialoguePage == host.introduction.count - 1 ? "Let's go!" : "Next", name: "dialogue-next", point: CGPoint(x: 195, y: 142), parent: overlay, height: 44)
         menuButton("Back", name: "dialogue-back", point: CGPoint(x: 195, y: 84), parent: overlay, width: 132, height: 44)
     }
@@ -2332,6 +2326,7 @@ private extension FestivalScene {
         showLevels()
         menuKind = "map-buddies"
         guard let overlay = levelMenu else { return }
+        for child in overlay.children { child.zPosition -= 20 }
         panel(width: 360, height: 342, point: CGPoint(x: 195, y: 258), parent: overlay)
         label("Shooter & Buddy", size: 24, point: CGPoint(x: 195, y: 397), parent: overlay)
         let pages = (Companion.all.count + 5) / 6
@@ -2461,7 +2456,7 @@ private extension FestivalScene {
         if names.contains("resume-play") { closeMenu(); startLevel(restoring: true); return }
         if names.contains("retry-confirm") { closeMenu(); startLevel(); return }
         if names.contains("retry-cancel") { closeMenu(); return }
-        if names.contains("host-quests") { showQuests(area: introHost?.area ?? mapArea); return }
+        if names.contains("host-quests") { mapArea = introHost?.area ?? mapArea; showLevels(); return }
         if names.contains("quest-list") { showQuests(area: questArea); return }
         if names.contains("quest-back") { mapArea = questArea; showLevels(); return }
         if names.contains("open-wheel") { questArea = mapArea; showWheel(); return }

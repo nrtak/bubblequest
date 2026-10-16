@@ -26,8 +26,8 @@ struct GameLevel {
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
-    var ceilingInterval: Int { index < 3 ? 10 : max(3, 8 - index / 20) }
-    var ceilingStep: Double { index < 3 ? 6 : 10 + Double(min(index, 119)) * 0.20 + Double(max(0, index - 119)) * 0.03 }
+    var ceilingInterval: Int { index < 3 ? 10 : max(4, 10 - index / 5) }
+    var ceilingStep: Double { index < 3 ? 6 : 6 + Double(min(index, 49)) * 0.60 + Double(max(0, index - 49)) * 0.05 }
     func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
         var state = seed
         var threshold = 0
@@ -345,6 +345,8 @@ final class GameProgress {
                 return legacy[companion.id].map { cleared >= $0 } ?? false
             }.map(\.id)
             defaults.set(earned, forKey: "unlockedCompanions")
+            let souvenirs = LevelCatalog.areas.indices.filter { defaults.integer(forKey: "stars-\($0 * 10 + 9)") > 0 }
+            defaults.set(souvenirs, forKey: "courtyardLegacySouvenirs")
             defaults.set(1, forKey: "courtyardProgressVersion")
         }
         // Older campaigns capped the unlocked index at 49, even after the finale.
@@ -453,7 +455,11 @@ final class GameProgress {
         if stars(index) == 3 { medals.insert(.threeStars) }
         return medals
     }
-    func hasSouvenir(area: Int) -> Bool { (area * LevelCatalog.levelsPerArea..<(area + 1) * LevelCatalog.levelsPerArea).allSatisfy { stars($0) > 0 } }
+    func hasSouvenir(area: Int) -> Bool {
+        guard LevelCatalog.areas.indices.contains(area) else { return false }
+        return (defaults.array(forKey: "courtyardLegacySouvenirs") as? [Int] ?? []).contains(area) ||
+            (area * LevelCatalog.levelsPerArea..<(area + 1) * LevelCatalog.levelsPerArea).allSatisfy { stars($0) > 0 }
+    }
     func replayLevels(area: Int, filter: ReplayFilter) -> [Int] {
         guard LevelCatalog.areas.indices.contains(area) else { return [] }
         let medals = collection.medals

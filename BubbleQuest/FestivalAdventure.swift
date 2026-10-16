@@ -105,6 +105,7 @@ enum FestivalPrize: String, Codable, CaseIterable {
 
 final class AdventureProgress {
     private struct State: Codable {
+        var mapIntroduced: Bool?
         var accepted: Set<String> = []
         var wins: [String: [Int]] = [:]
         var styles: [String: Int] = [:]
@@ -124,9 +125,10 @@ final class AdventureProgress {
     }
     private func save() { if let data = try? JSONEncoder().encode(state) { defaults.set(data, forKey: "festivalAdventure") } }
     func takeMapIntroduction(unlockedLevel: Int, area: Int) -> FestivalQuest? {
-        guard !defaults.bool(forKey: "sideQuestMapIntroduced"),
+        guard state.mapIntroduced != true,
               let quest = FestivalQuest.all.first(where: { $0.area == area && available($0, unlockedLevel: unlockedLevel) && !accepted($0) }) else { return nil }
-        defaults.set(true, forKey: "sideQuestMapIntroduced")
+        state.mapIntroduced = true
+        save()
         return quest
     }
     func accepted(_ quest: FestivalQuest) -> Bool { state.accepted.contains(quest.id) }

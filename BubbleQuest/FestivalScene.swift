@@ -66,6 +66,7 @@ final class FestivalScene: SKScene {
     private var currentColor = 0
     private var nextColor = 1
     private var shots = 24
+    private var attemptShotBudget = 24
     private var pressureSeed: UInt64 = 0
     private var shotsFired = 0
     private var layoutSeed: UInt64?
@@ -372,6 +373,7 @@ final class FestivalScene: SKScene {
         bombLeft = 1 + progress.adventure.bombGifts
         freeRainbow = !challengeMode; freeBomb = !challengeMode
         if challengeMode { shots = max(12, shots * 3 / 4); rainbowLeft = 0; bombLeft = 0 }
+        attemptShotBudget = saved.map { $0.shotBudget ?? max($0.shots, activeLevel.shots) } ?? shots
         armed = nil
         loadingBubble = false
         aimGesture.cancel()
@@ -1026,7 +1028,7 @@ final class FestivalScene: SKScene {
         questPlay.dropped += result.dropped.count
         questPlay.colors.formUnion(result.matched.union(result.dropped).compactMap { oldColors[$0] })
         let refunds = result.matched.filter { oldSpecials[$0] == .riverPearl }.count
-        shots = min(activeLevel.shots, shots + refunds)
+        shots = min(attemptShotBudget, shots + refunds)
         let quiet = UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled
         for (index, match) in result.matched.sorted(by: { $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row }).enumerated() {
             if index < (quiet ? 8 : 12) { popEffect(at: point(match), color: palette[oldColors[match] ?? currentColor], special: oldSpecials[match], quiet: quiet) }
@@ -1598,7 +1600,7 @@ private extension FestivalScene {
         progress.save(GameCheckpoint(level: level, board: board, shots: shots, score: score,
                                      current: currentColor, next: nextColor, bag: colorBag,
                                      rainbow: rainbowLeft, bomb: bombLeft, play: questPlay, challenge: challengeMode,
-                                     freeRainbow: freeRainbow, freeBomb: freeBomb, ceilingOffset: ceilingOffset, shotsFired: shotsFired, pressureSeed: pressureSeed, layoutSeed: layoutSeed, goal: puzzleGoal, bankMatches: bankMatches, boosterShots: boosterShots, balanceVersion: pressureBalanceVersion))
+                                     freeRainbow: freeRainbow, freeBomb: freeBomb, ceilingOffset: ceilingOffset, shotsFired: shotsFired, pressureSeed: pressureSeed, layoutSeed: layoutSeed, goal: puzzleGoal, bankMatches: bankMatches, boosterShots: boosterShots, balanceVersion: pressureBalanceVersion, shotBudget: attemptShotBudget))
         profiles.persistActive()
     }
 

@@ -95,16 +95,16 @@ struct GameLevel {
                     if colorBag.last == color && colorBag.count > 1 { colorBag.swapAt(0, colorBag.count - 1) }
                     color = colorBag.removeLast()
                     if index >= 20 {
-                        // Avoid accidental vertical color chains across randomized rows.
-                        let above = BubbleBoard.neighbors(of: Cell(row: row, column: column))
-                            .filter { $0.row < row }.compactMap { values[$0] }
-                        if above.contains(color), let alternative = palette.shuffled(using: &random).first(where: { !above.contains($0) }) {
+                        // Keep useful supports, but cap chains that trivialize a whole board.
+                        let shell = BubbleBoard(bubbles: values)
+                        let limit = index < 80 ? 8 : 6
+                        let largeColors = Set(BubbleBoard.neighbors(of: Cell(row: row, column: column))
+                            .filter { $0.row < row && shell.connected(from: $0, matchingColor: true).count >= limit }
+                            .compactMap { values[$0] })
+                        if largeColors.contains(color), let alternative = palette.shuffled(using: &random).first(where: { !largeColors.contains($0) }) {
                             color = alternative
                         }
                     }
-                }
-                if index >= 60 && remaining == 1 && (row * 8 + column + index) % max(3, 9 - index / 30) == 0 {
-                    color = palette[(palette.firstIndex(of: color)! + 1) % palette.count]
                 }
                 values[Cell(row: row, column: column)] = color
                 remaining -= 1

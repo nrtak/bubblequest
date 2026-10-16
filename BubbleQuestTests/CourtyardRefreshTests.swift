@@ -3,6 +3,15 @@ import SpriteKit
 @testable import BubbleQuest
 
 final class CourtyardRefreshTests: XCTestCase {
+    func testAnimalsAreNotPresentedAsQuestGivers() {
+        for quest in FestivalQuest.all {
+            let words = [quest.title, quest.invitation, quest.thanks, quest.objectiveSummary] + quest.steps +
+                (0..<quest.steps.count).map { quest.conversation(step: $0) }
+            XCTAssertTrue(words.allSatisfy { !$0.lowercased().contains("shiba") })
+        }
+        XCTAssertTrue(FestivalNeighbor.all.allSatisfy { !$0.introduction.lowercased().contains("shiba") })
+    }
+
     func testGeneratedAttemptsAreSeededAnchoredAndStayWithinDifficultyBand() {
         for base in LevelCatalog.levels {
             for seed in 1...8 {

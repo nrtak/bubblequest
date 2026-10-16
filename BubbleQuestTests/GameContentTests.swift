@@ -194,11 +194,11 @@ final class GameContentTests: XCTestCase {
         let progress = GameProgress(defaults: defaults)
         XCTAssertEqual(progress.unlockedLevel, 0)
         XCTAssertFalse(progress.hostIsAvailable(FestivalHost.all[1]))
-        for index in 0..<10 { progress.recordVictory(index: index, score: 200, stars: 3) }
+        for index in 0..<20 { progress.recordVictory(index: index, score: 200, stars: 3) }
         progress.recordVictory(index: 0, score: 100, stars: 1)
-        XCTAssertEqual(progress.totalStars, 30)
+        XCTAssertEqual(progress.totalStars, 60)
         XCTAssertEqual(progress.bestScore(0), 200)
-        XCTAssertEqual(progress.unlockedLevel, 10)
+        XCTAssertEqual(progress.unlockedLevel, 20)
         XCTAssertTrue(progress.unlocked(Companion.all[1]))
         XCTAssertTrue(progress.hostIsAvailable(FestivalHost.all[1]))
         progress.markMet(FestivalHost.all[1])

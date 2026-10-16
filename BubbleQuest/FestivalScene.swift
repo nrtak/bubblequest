@@ -685,7 +685,18 @@ final class FestivalScene: SKScene {
         }
         let wheelStop = panel(width: 128, height: 52, point: CGPoint(x: 80, y: 270), parent: overlay)
         wheelStop.name = "open-wheel"
-        if !addMapConversation(to: overlay) && neighborsAvailable(in: mapArea) {
+        let introducedQuest = progress.adventure.takeMapIntroduction(unlockedLevel: progress.unlockedLevel, area: mapArea)
+        if let introducedQuest {
+            let tip = panel(width: 132, height: 76, point: CGPoint(x: 80, y: 425), parent: overlay)
+            tip.name = "quest-" + introducedQuest.id
+            label("Optional detour", size: 13, point: CGPoint(x: 0, y: 20), parent: tip)
+            label("Come back anytime", size: 11, point: CGPoint(x: 0, y: 0), parent: tip)
+            label("Tap a teal sign to help", size: 10, point: CGPoint(x: 0, y: -21), parent: tip)
+            if let sign = overlay.childNode(withName: "quest-" + introducedQuest.id) as? SKShapeNode {
+                sign.lineWidth = 4; sign.strokeColor = .systemYellow
+            }
+        }
+        if introducedQuest == nil && !addMapConversation(to: overlay) && neighborsAvailable(in: mapArea) {
             menuButton("Neighbors", name: "neighbors", point: CGPoint(x: 70, y: mapArea < FestivalHost.all.count ? 425 : 584), parent: overlay, width: 112, height: 40)
         }
         let gift = questIcon("gift.fill", size: 20, color: .systemYellow); gift.position = CGPoint(x: -48, y: 0); wheelStop.addChild(gift)
@@ -694,6 +705,9 @@ final class FestivalScene: SKScene {
         addEarnedSouvenir(to: overlay, markers: positions)
         addMapDiscoveries(to: overlay)
         menuButton("\(progress.checkpoint == nil ? "Start level" : "Continue level") \(current + 1)", name: "continue-stop", point: CGPoint(x: 195, y: 133), parent: overlay, width: 270, height: 52)
+        if let next = overlay.childNode(withName: "continue-stop") as? SKShapeNode {
+            next.strokeColor = .systemYellow; next.lineWidth = 3
+        }
         menuButton("Start Menu", name: "home", point: CGPoint(x: 109, y: 65), parent: overlay, width: 150, height: 44)
         decorateMenuIcon("house.fill", name: "home", parent: overlay, x: -57)
         menuButton("Buddies", name: "friends", point: CGPoint(x: 281, y: 65), parent: overlay, width: 150, height: 44)
@@ -705,7 +719,7 @@ final class FestivalScene: SKScene {
             let startIndex = min(markers.count - 1, max(0, quest.unlockLevel - mapArea * 10 - 1))
             guard markers.indices.contains(startIndex) else { continue }
             let start = markers[startIndex]
-            let destination = CGPoint(x: 80, y: quest.id == "toy" ? 490 : 358)
+            let destination = CGPoint(x: 80, y: quest.id == "toy" ? 490 : 350)
             // A dotted footpath branches from the main trail; quest stops never use level numbers.
             for step in 1..<13 {
                 let t = CGFloat(step) / 13
@@ -716,21 +730,33 @@ final class FestivalScene: SKScene {
                 dot.zPosition = -0.5
                 overlay.addChild(dot)
             }
-            let sign = panel(width: 132, height: 54, point: destination, parent: overlay)
+            let sign = panel(width: 132, height: 70, point: destination, parent: overlay)
             sign.name = "quest-" + quest.id
             sign.zPosition = 2
             sign.fillColor = UIColor(red: 0.10, green: 0.35, blue: 0.34, alpha: 0.96)
             sign.strokeColor = .systemMint
             let icon = questIcon(quest.symbol, size: 15, color: .systemYellow)
-            icon.position = CGPoint(x: -48, y: 15); sign.addChild(icon)
-            label("OPTIONAL", size: 10, point: CGPoint(x: 9, y: 12), parent: sign)
-            label(quest.title, size: 12, point: CGPoint(x: 0, y: -3), parent: sign)
+            icon.position = CGPoint(x: -48, y: 24); sign.addChild(icon)
+            let reward = questIcon(quest.rewardSymbol, size: 13, color: .systemYellow)
+            reward.position = CGPoint(x: 49, y: 24); sign.addChild(reward)
+            label("OPTIONAL", size: 10, point: CGPoint(x: 0, y: 21), parent: sign)
+            label(quest.title, size: 12, point: CGPoint(x: 0, y: 5), parent: sign)
             if let title = sign.children.last as? SKLabelNode, title.frame.width > 122 {
                 title.setScale(122 / title.frame.width)
             }
             let status = progress.adventure.completed(quest) ? "Complete" :
                 progress.adventure.accepted(quest) ? "Active • \(progress.adventure.count(quest))/3" : "View quest"
-            label(status, size: 10, point: CGPoint(x: 0, y: -18), parent: sign)
+            label(status, size: 10, point: CGPoint(x: 0, y: -11), parent: sign)
+            label(quest.rewardSummary, size: 9, point: CGPoint(x: 0, y: -27), parent: sign)
+            if progress.adventure.completed(quest) {
+                let display = questIcon(quest.id == "parcels" ? "shippingbox.fill" : quest.symbol, size: 22, color: .systemYellow)
+                display.name = "quest-display-" + quest.id
+                icon.isHidden = true
+                display.position = CGPoint(x: -48, y: 24); sign.addChild(display)
+                if quest.id == "pinwheels" && !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled {
+                    display.run(.repeatForever(.rotate(byAngle: .pi * 2, duration: 6)))
+                }
+            }
         }
     }
 
@@ -1104,7 +1130,12 @@ final class FestivalScene: SKScene {
                                                    stars: LevelCatalog.level(level).stars(shotsRemaining: shots))
             let newQuests = progress.adventure.recordWin(level: level, play: questPlay, completedLevels: progress.completedCount)
             completedQuest = newQuests.first
-            if let completedQuest { status.text = "Story complete: \(completedQuest.title)" }
+            if let completedQuest { status.text = "Side quest complete: \(completedQuest.title)" }
+            else if let quest = FestivalQuest.all.first(where: {
+                $0.area == level / 10 && progress.adventure.accepted($0) && !progress.adventure.completed($0)
+            }) {
+                status.text = "\(quest.title): \(progress.adventure.count(quest))/\(quest.steps.count)"
+            }
             if !unlocked.isEmpty && completedQuest == nil { status.text = "New buddy: \(unlocked.map { $0.name }.joined(separator: ", "))" }
             if progress.enabled(.vibration) { UINotificationFeedbackGenerator().notificationOccurred(.success) }
             audio.effect(LevelCatalog.level(level).isMilestone ? "milestone" : "victory", enabled: progress.enabled(.effects), volume: progress.effectsVolume)
@@ -1305,7 +1336,7 @@ private extension FestivalScene {
             let basket = questIcon("basket.fill", size: 28, color: .systemYellow)
             basket.position = CGPoint(x: 195, y: 526); overlay.addChild(basket)
         }
-        paragraph(completed ? quest.thanks : quest.conversation(step: progress.adventure.count(quest)), y: 430, parent: overlay)
+        paragraph(completed ? quest.thanks : progress.adventure.accepted(quest) ? quest.conversation(step: progress.adventure.count(quest)) : quest.objectiveSummary, y: 430, parent: overlay)
         if completed {
             if let friend = Companion.all.first(where: { $0.unlockQuest == quest.id }) {
                 label("\(friend.name) has joined your buddies!", size: 17, point: CGPoint(x: 195, y: 357), parent: overlay)
@@ -1323,10 +1354,10 @@ private extension FestivalScene {
             let step = progress.adventure.count(quest)
             label("\(step)/3 • \(quest.steps[step])", size: 15, point: CGPoint(x: 195, y: 343), parent: overlay)
             let buddy = Companion.all.first { $0.unlockQuest == quest.id }
-            label(buddy.map { "Reward: \($0.name) joins as a buddy" } ?? "Reward: a festival decoration + free spin", size: 14, point: CGPoint(x: 195, y: 302), parent: overlay)
+            label(buddy.map { "Reward: \($0.name), decor + free spin" } ?? "Reward: " + quest.rewardSummary, size: 14, point: CGPoint(x: 195, y: 302), parent: overlay)
             menuButton(progress.adventure.accepted(quest) ? "Play regular levels" : "Accept Side Quest", name: progress.adventure.accepted(quest) ? "quest-play" : "quest-accept", point: CGPoint(x: 195, y: 222), parent: overlay)
         }
-        menuButton("Back", name: "quest-dialogue-back", point: CGPoint(x: 195, y: 104), parent: overlay, width: 160, height: 44)
+        menuButton(progress.adventure.accepted(quest) ? "Back" : "Maybe later", name: "quest-dialogue-back", point: CGPoint(x: 195, y: 104), parent: overlay, width: 160, height: 44)
     }
 
     func addQuestDecorations(to station: SKNode) {

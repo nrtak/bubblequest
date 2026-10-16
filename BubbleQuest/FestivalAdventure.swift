@@ -11,6 +11,21 @@ struct FestivalQuest {
     let goals: [Goal]
     let thanks: String
     var unlockLevel: Int { id == "parcels" ? 3 : id == "toy" ? 6 : area * 10 }
+    var rewardSymbol: String { id == "toy" ? "star.fill" : "gift.fill" }
+    var rewardSummary: String {
+        if id == "toy" { return "Star pin + free spin" }
+        return Companion.all.contains(where: { $0.unlockQuest == id }) ? "Buddy + decor + spin" : "Decoration + free spin"
+    }
+    var objectiveSummary: String {
+        switch id {
+        case "parcels": return "Find parcel tags in three market puzzles."
+        case "toy": return "Find clues in three market puzzles to recover Shiba's toy."
+        case "pinwheels": return "Win three courtyard puzzles using wall bounces and bubble drops."
+        case "lanterns": return "Recover charms in three lantern street puzzles."
+        case "picnic": return "Win three riverside puzzles and make a bubble drop."
+        default: return "Win three fireworks puzzles, clearing blue, coral, then gold."
+        }
+    }
     func conversation(step: Int) -> String {
         guard step > 0 else { return invitation }
         switch id {
@@ -108,6 +123,12 @@ final class AdventureProgress {
         state = defaults.data(forKey: "festivalAdventure").flatMap { try? JSONDecoder().decode(State.self, from: $0) } ?? State()
     }
     private func save() { if let data = try? JSONEncoder().encode(state) { defaults.set(data, forKey: "festivalAdventure") } }
+    func takeMapIntroduction(unlockedLevel: Int, area: Int) -> FestivalQuest? {
+        guard !defaults.bool(forKey: "sideQuestMapIntroduced"),
+              let quest = FestivalQuest.all.first(where: { $0.area == area && available($0, unlockedLevel: unlockedLevel) && !accepted($0) }) else { return nil }
+        defaults.set(true, forKey: "sideQuestMapIntroduced")
+        return quest
+    }
     func accepted(_ quest: FestivalQuest) -> Bool { state.accepted.contains(quest.id) }
     func count(_ quest: FestivalQuest) -> Int { min(quest.steps.count, state.wins[quest.id]?.count ?? 0) }
     func completed(_ quest: FestivalQuest) -> Bool { count(quest) == quest.steps.count }

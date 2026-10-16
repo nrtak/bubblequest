@@ -26,7 +26,7 @@ struct GameLevel {
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
-    var ceilingInterval: Int { index < 3 ? 10 : max(3, 8 - index / 8) }
+    var ceilingInterval: Int { index < 3 ? 10 : max(4, 8 - index / 8) }
     var ceilingStep: Double { index < 3 ? 6 + Double(index) * 0.2 : 14 + Double(min(index, 59)) * 0.5 + Double(max(0, index - 59)) * 0.06 }
     func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0, balanceVersion: Int = LevelPlayResults.balanceVersion) -> Double {
         // An unfinished puzzle retains the ceiling schedule it started with.
@@ -219,10 +219,10 @@ enum LevelCatalog {
         if index < 3 {
             shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
         } else if index < 10 {
-            shots = max(14, (cells.count + 2) / 3 + budgetColors + 6)
+            shots = max(18, (cells.count + 2) / 3 + budgetColors + 6)
         } else {
             let allowance = max(1, 6 - index / 30)
-            shots = max(16, (cells.count + 2) / 3 + budgetColors + allowance)
+            shots = max(18, (cells.count + 2) / 3 + budgetColors + allowance)
         }
         let precision = index >= 15 && index % 10 == 5
         let budget = precision ? max(12, (cells.count + 2) / 3 + budgetColors + 2) : shots

@@ -155,7 +155,7 @@ final class SceneTransitionTests: XCTestCase {
             }
             scene.handleMenu(["friends"])
             let hiddenMapLevel = try XCTUnwrap(scene.childNode(withName: "//level-6"))
-            let point = hiddenMapLevel.convert(.zero, to: scene)
+            let point = hiddenMapLevel.convert(CGPoint.zero, to: scene)
             XCTAssertFalse(FestivalMenuTargets.buddies(scene.interactionNames(at: point)).contains("level-6"))
         }
     }

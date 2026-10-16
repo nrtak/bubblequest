@@ -109,7 +109,10 @@ final class AdventureTests: XCTestCase {
         XCTAssertFalse(progress.unlocked(mei), "Repeated quest puzzles must not advance the story")
         progress.adventure.recordWin(level: 2, play: play, completedLevels: 5)
         XCTAssertFalse(progress.unlocked(mei), "Quest rewards wait for the area's character milestone")
-        for index in 20..<40 { progress.recordVictory(index: index, score: 100, stars: 1) }
+        for index in 20..<39 { progress.recordVictory(index: index, score: 100, stars: 1) }
+        let newlyUnlocked = progress.recordVictory(index: 39, score: 100, stars: 1)
+        XCTAssertTrue(newlyUnlocked.contains { $0.id == "mei" }, "Quest characters are announced when their area milestone is reached")
+        XCTAssertTrue(progress.recordVictory(index: 39, score: 100, stars: 1).isEmpty, "Replays must not announce the same unlock twice")
         XCTAssertTrue(progress.unlocked(mei))
         progress.select(mei)
         XCTAssertEqual(GameProgress(defaults: defaults).selected(.human).id, "mei")

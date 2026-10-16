@@ -194,6 +194,7 @@ final class FestivalScene: SKScene {
     func setActive(_ active: Bool) {
         if !active { saveCheckpoint(); profiles.persistActive(); updateOperatorAppearance() }
         suspended = !active
+        gameRoot.removeAction(forKey: "control-help")
         isPaused = !active
         aiming = false
         aimGesture.cancel()
@@ -467,7 +468,7 @@ final class FestivalScene: SKScene {
         parent.addChild(button)
         label(title, size: min(23, (width - 28) / max(1, CGFloat(title.count) * 0.58)), point: CGPoint(x: 0, y: -8), parent: button)
         if let text = button.children.first as? SKLabelNode { fitLabel(text, width: width - 28) }
-        let symbols = ["Back to the map": "map.fill", "Back to the wheel": "gift.fill", "Spin": "sparkles", "Festival map": "map.fill", "Neighbors": "person.2.fill", "Prize Wheel": "gift.fill", "Pins": "star.circle.fill"]
+        let symbols = ["Explore Map": "map.fill", "Back to the map": "map.fill", "Back to the wheel": "gift.fill", "Spin": "sparkles", "Festival map": "map.fill", "Neighbors": "person.2.fill", "Prize Wheel": "gift.fill", "Pins": "star.circle.fill"]
         if let symbol = symbols[title] {
             let icon = questIcon(symbol, size: 20, color: .white)
             icon.position.x = -width / 2 + 23; button.addChild(icon)
@@ -901,8 +902,8 @@ final class FestivalScene: SKScene {
     }
 
     override func touchesCancelled(_ touches: Set<UITouch>, with event: UIEvent?) {
-        guard let touch = aimTouch, touches.contains(touch) else { return }
         gameRoot.removeAction(forKey: "control-help")
+        guard let touch = aimTouch, touches.contains(touch) else { return }
         aiming = false
         aimGesture.cancel()
         aimTouch = nil
@@ -1415,7 +1416,7 @@ private extension FestivalScene {
         result.text = progress.adventure.lastPrize.map { "Last gift: \($0.title)" } ?? "A little festival surprise"
         result.position = CGPoint(x: 195, y: 280); overlay.addChild(result)
         label("Earn a spin every five new levels", size: 14, point: CGPoint(x: 195, y: 240), parent: overlay)
-        label("80% boosters • 20% keepsakes", size: 13, point: CGPoint(x: 195, y: 260), parent: overlay)
+        label("Mostly boosters • keepsakes too", size: 13, point: CGPoint(x: 195, y: 260), parent: overlay)
         label("and for each completed side quest.", size: 14, point: CGPoint(x: 195, y: 219), parent: overlay)
         label("Saved boosters: \(progress.adventure.rainbowGifts) rainbow • \(progress.adventure.bombGifts) bomb", size: 13, point: CGPoint(x: 195, y: 196), parent: overlay)
         menuButton("Spin", name: "wheel-spin", point: CGPoint(x: 195, y: 158), parent: overlay, height: 44)
@@ -1461,7 +1462,7 @@ private extension FestivalScene {
         portrait.position = CGPoint(x: 195, y: 549); overlay.addChild(portrait)
         panel(width: 342, height: 147, point: CGPoint(x: 195, y: 351), parent: overlay)
         label(buddy.name, size: 28, point: CGPoint(x: 195, y: 389), parent: overlay)
-        paragraph("Hi! I'd love to help you bring more color to the festival. Let's pop some bubbles together!", y: 341, parent: overlay)
+        paragraph(buddy.kind == .human ? "Hi! I'd love to help you bring more color to the festival. Let's pop some bubbles together!" : "\(buddy.name) is ready to help load your bubbles. Choose this buddy for your next puzzle!", y: 341, parent: overlay)
         menuButton(buddy.kind == .human ? "Choose shooter" : "Choose buddy", name: "buddy-choose", point: CGPoint(x: 195, y: 201), parent: overlay, height: 52)
         menuButton("Maybe later", name: "buddy-later", point: CGPoint(x: 195, y: 128), parent: overlay, height: 48)
     }
@@ -1484,12 +1485,13 @@ private extension FestivalScene {
     internal func showGameMenu() {
         menuKind = "game-menu"; returnMenu = "game"
         let overlay = makeMenu(background: activeLevel.background)
-        panel(width: 330, height: 340, point: CGPoint(x: 195, y: 440), parent: overlay)
-        label("Puzzle menu", size: 28, point: CGPoint(x: 195, y: 562), parent: overlay)
-        menuButton("Keep playing", name: "game-resume", point: CGPoint(x: 195, y: 492), parent: overlay, height: 50)
-        menuButton("Restart puzzle", name: "game-restart", point: CGPoint(x: 195, y: 424), parent: overlay, height: 50)
-        menuButton("Settings", name: "settings", point: CGPoint(x: 195, y: 356), parent: overlay, height: 44)
-        menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 292), parent: overlay, height: 44)
+        panel(width: 330, height: 408, point: CGPoint(x: 195, y: 440), parent: overlay)
+        label("Puzzle menu", size: 28, point: CGPoint(x: 195, y: 594), parent: overlay)
+        menuButton("Keep playing", name: "game-resume", point: CGPoint(x: 195, y: 530), parent: overlay, height: 50)
+        menuButton("Explore Map", name: "game-map", point: CGPoint(x: 195, y: 468), parent: overlay, height: 44)
+        menuButton("Restart puzzle", name: "game-restart", point: CGPoint(x: 195, y: 406), parent: overlay, height: 44)
+        menuButton("Settings", name: "settings", point: CGPoint(x: 195, y: 344), parent: overlay, height: 44)
+        menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 282), parent: overlay, height: 44)
     }
 
     func showRetryPrompt() {
@@ -2380,7 +2382,7 @@ private extension FestivalScene {
         } else { restoreMenu() }
     }
 
-    func showMapBuddies() {
+    func showMapBuddies(locked friend: Companion? = nil) {
         showLevels()
         menuKind = "map-buddies"
         guard let overlay = levelMenu else { return }
@@ -2402,6 +2404,15 @@ private extension FestivalScene {
         menuButton("More \(friendsPage + 1)/\(pages)", name: "friends-page", point: CGPoint(x: 81, y: 136), parent: overlay, width: 102, height: 40)
         menuButton("Pins", name: "accessories", point: CGPoint(x: 195, y: 136), parent: overlay, width: 102, height: 40)
         menuButton("Done", name: "map-buddies-close", point: CGPoint(x: 309, y: 136), parent: overlay, width: 102, height: 40)
+        if let friend {
+            let notice = panel(width: 342, height: 54, point: CGPoint(x: 195, y: 465), parent: overlay)
+            notice.name = "team-unlock-notice"
+            label(friend.name, size: 16, point: CGPoint(x: 0, y: 10), parent: notice)
+            let requirement = SKLabelNode(fontNamed: "AvenirNext-Medium")
+            requirement.text = friend.unlockDescription
+            requirement.fontSize = 13; requirement.numberOfLines = 2; requirement.preferredMaxLayoutWidth = 310
+            requirement.verticalAlignmentMode = .center; requirement.position.y = -11; notice.addChild(requirement)
+        }
     }
 
     func showEnding() {
@@ -2437,6 +2448,7 @@ private extension FestivalScene {
     internal func handleMenu(_ incomingNames: [String]) {
         let names = menuKind == "map-buddies" ? FestivalMenuTargets.buddies(incomingNames) : incomingNames
         if wheelSpinning { return }
+        if menuKind == "map-buddies", incomingNames.contains("team-unlock-notice") { return }
         if names.contains("result-next") { continueAfterResult(); return }
         if names.contains("dialogue-back"), let host = introHost {
             if dialoguePage > 0 { dialoguePage -= 1; showHost(host) }
@@ -2458,6 +2470,7 @@ private extension FestivalScene {
         if let value = names.first(where: { $0.hasPrefix("album-souvenir-") }), let area = Int(value.dropFirst(15)) { albumSelection = area; showAlbum(); return }
         if names.contains("map-chat-dismiss"), let area = mapConversationArea { progress.dismissConversation(area: area); profiles.persistActive(); showLevels(); return }
         if names.contains("game-resume") { closeMenu(); return }
+        if names.contains("game-map") { mapArea = level / LevelCatalog.levelsPerArea; showLevels(); return }
         if names.contains("game-restart") { showRetryPrompt(); return }
         if menuKind == "map-buddies" {
             if names.contains("home") { showTitle(); return }
@@ -2588,7 +2601,9 @@ private extension FestivalScene {
             showSettings()
         }
         else if let name = names.first(where: { $0.hasPrefix("friend-") }), let friend = Companion.all.first(where: { "friend-\($0.id)" == name }) {
+            guard progress.unlocked(friend) else { showMapBuddies(locked: friend); return }
             progress.select(friend)
+            progress.welcome(friend)
             if friend.kind == .human { updateOperatorAppearance() }
             showMapBuddies()
         }

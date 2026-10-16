@@ -51,7 +51,34 @@ final class SideQuestNavigationTests: XCTestCase {
         let back = try XCTUnwrap(scene.childNode(withName: "//quest-dialogue-back"))
         XCTAssertNotNil(back.parent?.children.compactMap { $0 as? SKLabelNode }.first { $0.text == "Optional Side Quest" })
         scene.handleMenu(["quest-dialogue-back"])
-        XCTAssertFalse(progress.adventure.accepted(quest))
+        XCTAssertFalse(profiles.makeProgress().adventure.accepted(quest))
         XCTAssertEqual(progress.unlockedLevel, 3)
     }
+    @MainActor
+    func testMapBranchesOpenRequestsDirectlyAndKeepDeclinedQuestsAvailable() throws {
+        let suite = "SideQuestMap-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
+        let progress = profiles.makeProgress()
+        for level in 0..<6 { progress.recordVictory(index: level, score: 100, stars: 1) }
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
+        scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
+        scene.handleMenu(["start-adventure"])
+        for id in ["parcels", "toy"] {
+            let stop = try XCTUnwrap(scene.childNode(withName: "//quest-" + id))
+            XCTAssertTrue(stop.children.compactMap { $0 as? SKLabelNode }.contains { $0.text == "OPTIONAL" })
+            let location = stop.convert(.zero, to: scene)
+            XCTAssertTrue(scene.interactionNames(at: location).contains("quest-" + id))
+            scene.handleMenu(["quest-" + id])
+            XCTAssertNotNil(scene.childNode(withName: "//quest-dialogue-back"))
+            scene.handleMenu(["quest-dialogue-back"])
+            XCTAssertNotNil(scene.childNode(withName: "//quest-" + id), "Leaving a quest keeps its map branch available")
+        }
+        XCTAssertFalse(profiles.makeProgress().adventure.accepted(FestivalQuest.all[0]))
+        XCTAssertEqual(profiles.makeProgress().unlockedLevel, 6)
+        XCTAssertNotNil(scene.childNode(withName: "//level-6"), "The numbered main route remains available independently")
+    }
+
 }

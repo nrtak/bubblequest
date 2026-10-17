@@ -33,8 +33,7 @@ struct GameLevel {
         let interval = balanceVersion < 4 ? (index < 3 ? 10 : max(4, 10 - index / 5)) : ceilingInterval
         let step = balanceVersion < 4 ? (index < 3 ? 6 + Double(index) * 0.2 : 6 + Double(min(index, 49)) * 0.60 + Double(max(0, index - 49)) * 0.05) : ceilingStep
         var state = seed
-        // Finale boards need a brief opening to expose their protected supports.
-        var threshold = balanceVersion >= 4 && isMilestone ? 2 : 0
+        var threshold = 0
         var drops = 0
         while threshold <= shotsFired {
             state = state &* 6364136223846793005 &+ 1442695040888963407
@@ -237,7 +236,8 @@ enum LevelCatalog {
         var cells = template
         if index >= 50 {
             // Increase depth across the later campaign instead of recycling levels 21–50.
-            let height = min(7, 6 + (index - 50) / 50)
+            // Ceiling finales trade one lower layer for protected anchors and fast pressure.
+            let height = (index + 1).isMultiple(of: levelsPerArea) ? 6 : min(7, 6 + (index - 50) / 50)
             cells = [:]
             for row in 0..<height {
                 let width = BubbleBoard.columns - row % 2

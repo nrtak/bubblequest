@@ -90,7 +90,10 @@ extension GameLevel {
                 let da = abs(a.row - targetRow - 1), db = abs(b.row - targetRow - 1)
                 return da == db ? (a.row == b.row ? a.column < b.column : a.row < b.row) : da < db
             }
-        return Set(candidates.prefix(min(5, 1 + index / 45)))
+        // Finale targets already require reaching the ceiling through a deep board.
+        // Leave openings around their supports instead of forming an armored wall.
+        let armorLimit = isMilestone ? 3 : 5
+        return Set(candidates.prefix(min(armorLimit, 1 + index / 45)))
     }
     var initialBlockers: Set<Cell> {
         guard index >= 40, [3, 8, 9].contains(index % 10) else { return [] }

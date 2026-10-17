@@ -176,7 +176,7 @@ enum LevelCatalog {
         let scenery = SummerScenery.forArea(index)!
         let visit = (index - originalAreas.count) / SummerScenery.allCases.count + 1
         let name = scenery.title + (visit > 1 ? " \(visit)" : "")
-        return FestivalArea(name: name, subtitle: "Levels \(index * levelsPerArea + 1)â€“\((index + 1) * levelsPerArea)", background: scenery.background, nightTint: false)
+        return FestivalArea(name: name, subtitle: "Levels \(index * levelsPerArea + 1)–\((index + 1) * levelsPerArea)", background: scenery.background, nightTint: false)
     }
     static let levels: [GameLevel] = (0..<levelCount).map { index in
         let area = index / levelsPerArea
@@ -236,7 +236,7 @@ enum LevelCatalog {
     private static func challengeBubbles(index: Int, template: [Cell: Int]) -> [Cell: Int] {
         var cells = template
         if index >= 50 {
-            // Increase depth across the later campaign instead of recycling levels 21â€“50.
+            // Increase depth across the later campaign instead of recycling levels 21–50.
             let height = min(7, 6 + (index - 50) / 50)
             cells = [:]
             for row in 0..<height {

@@ -128,7 +128,7 @@ final class SideQuestNavigationTests: XCTestCase {
         scene.handleMenu(["home"]); scene.handleMenu(["players"]); scene.handleMenu(["player-original"])
         scene.handleMenu(["start-adventure"])
         let reward = try XCTUnwrap(scene.childNode(withName: "//quest-display-parcels"))
-        XCTAssertNotNil(reward.parent?.childNode(withName: "courtyard-greeting"))
+        XCTAssertNotNil(reward.parent?.parent?.childNode(withName: "courtyard-greeting"))
     }
 
 }

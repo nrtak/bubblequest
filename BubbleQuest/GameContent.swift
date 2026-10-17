@@ -26,18 +26,21 @@ struct GameLevel {
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
-    var ceilingInterval: Int { index < 3 ? 10 : max(4, 10 - index / 5) }
-    var ceilingStep: Double { index < 3 ? 6 + Double(index) * 0.2 : 6 + Double(min(index, 49)) * 0.60 + Double(max(0, index - 49)) * 0.05 }
-    func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0) -> Double {
+    var ceilingInterval: Int { index < 3 ? 10 : max(4, 8 - index / 8) }
+    var ceilingStep: Double { index < 3 ? 6 + Double(index) * 0.2 : 14 + Double(min(index, 59)) * 0.5 + Double(max(0, index - 59)) * 0.06 }
+    func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0, balanceVersion: Int = LevelPlayResults.balanceVersion) -> Double {
+        // An unfinished puzzle retains the ceiling schedule it started with.
+        let interval = balanceVersion < 4 ? (index < 3 ? 10 : max(4, 10 - index / 5)) : ceilingInterval
+        let step = balanceVersion < 4 ? (index < 3 ? 6 + Double(index) * 0.2 : 6 + Double(min(index, 49)) * 0.60 + Double(max(0, index - 49)) * 0.05) : ceilingStep
         var state = seed
         var threshold = 0
         var drops = 0
         while threshold <= shotsFired {
             state = state &* 6364136223846793005 &+ 1442695040888963407
-            threshold += ceilingInterval - 1 + Int((state >> 32) % 4)
+            threshold += interval - 1 + Int((state >> 32) % 4)
             if threshold <= shotsFired { drops += 1 }
         }
-        return min(240, Double(drops) * ceilingStep)
+        return min(240, Double(drops) * step)
     }
     var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials, armor: initialArmor, blockers: initialBlockers) }
     var initialSpecials: [Cell: SpecialBubble] {
@@ -81,17 +84,38 @@ struct GameLevel {
                 if candidates.count >= count { columns = candidates.shuffled(using: &random).prefix(count).sorted() }
                 else { columns = initialBubbles.keys.filter { $0.row == row }.map(\.column).sorted() }
             }
+            if isBankRoute { columns = initialBubbles.keys.filter { $0.row == row }.map(\.column).sorted() }
             var color = -1
             var remaining = 0
             for column in columns {
                 if remaining == 0 {
-                    remaining = Int.random(in: (index < 5 ? 2 : 1)...3, using: &random)
+                    let maximum = index < 10 ? 3 : 2
+                    remaining = Int.random(in: (index < 5 ? 2 : 1)...maximum, using: &random)
                     if colorBag.isEmpty { colorBag = palette.shuffled(using: &random) }
                     if colorBag.last == color && colorBag.count > 1 { colorBag.swapAt(0, colorBag.count - 1) }
                     color = colorBag.removeLast()
+                    if index >= 20 {
+                        // Keep useful supports, but cap chains that trivialize a whole board.
+                        let shell = BubbleBoard(bubbles: values)
+                        let limit = index < 80 ? 8 : 6
+                        let largeColors = Set(BubbleBoard.neighbors(of: Cell(row: row, column: column))
+                            .filter { $0.row < row && shell.connected(from: $0, matchingColor: true).count >= limit }
+                            .compactMap { values[$0] })
+                        if largeColors.contains(color), let alternative = palette.shuffled(using: &random).first(where: { !largeColors.contains($0) }) {
+                            color = alternative
+                        }
+                    }
                 }
                 values[Cell(row: row, column: column)] = color
                 remaining -= 1
+            }
+        }
+        if isMilestone {
+            // Give ceiling targets a matching partner; reaching them remains the puzzle.
+            for column in stride(from: 0, to: BubbleBoard.columns - 1, by: 2) {
+                let target = Cell(row: 0, column: column)
+                let partner = Cell(row: 0, column: column + 1)
+                if let color = values[target], values[partner] != nil { values[partner] = color }
             }
         }
         let shell = BubbleBoard(bubbles: values)
@@ -200,17 +224,19 @@ enum LevelCatalog {
         }
         let budgetColors = Set(cells.values).count
         let shots: Int
-        if index < 10 {
+        if index < 3 {
             shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
+        } else if index < 10 {
+            shots = max(18, (cells.count + 2) / 3 + budgetColors + 6)
         } else {
-            let allowance = max(2, 8 - index / 20)
+            let allowance = max(1, 6 - index / 30)
             shots = max(18, (cells.count + 2) / 3 + budgetColors + allowance)
         }
         let precision = index >= 15 && index % 10 == 5
         let budget = precision ? max(12, (cells.count + 2) / 3 + budgetColors + 2) : shots
         let draft = GameLevel(index: index, area: area, shots: budget, initialBubbles: cells)
         return GameLevel(index: index, area: area,
-                         shots: budget + draft.initialArmor.count * 2 + draft.initialBlockers.count,
+                         shots: budget + draft.initialArmor.count + draft.initialBlockers.count + (draft.isMilestone ? 2 : 0),
                          initialBubbles: cells)
     }
 

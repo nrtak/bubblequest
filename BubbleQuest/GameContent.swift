@@ -110,6 +110,14 @@ struct GameLevel {
                 remaining -= 1
             }
         }
+        if isMilestone {
+            // Give ceiling targets a matching partner; reaching them remains the puzzle.
+            for column in stride(from: 0, to: BubbleBoard.columns - 1, by: 2) {
+                let target = Cell(row: 0, column: column)
+                let partner = Cell(row: 0, column: column + 1)
+                if let color = values[target], values[partner] != nil { values[partner] = color }
+            }
+        }
         let shell = BubbleBoard(bubbles: values)
         let anchored = values.keys.filter { $0.row == 0 }.reduce(into: Set<Cell>()) { $0.formUnion(shell.connected(from: $1, matchingColor: false)) }
         if anchored.count != values.count { values = initialBubbles }
@@ -236,8 +244,7 @@ enum LevelCatalog {
         var cells = template
         if index >= 50 {
             // Increase depth across the later campaign instead of recycling levels 21–50.
-            // Ceiling finales trade one lower layer for protected anchors and fast pressure.
-            let height = (index + 1).isMultiple(of: levelsPerArea) ? 6 : min(7, 6 + (index - 50) / 50)
+            let height = min(7, 6 + (index - 50) / 50)
             cells = [:]
             for row in 0..<height {
                 let width = BubbleBoard.columns - row % 2

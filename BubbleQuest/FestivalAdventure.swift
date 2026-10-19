@@ -147,6 +147,24 @@ final class AdventureProgress {
     var bombGifts: Int { state.bombGifts }
     var equippedPin: FestivalPrize? { state.equippedPin }
     var lastPrize: FestivalPrize? { state.lastPrize }
+    // Draw converts owned keepsakes into a 50/50 booster reward. Show those
+    // same effective odds on the wheel instead of six equal-looking sectors.
+    var wheelPrizes: [FestivalPrize] { FestivalPrize.allCases.filter { wheelWeight($0) > 0 } }
+    func wheelWeight(_ prize: FestivalPrize) -> Double {
+        let owned = FestivalPrize.allCases.filter { $0 != .rainbow && $0 != .bomb && state.pins.contains($0) }.count
+        if prize == .rainbow || prize == .bomb { return 4 + Double(owned) * 0.25 }
+        return state.pins.contains(prize) ? 0 : 0.5
+    }
+    func wheelSector(for prize: FestivalPrize) -> Range<Double> {
+        let total = FestivalPrize.allCases.reduce(0.0) { $0 + wheelWeight($1) }
+        var preceding = 0.0
+        for value in FestivalPrize.allCases {
+            if value == prize { break }
+            preceding += wheelWeight(value)
+        }
+        return (preceding / total * 2 * .pi)..<((preceding + wheelWeight(prize)) / total * 2 * .pi)
+    }
+
     func nextLevel(_ quest: FestivalQuest, unlockedLevel: Int) -> Int? {
         guard available(quest, unlockedLevel: unlockedLevel) else { return nil }
         let used = state.wins[quest.id] ?? []

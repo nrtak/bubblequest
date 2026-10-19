@@ -6,6 +6,7 @@ final class FestivalAudio {
     private var track = ""
     private var suspended = false
     private var fadingTracks: [AVAudioPlayer] = []
+    private var lastEffects: [String: TimeInterval] = [:]
 
     static func track(menu: String, area: Int, challenge: Bool) -> String {
         if ["title", "players", "saved-progress"].contains(menu) { return "music-menu" }
@@ -46,14 +47,22 @@ final class FestivalAudio {
     }
 
     func effect(_ name: String, enabled: Bool, volume: Float = 0.6) {
-        guard enabled, !suspended,
+        let now = ProcessInfo.processInfo.systemUptime
+        guard enabled, !suspended, volume > 0,
+              now - (lastEffects[name] ?? -10) >= 0.06,
               let url = Bundle.main.url(forResource: name, withExtension: "wav"),
               let player = try? AVAudioPlayer(contentsOf: url) else { return }
         effects.removeAll { !$0.isPlaying }
         if effects.count >= 4 { effects.removeFirst().stop() }
-        player.volume = volume
+        lastEffects[name] = now
+        player.volume = FestivalSoundMix.effectVolume(name: name, requested: volume)
         effects.append(player)
         player.play()
+    }
+
+    func stopEffects() {
+        effects.forEach { $0.stop() }
+        effects.removeAll()
     }
 
     func suspend(_ value: Bool) {

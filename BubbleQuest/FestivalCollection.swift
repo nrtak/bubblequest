@@ -2,26 +2,27 @@ import Foundation
 import CoreGraphics
 
 enum ChallengeMedal: String, Codable, CaseIterable {
-    case noBoosters, bankArtist, threeStars
+    case noBoosters, bankArtist
+    case fiveStars = "threeStars"
     var title: String {
         switch self {
         case .noBoosters: return "No boosters"
         case .bankArtist: return "Three bank matches"
-        case .threeStars: return "Three stars"
+        case .fiveStars: return "Five stars"
         }
     }
     var symbol: String {
         switch self {
         case .noBoosters: return "hand.raised.fill"
         case .bankArtist: return "arrow.uturn.up"
-        case .threeStars: return "star.fill"
+        case .fiveStars: return "star.fill"
         }
     }
     static func earned(stars: Int, boosters: Int, bankMatches: Int) -> Set<ChallengeMedal> {
         var result: Set<ChallengeMedal> = []
         if boosters == 0 { result.insert(.noBoosters) }
         if bankMatches >= 3 { result.insert(.bankArtist) }
-        if stars == 3 { result.insert(.threeStars) }
+        if stars == PuzzleRating.maximumStars { result.insert(.fiveStars) }
         return result
     }
 }

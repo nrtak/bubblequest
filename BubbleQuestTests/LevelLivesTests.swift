@@ -186,7 +186,7 @@ final class LevelLivesTests: XCTestCase {
         view.presentScene(scene); defer { view.presentScene(nil) }
         for _ in 0..<2 {
             scene.handleMenu(["start-continue"])
-            scene.saveCheckpoint()
+            scene.setActive(false); scene.setActive(true)
             XCTAssertNil(scene.childNode(withName: "//lives-countdown"))
             XCTAssertEqual(profiles.makeProgress().checkpoint?.tryStarted, true)
             XCTAssertEqual(profiles.makeProgress().lives(for: 0).available, 0)

@@ -113,7 +113,7 @@ final class ChallengeVarietyTests: XCTestCase {
         let next = try XCTUnwrap(scene.childNode(withName: "//level-17"))
         let nextPoint = next.convert(CGPoint.zero, to: scene)
         XCTAssertTrue(FestivalMapLayout.viewport.contains(nextPoint))
-        XCTAssertTrue(next.children.contains { ($0 as? SKLabelNode)?.text == "Next" })
+        XCTAssertNotNil(next.childNode(withName: "map-tries"))
         XCTAssertNotNil(scene.childNode(withName: "//map-resume"))
         let visible = route.children.filter { $0.name?.hasPrefix("level-") == true && FestivalMapLayout.viewport.contains($0.convert(CGPoint.zero, to: scene)) }
         XCTAssertLessThanOrEqual(visible.count, 7)

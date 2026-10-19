@@ -52,7 +52,7 @@ final class LevelReplayTests: XCTestCase {
         for shotNumber in 0..<level.shots {
             if goal.completed(on: board) { return true }
             var landings = Set<Cell>()
-            for angle in stride(from: -1.2, through: 1.2, by: 0.08) {
+            for angle in stride(from: -1.2, through: 1.2, by: 0.04) {
                 if let cell = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: level.ceilingOffset(after: shotNumber, seed: pressureSeed)).landing { landings.insert(cell) }
             }
             var choices: [BubbleShot] = [.color(current), .color(next)]

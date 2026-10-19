@@ -40,7 +40,7 @@ final class FestivalCollectionTests: XCTestCase {
 
     func testPrecisionPuzzlesStayCompactAndAreaPatternsVary() {
         let precision = LevelCatalog.levels.filter(\.isPrecision)
-        XCTAssertEqual(precision.count, 19)
+        XCTAssertEqual(precision.count, (LevelCatalog.levelCount - 6) / 10)
         for level in precision {
             XCTAssertLessThanOrEqual(level.initialBubbles.keys.map(\.row).max() ?? 0, level.index < 100 ? 3 : 4)
             XCTAssertTrue(level.initialArmor.isEmpty)

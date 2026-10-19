@@ -93,9 +93,9 @@ final class AdventureTests: XCTestCase {
         XCTAssertEqual(Set(newFriends.map(\.id)).count, 6)
         XCTAssertTrue(newFriends.allSatisfy { !progress.unlocked($0) })
         let haru = newFriends.first { $0.id == "haru" }!
-        for _ in 0..<5 { progress.recordVictory(index: 0, score: 100, stars: 3) }
+        for _ in 0..<5 { progress.recordVictory(index: 0, score: 100, stars: 5) }
         XCTAssertFalse(progress.unlocked(haru), "Replays must not count as new level clears")
-        for index in 1..<20 { progress.recordVictory(index: index, score: 100, stars: 3) }
+        for index in 1..<20 { progress.recordVictory(index: index, score: 100, stars: 5) }
         XCTAssertTrue(progress.unlocked(haru))
         let mei = newFriends.first { $0.id == "mei" }!
         progress.select(mei)

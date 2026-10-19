@@ -72,9 +72,11 @@ struct GameLevel {
         var values: [Cell: Int] = [:]
         let palette = Array(Set(initialBubbles.values)).sorted()
         var colorBag = palette.shuffled(using: &random)
-        for row in Set(initialBubbles.keys.map(\.row)).sorted() {
+        let rowColumns = Dictionary(grouping: initialBubbles.keys, by: \.row).mapValues { $0.map(\.column).sorted() }
+        for row in rowColumns.keys.sorted() {
+            let originalColumns = rowColumns[row] ?? []
             let width = BubbleBoard.columns - row % 2
-            let count = initialBubbles.keys.filter { $0.row == row }.count
+            let count = originalColumns.count
             var columns = Array(0..<width).shuffled(using: &random).prefix(count).sorted()
             // Every lower bubble must touch an anchored bubble in the preceding row.
             if row > 0 {
@@ -82,9 +84,13 @@ struct GameLevel {
                     BubbleBoard.neighbors(of: Cell(row: row, column: column)).contains { values[$0] != nil }
                 }
                 if candidates.count >= count { columns = candidates.shuffled(using: &random).prefix(count).sorted() }
-                else { columns = initialBubbles.keys.filter { $0.row == row }.map(\.column).sorted() }
+                else { columns = originalColumns }
             }
-            if isBankRoute { columns = initialBubbles.keys.filter { $0.row == row }.map(\.column).sorted() }
+            // Keep each courtyard's designed lower openings while varying its colors.
+            // Otherwise shuffling columns can erase a bank route or the area pattern.
+            if isBankRoute || isMilestone || (row >= 3 && count < width) {
+                columns = originalColumns
+            }
             var color = -1
             var remaining = 0
             for column in columns {
@@ -120,7 +126,7 @@ struct GameLevel {
         }
         let shell = BubbleBoard(bubbles: values)
         let anchored = values.keys.filter { $0.row == 0 }.reduce(into: Set<Cell>()) { $0.formUnion(shell.connected(from: $1, matchingColor: false)) }
-        if anchored.count != values.count { values = initialBubbles }
+        if anchored.count != values.count || Set(values.values) != Set(initialBubbles.values) { values = initialBubbles }
         return GameLevel(index: index, area: area, shots: shots, initialBubbles: values)
     }
     var hint: String {
@@ -130,7 +136,7 @@ struct GameLevel {
                     "Tap the bubble your buddy holds to swap.",
                     "Pop a support to drop the bubbles below it.",
                     "The wall can help you reach another angle.",
-                    "Try a booster, or save shots for three stars."][index]
+                    "Try a booster, or save shots for five stars."][index]
         }
         return ["Look for a group you can pop in one shot.",
                 "Clear the edges to open a new angle.",
@@ -140,7 +146,7 @@ struct GameLevel {
     }
 
     func stars(shotsRemaining: Int) -> Int {
-        shotsRemaining >= shots / 2 ? 3 : shotsRemaining >= shots / 4 ? 2 : 1
+        PuzzleRating.stars(shotsRemaining: shotsRemaining, budget: shots)
     }
 }
 
@@ -160,17 +166,19 @@ enum BubbleColorQueue {
         let colors = board.playableColors
         bag.removeAll { !colors.contains($0) }
         if bag.isEmpty { bag = colors.sorted().shuffled(using: &random) }
-        let useful = Set(board.bubbles.keys.filter { board.connected(from: $0, matchingColor: true).count >= 2 }
-            .compactMap { board.bubbles[$0] })
-        if board.bubbles.count <= 12, let index = bag.lastIndex(where: useful.contains) { return bag.remove(at: index) }
+        if board.bubbles.count <= 12 {
+            let useful = Set(board.bubbles.keys.filter { board.connected(from: $0, matchingColor: true).count >= 2 }
+                .compactMap { board.bubbles[$0] })
+            if let index = bag.lastIndex(where: useful.contains) { return bag.remove(at: index) }
+        }
         return bag.popLast() ?? 0
     }
 }
 
 enum LevelCatalog {
     static let levelsPerArea = 20
-    static let levelCount = 200
-    static let maximumStars = levelCount * 3
+    static let levelCount = 220
+    static let maximumStars = levelCount * PuzzleRating.maximumStars
     static let originalAreas = [
         FestivalArea(name: "Sunlit Market", subtitle: "A bright beginning", background: "festival-day", nightTint: false),
         FestivalArea(name: "Summer Courtyard", subtitle: "A playful afternoon", background: "festival-courtyard", nightTint: false),
@@ -182,7 +190,7 @@ enum LevelCatalog {
         if index < originalAreas.count { return originalAreas[index] }
         let scenery = SummerScenery.forArea(index)!
         let visit = (index - originalAreas.count) / SummerScenery.allCases.count + 1
-        let name = scenery.title + (visit > 1 ? " \(visit)" : "")
+        let name = index == 10 ? "Riverside Fan Fair" : scenery.title + (visit > 1 ? " \(visit)" : "")
         return FestivalArea(name: name, subtitle: "Levels \(index * levelsPerArea + 1)–\((index + 1) * levelsPerArea)", background: scenery.background, nightTint: false)
     }
     static let levels: [GameLevel] = (0..<levelCount).map { index in
@@ -261,6 +269,13 @@ enum LevelCatalog {
                 guard cell.row > 1 else { return true }
                 let width = BubbleBoard.columns - cell.row % 2
                 return index % 10 == 9 ? cell.column != width / 2 : (cell.column > 0 && cell.column < width - 1)
+            }
+        }
+        // These dense clear-board stops need an access lane as pressure rises.
+        // Preserve the lane during randomized attempts, like the bank-shot boards.
+        if [148, 160].contains(index) {
+            cells = cells.filter { cell, _ in
+                cell.row < 3 || cell.column != (BubbleBoard.columns - cell.row % 2) / 2
             }
         }
         if index >= 15 && index % 10 == 5 {
@@ -361,6 +376,14 @@ final class GameProgress {
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         adventure = AdventureProgress(defaults: defaults)
+        if defaults.integer(forKey: "starRatingVersion") < 1 {
+            // Preserve old achievements: 1/3 -> 1/5, 2/3 -> 3/5, 3/3 -> 5/5.
+            for level in LevelCatalog.levels.indices {
+                let old = defaults.integer(forKey: "stars-\(level)")
+                if old > 0 { defaults.set([0, 1, 3, 5][min(3, old)], forKey: "stars-\(level)") }
+            }
+            defaults.set(1, forKey: "starRatingVersion")
+        }
         if defaults.integer(forKey: "courtyardProgressVersion") < 1 {
             let legacy: [String: Int] = ["white-shiba": 10, "calico": 20, "rabbit": 30, "host": 40, "haru": 5, "daichi": 15, "emi": 35, "sesame-shiba": 50, "cream-rabbit": 80, "river-otter": 110]
             let cleared = LevelCatalog.levels.filter { defaults.integer(forKey: "stars-\($0.index)") > 0 || defaults.integer(forKey: "bestScore-\($0.index)") > 0 }.count
@@ -371,13 +394,18 @@ final class GameProgress {
                 return legacy[companion.id].map { cleared >= $0 } ?? false
             }.map(\.id)
             defaults.set(earned, forKey: "unlockedCompanions")
-            let souvenirs = LevelCatalog.areas.indices.filter { defaults.integer(forKey: "stars-\($0 * 10 + 9)") > 0 }
+            let souvenirs = (0..<min(10, LevelCatalog.areas.count)).filter { defaults.integer(forKey: "stars-\($0 * 10 + 9)") > 0 }
             defaults.set(souvenirs, forKey: "courtyardLegacySouvenirs")
             defaults.set(1, forKey: "courtyardProgressVersion")
         }
         // Older campaigns capped the unlocked index at 49, even after the finale.
         if defaults.integer(forKey: "stars-49") > 0 && defaults.integer(forKey: "unlockedLevel") == 49 {
             defaults.set(50, forKey: "unlockedLevel")
+        }
+        // Completing the former 200-level campaign opens the new courtyard.
+        if defaults.integer(forKey: "unlockedLevel") == 199,
+           defaults.integer(forKey: "stars-199") > 0 || defaults.integer(forKey: "bestScore-199") > 0 {
+            defaults.set(200, forKey: "unlockedLevel")
         }
         if defaults.bool(forKey: "muted") {
             for setting in [GameSetting.music, .effects] where defaults.object(forKey: setting.rawValue) == nil {
@@ -440,6 +468,24 @@ final class GameProgress {
         defaults.set(!mute, forKey: GameSetting.music.rawValue)
         defaults.set(!mute, forKey: GameSetting.effects.rawValue)
     }
+    func lives(for index: Int, challenge: Bool = false, now: Date = Date()) -> LevelLives {
+        let key = "levelLives-\(index)" + (challenge ? "-challenge" : "")
+        let saved = defaults.data(forKey: key).flatMap { try? JSONDecoder().decode(LevelLives.self, from: $0) }
+        var value = saved ?? LevelLives()
+        value.refresh(at: now)
+        if value != (saved ?? LevelLives()), let data = try? JSONEncoder().encode(value) { defaults.set(data, forKey: key) }
+        return value
+    }
+    @discardableResult
+    func takeTry(for index: Int, challenge: Bool = false, now: Date = Date()) -> Bool {
+        guard LevelCatalog.levels.indices.contains(index) else { return false }
+        var value = lives(for: index, challenge: challenge, now: now)
+        guard value.consume(at: now), let data = try? JSONEncoder().encode(value) else { return false }
+        defaults.set(data, forKey: "levelLives-\(index)" + (challenge ? "-challenge" : ""))
+        markSaved()
+        return true
+    }
+
     func attempts(_ index: Int) -> Int { max(0, defaults.integer(forKey: "attempts-\(index)")) }
     func recordAttempt(_ index: Int) {
         guard LevelCatalog.levels.indices.contains(index) else { return }
@@ -482,7 +528,7 @@ final class GameProgress {
     }
     func medals(for index: Int) -> Set<ChallengeMedal> {
         var medals = collection.medals[index] ?? []
-        if stars(index) == 3 { medals.insert(.threeStars) }
+        if stars(index) == PuzzleRating.maximumStars { medals.insert(.fiveStars) }
         return medals
     }
     func hasSouvenir(area: Int) -> Bool {
@@ -497,10 +543,19 @@ final class GameProgress {
             guard index <= unlockedLevel else { return false }
             switch filter {
             case .all: return true
-            case .stars: return stars(index) < 3
-            case .medals: return (medals[index] ?? []).count < ChallengeMedal.allCases.count
+            case .stars: return stars(index) < PuzzleRating.maximumStars
+            case .medals:
+                var earned = medals[index] ?? []
+                if stars(index) == PuzzleRating.maximumStars { earned.insert(.fiveStars) }
+                return earned.count < ChallengeMedal.allCases.count
             }
         }
+    }
+    func hasSeenObjective(_ kind: PuzzleObjective) -> Bool { defaults.bool(forKey: "learned-objective-\(kind.rawValue)") }
+    func markObjectiveSeen(_ kind: PuzzleObjective) { defaults.set(true, forKey: "learned-objective-\(kind.rawValue)") }
+    var hasSeenTriesHelp: Bool {
+        get { defaults.bool(forKey: "learned-tries-help") }
+        set { defaults.set(newValue, forKey: "learned-tries-help") }
     }
     func hasLearnedObstacle(_ key: String) -> Bool { defaults.bool(forKey: "learned-obstacle-\(key)") }
     func learnObstacle(_ key: String) { defaults.set(true, forKey: "learned-obstacle-\(key)") }
@@ -524,7 +579,7 @@ final class GameProgress {
     func recordChallenge(_ area: Int) { if LevelCatalog.areas.indices.contains(area) { defaults.set(true, forKey: "challenge-\(area)") } }
 
     func stars(_ index: Int) -> Int {
-        let saved = min(3, max(0, defaults.integer(forKey: "stars-\(index)")))
+        let saved = min(PuzzleRating.maximumStars, max(0, defaults.integer(forKey: "stars-\(index)")))
         return saved > 0 ? saved : bestScore(index) > 0 ? 1 : 0
     }
 
@@ -547,19 +602,28 @@ final class GameProgress {
     @discardableResult
     func recordVictory(index: Int, score: Int, stars earned: Int) -> [Companion] {
         guard LevelCatalog.levels.indices.contains(index) else { return [] }
-        let previouslyUnlocked = Set(Companion.all.filter { unlocked($0) }.map(\.id))
+        let completedBefore = completedCount
+        let previousStars = stars(index)
+        let legacy = Set(defaults.stringArray(forKey: "unlockedCompanions") ?? [])
+        let previouslyUnlocked = Set(Companion.all.filter { unlocked($0, completed: completedBefore, legacy: legacy) }.map(\.id))
         defaults.set(max(bestScore(index), score), forKey: "bestScore-\(index)")
-        defaults.set(max(stars(index), min(3, max(1, earned))), forKey: "stars-\(index)")
+        defaults.set(max(previousStars, min(PuzzleRating.maximumStars, max(1, earned))), forKey: "stars-\(index)")
         defaults.set(max(unlockedLevel, min(LevelCatalog.levels.count - 1, index + 1)), forKey: "unlockedLevel")
-        return Companion.all.filter { !previouslyUnlocked.contains($0.id) && unlocked($0) }
+        let completedAfter = completedBefore + (previousStars == 0 ? 1 : 0)
+        return Companion.all.filter { !previouslyUnlocked.contains($0.id) && unlocked($0, completed: completedAfter, legacy: legacy) }
     }
 
     func unlocked(_ companion: Companion) -> Bool {
-        if (defaults.stringArray(forKey: "unlockedCompanions") ?? []).contains(companion.id) { return true }
+        let legacy = Set(defaults.stringArray(forKey: "unlockedCompanions") ?? [])
+        if legacy.contains(companion.id) { return true }
+        return unlocked(companion, completed: completedCount, legacy: legacy)
+    }
+    private func unlocked(_ companion: Companion, completed: Int, legacy: Set<String>) -> Bool {
+        if legacy.contains(companion.id) { return true }
         if let id = companion.unlockQuest {
-            return completedCount >= companion.unlockAfter && (FestivalQuest.all.first(where: { $0.id == id }).map { adventure.completed($0) } ?? false)
+            return completed >= companion.unlockAfter && (FestivalQuest.all.first(where: { $0.id == id }).map { adventure.completed($0) } ?? false)
         }
-        return completedCount >= companion.unlockAfter
+        return completed >= companion.unlockAfter
     }
 
     func selected(_ kind: Companion.Kind) -> Companion {
@@ -604,6 +668,9 @@ struct BubbleFlight {
 
 enum BubbleGeometry {
     static let radius = 21.0
+    // Artwork includes a soft glass rim and glow. Use the inner cores for contact
+    // so a bank shot can thread a visible opening without catching that halo.
+    static let collisionDistance = 33.0
     static let left = 48.0
     static let right = 342.0
     static let ceiling = 688.0
@@ -632,7 +699,7 @@ enum BubbleGeometry {
         var bounces: [BubblePoint] = []
         let occupied = board.bubbles.keys.sorted {
             $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row
-        }
+        }.map { (cell: $0, center: point($0, ceilingOffset: ceilingOffset)) }
         for _ in 0..<700 {
             position.x += dx * 3
             position.y += dy * 3
@@ -645,8 +712,15 @@ enum BubbleGeometry {
                 position.x = right * 2 - position.x; dx *= -1
             }
             points.append(position)
-            let hit = occupied.filter { distance(point($0, ceilingOffset: ceilingOffset), position) <= radius * 2 - 1 }
-                .min { distance(point($0, ceilingOffset: ceilingOffset), position) < distance(point($1, ceilingOffset: ceilingOffset), position) }
+            var hit: Cell?
+            var nearest = collisionDistance * collisionDistance
+            for bubble in occupied {
+                let x = bubble.center.x - position.x, y = bubble.center.y - position.y
+                let squared = x * x + y * y
+                if squared <= nearest && (hit == nil || squared < nearest) {
+                    hit = bubble.cell; nearest = squared
+                }
+            }
             if position.y >= ceiling - ceilingOffset || hit != nil {
                 let candidates = hit.map { BubbleBoard.neighbors(of: $0) }
                     ?? (0..<BubbleBoard.columns).map { Cell(row: 0, column: $0) }

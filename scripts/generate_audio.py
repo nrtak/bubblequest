@@ -9,14 +9,14 @@ RATE = 22050
 ROOT = pathlib.Path(__file__).resolve().parents[1] / 'BubbleQuest'
 # Root MIDI note, tempo, melody (pentatonic degrees; -1 is a rest), lead voice.
 TRACKS = {
-    'music-menu': (60, 94, [0, 2, 4, 2, 1, 0, -1, 1, 2, 4, 5, 4, 2, 1, 2, -1], 'bell'),
-    'music-map': (62, 104, [0, -1, 1, 2, 4, 2, 1, -1, 2, 3, 4, -1, 3, 1, 0, -1], 'flute'),
-    'music-day': (60, 104, [0, 1, 2, -1, 4, 2, 1, 0, 2, 4, 5, 4, 2, -1, 1, 2], 'pluck'),
-    'music-evening': (60, 100, [2, -1, 4, 3, 2, 1, 0, -1, 1, 2, 4, -1, 3, 2, 1, 0], 'bell'),
-    'music-water': (65, 96, [4, 2, 1, -1, 0, 1, 2, -1, 3, 4, 5, 4, 2, 1, 2, -1], 'flute'),
-    'music-countryside': (67, 100, [0, 2, -1, 1, 2, 3, 2, -1, 4, 3, 2, 1, 0, -1, 1, 0], 'pluck'),
-    'music-challenge': (62, 112, [0, 2, 1, 3, 2, -1, 4, 2, 1, 3, 2, 4, 5, 4, 2, -1], 'pluck'),
-    'music-story': (60, 92, [2, -1, 1, -1, 0, 2, -1, -1, 1, -1, 3, 2, 1, -1, 0, -1], 'flute'),
+    'music-menu': (58, 104, [0, 2, 4, 2, 1, 0, -1, 1, 2, 4, 5, 4, 2, 1, 2, -1], 'marimba'),
+    'music-map': (60, 108, [0, -1, 1, 2, 4, 2, 1, -1, 2, 3, 4, -1, 3, 1, 0, -1], 'warm-reed'),
+    'music-day': (60, 112, [0, 1, 2, -1, 4, 2, 1, 0, 2, 4, 5, 4, 2, -1, 1, 2], 'warm-pluck'),
+    'music-evening': (58, 104, [2, -1, 4, 3, 2, 1, 0, -1, 1, 2, 4, -1, 3, 2, 1, 0], 'marimba'),
+    'music-water': (60, 106, [4, 2, 1, -1, 0, 1, 2, -1, 3, 4, 5, 4, 2, 1, 2, -1], 'warm-reed'),
+    'music-countryside': (62, 108, [0, 2, -1, 1, 2, 3, 2, -1, 4, 3, 2, 1, 0, -1, 1, 0], 'warm-pluck'),
+    'music-challenge': (60, 116, [0, 2, 1, 3, 2, -1, 4, 2, 1, 3, 2, 4, 5, 4, 2, -1], 'warm-pluck'),
+    'music-story': (58, 96, [2, -1, 1, -1, 0, 2, -1, -1, 1, -1, 3, 2, 1, -1, 0, -1], 'warm-reed'),
 }
 
 
@@ -34,7 +34,19 @@ def add_note(buffer, start, duration, midi, gain, voice='pluck', pan=0):
         attack = min(1, t / .012)
         release = min(1, (duration - t) / .065)
         phase = 2 * math.pi * hz * t
-        if voice == 'flute':
+        if voice == 'warm-reed':
+            tone = math.sin(phase + .007 * math.sin(2 * math.pi * 3.8 * t)) + .10 * math.sin(phase * 2)
+            envelope = attack * release * math.exp(-t * 1.8)
+        elif voice == 'marimba':
+            tone = math.sin(phase) + .12 * math.sin(phase * 2) * math.exp(-t * 7)
+            envelope = attack * release * math.exp(-t * 4.0)
+        elif voice == 'warm-pluck':
+            tone = math.sin(phase) + .12 * math.sin(phase * 2) + .025 * math.sin(phase * 3)
+            envelope = attack * release * math.exp(-t * 3.5)
+        elif voice == 'round-bass':
+            tone = .8 * math.sin(phase) + .25 * math.sin(phase * 2)
+            envelope = attack * release * math.exp(-t * 3)
+        elif voice == 'flute':
             tone = math.sin(phase + .012 * math.sin(2 * math.pi * 4.6 * t)) + .09 * math.sin(phase * 2)
             envelope = attack * release * math.exp(-t * 1.2)
         elif voice == 'bell':
@@ -71,17 +83,17 @@ def render_track(name, root, tempo, melody, voice):
         chord = chords[(bar // 2) % 4]
         start = bar * 4 * beat
         for j, note in enumerate(chord):
-            add_note(buffer, start + j * .025, beat * 3.5, root + note, .042, 'flute', (j - 1) * .7)
+            add_note(buffer, start + j * .025, beat * 3.5, root + note, .042, 'warm-reed', (j - 1) * .7)
         for pulse, bass in enumerate([chord[0], chord[2], chord[0] + 12, chord[1]]):
-            add_note(buffer, start + pulse * beat, beat * .68, root + bass - 24, .085, 'pluck', -.1)
+            add_note(buffer, start + pulse * beat, beat * .68, root + bass - 24, .095, 'round-bass', -.1)
         # A quiet bouncing accompaniment fills the spaces without masking bubble cues.
         for pulse in range(8):
             add_note(buffer, start + (pulse + .5) * beat / 2, beat * .36,
-                     root + chord[pulse % 3] + 12, .026, 'bell', -.45)
+                     root + chord[pulse % 3], .029, 'marimba', -.45)
         if bar % 4 in [1, 3]:
             for pulse, degree in [(2.5, 2), (3.5, 4)]:
                 add_note(buffer, start + pulse * beat, beat * .4,
-                         root + 12 + scale[degree], .035, 'pluck', -.6)
+                         root + scale[degree], .035, 'warm-pluck', -.6)
         # A / B / A' phrases leave space between melody notes and change register gently.
         phrase = bar // 8
         for step in range(4):
@@ -92,11 +104,11 @@ def render_track(name, root, tempo, melody, voice):
                 continue
             if phrase == 1:
                 degree = (degree + 2) % 7
-            midi = root + 12 + scale[degree % 5] + 12 * (degree // 5)
+            midi = root + scale[degree % 5] + 12 * (degree // 5)
             add_note(buffer, start + step * beat, beat * (.72 if step % 2 else 1.15), midi, .105, voice, .22)
         # Small offbeat plucks suggest a light festival rhythm without a heavy drum loop.
         for step in [1, 3]:
-            add_note(buffer, start + (step + .5) * beat, beat * .45, root + chord[1] + 12, .038, 'pluck', -.5)
+            add_note(buffer, start + (step + .5) * beat, beat * .45, root + chord[1], .038, 'warm-pluck', -.5)
         if name != 'music-story':
             # Soft low drum and rim taps add motion, with no sharp cymbal or heavy beat.
             for pulse in [0, 2]:
@@ -107,14 +119,20 @@ def render_track(name, root, tempo, melody, voice):
                     at = ((offset + i) % (len(buffer) // 2)) * 2
                     buffer[at] += value; buffer[at + 1] += value
             for pulse in [1, 3]:
-                add_note(buffer, start + pulse * beat, .055, root + 24, .025, 'pluck', .3)
+                # Rounded wood taps replace the high pitched rim-note layer.
+                offset = round((start + pulse * beat) * RATE)
+                for i in range(int(.065 * RATE)):
+                    t = i / RATE
+                    value = (math.sin(2 * math.pi * 260 * t) + .3 * math.sin(2 * math.pi * 390 * t)) * math.exp(-t * 58) * .027
+                    at = ((offset + i) % (len(buffer) // 2)) * 2
+                    buffer[at] += value * .9; buffer[at + 1] += value
             for step in range(4):
                 offset = round((start + (step + .5) * beat) * RATE)
                 previous = 0
                 for i in range(int(.045 * RATE)):
                     noise = rng.uniform(-1, 1)
-                    value = (noise - previous) * .007 * math.sin(math.pi * i / (.045 * RATE)) ** 2
-                    previous = noise
+                    previous += .18 * (noise - previous)
+                    value = previous * .010 * math.sin(math.pi * i / (.045 * RATE)) ** 2
                     at = ((offset + i) % (len(buffer) // 2)) * 2
                     buffer[at] += value
                     buffer[at + 1] += value
@@ -123,6 +141,16 @@ def render_track(name, root, tempo, melody, voice):
     for delay, gain in [(round(.13 * RATE) * 2, .12), (round(.23 * RATE) * 2, .07)]:
         for i in range(len(buffer)):
             buffer[(i + delay) % len(buffer)] += dry[i] * gain
+    # Circular low-pass mastering softens upper partials without a click at the loop.
+    alpha = 1 - math.exp(-2 * math.pi * 2200 / RATE)
+    for channel in range(2):
+        state = buffer[-2 + channel]
+        # Warm the filter with the ending before processing the beginning.
+        for i in range(max(channel, len(buffer) - RATE * 2 + channel), len(buffer), 2):
+            state += alpha * (buffer[i] - state)
+        for i in range(channel, len(buffer), 2):
+            state += alpha * (buffer[i] - state)
+            buffer[i] = state
     write_pcm(name, buffer)
 
 

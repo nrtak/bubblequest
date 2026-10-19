@@ -27,6 +27,22 @@ enum PuzzleObjective: String, Codable {
         case .ceiling: return "scope"
         }
     }
+    var hudTitle: String {
+        switch self {
+        case .clear: return "Clear every bubble"
+        case .lanterns: return "Rescue lanterns"
+        case .charms: return "Collect charms"
+        case .ceiling: return "Clear marked targets"
+        }
+    }
+    func targetNoun(count: Int) -> String {
+        switch self {
+        case .clear: return count == 1 ? "bubble" : "bubbles"
+        case .lanterns: return count == 1 ? "lantern" : "lanterns"
+        case .charms: return count == 1 ? "charm" : "charms"
+        case .ceiling: return count == 1 ? "marked target" : "marked targets"
+        }
+    }
     var instruction: String {
         self == .clear ? "Match bubbles or remove their supports to clear the board." :
             "Free every object inside a glowing bubble: match its color or remove its supports. The other bubbles can stay."
@@ -40,6 +56,19 @@ struct PuzzleGoal: Codable, Equatable {
 
     init(kind: PuzzleObjective = .clear, targets: Set<Cell> = []) {
         self.kind = kind; total = targets.count; remaining = targets
+    }
+    var startSummary: String {
+        guard kind != .clear else { return "Clear every bubble to win." }
+        let verb = kind == .lanterns ? "Rescue" : kind == .charms ? "Collect" : "Clear"
+        return "\(verb) \(total) \(kind.targetNoun(count: total)) to win.\nOther bubbles can stay."
+    }
+    func victorySummary(on board: BubbleBoard) -> String {
+        guard kind != .clear else { return "Every bubble cleared!" }
+        let verb = kind == .lanterns ? "rescued" : kind == .charms ? "collected" : "cleared"
+        let noun = board.bubbles.count == 1 ? "bubble" : "bubbles"
+        let leftovers = board.bubbles.isEmpty ? "" : "\n\(board.bubbles.count) other \(noun) didn't need clearing."
+        let objects = total == 1 ? "The \(kind.targetNoun(count: total))" : "All \(total) \(kind.targetNoun(count: total))"
+        return "\(objects) \(verb)!" + leftovers
     }
     mutating func collect(_ removed: Set<Cell>) { remaining.subtract(removed) }
     func completed(on board: BubbleBoard) -> Bool {
@@ -107,6 +136,9 @@ struct LevelPlayResults: Codable, Equatable {
     static let balanceVersion = 4
     var version = LevelPlayResults.balanceVersion
     var wins = 0
+    // Optional so existing on-device statistics decode without losing history.
+    var recentLosses: Int? = nil
+    var consecutiveLosses: Int { max(0, recentLosses ?? 0) }
     var losses = 0
     var shotsUsed = 0
     var shotsSavedOnWins = 0
@@ -117,6 +149,7 @@ struct LevelPlayResults: Codable, Equatable {
     var averageSaved: Int { wins == 0 ? 0 : shotsSavedOnWins / wins }
     mutating func record(won: Bool, fired: Int, remaining: Int, banks: Int, boosters: Int) {
         if version != Self.balanceVersion { self = LevelPlayResults() }
+        recentLosses = won ? 0 : consecutiveLosses + 1
         if won { wins += 1; shotsSavedOnWins += max(0, remaining) } else { losses += 1 }
         shotsUsed += max(0, fired); bankMatches += max(0, banks); boosterShots += max(0, boosters)
     }

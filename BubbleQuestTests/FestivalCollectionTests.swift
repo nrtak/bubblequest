@@ -6,7 +6,7 @@ final class FestivalCollectionTests: XCTestCase {
         var collection = FestivalCollection()
         collection.recordWin(level: 60, stars: 1, boosters: 0, banks: 0)
         XCTAssertEqual(collection.medals[60], [.noBoosters])
-        collection.recordWin(level: 60, stars: 3, boosters: 2, banks: 3)
+        collection.recordWin(level: 60, stars: 5, boosters: 2, banks: 3)
         XCTAssertEqual(collection.medals[60], Set(ChallengeMedal.allCases))
         collection.recordWin(level: 60, stars: 1, boosters: 2, banks: 0)
         XCTAssertEqual(collection.medals[60]?.count, 3)
@@ -21,16 +21,16 @@ final class FestivalCollectionTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let progress = GameProgress(defaults: defaults)
         defaults.set(22, forKey: "unlockedLevel")
-        for level in 0..<20 { defaults.set(3, forKey: "stars-\(level)") }
-        defaults.set(3, forKey: "stars-9")
+        for level in 0..<20 { defaults.set(5, forKey: "stars-\(level)") }
+        defaults.set(5, forKey: "stars-9")
         XCTAssertTrue(progress.hasSouvenir(area: 0))
         XCTAssertFalse(progress.hasSouvenir(area: 1))
-        XCTAssertEqual(progress.medals(for: 9), [.threeStars])
+        XCTAssertEqual(progress.medals(for: 9), [.fiveStars])
         XCTAssertEqual(progress.replayLevels(area: 1, filter: .all), [20, 21, 22])
         XCTAssertEqual(progress.replayLevels(area: 1, filter: .stars), [20, 21, 22])
-        _ = progress.recordCollection(level: 20, stars: 3, boosters: 0, banks: 3)
+        _ = progress.recordCollection(level: 20, stars: 5, boosters: 0, banks: 3)
         XCTAssertFalse(progress.replayLevels(area: 1, filter: .medals).contains(20))
-        XCTAssertEqual(progress.recordCollection(level: 20, stars: 3, boosters: 0, banks: 3), [])
+        XCTAssertEqual(progress.recordCollection(level: 20, stars: 5, boosters: 0, banks: 3), [])
         progress.dismissConversation(area: 0)
         let restored = GameProgress(defaults: defaults)
         XCTAssertTrue(restored.collection.readConversations.contains(0))
@@ -40,7 +40,7 @@ final class FestivalCollectionTests: XCTestCase {
 
     func testPrecisionPuzzlesStayCompactAndAreaPatternsVary() {
         let precision = LevelCatalog.levels.filter(\.isPrecision)
-        XCTAssertEqual(precision.count, 19)
+        XCTAssertEqual(precision.count, (LevelCatalog.levelCount - 6) / 10)
         for level in precision {
             XCTAssertLessThanOrEqual(level.initialBubbles.keys.map(\.row).max() ?? 0, level.index < 100 ? 3 : 4)
             XCTAssertTrue(level.initialArmor.isEmpty)
@@ -56,7 +56,7 @@ final class FestivalCollectionTests: XCTestCase {
     }
 
     func testSouvenirTokensLeaveTheLevelMarkersAndLeftHandMapControlsClear() throws {
-        for area in 5..<10 {
+        for area in 5..<LevelCatalog.areas.count {
             let markers = try XCTUnwrap(SummerScenery.forArea(area)).markerPositions
             let token = try XCTUnwrap(FestivalMapLayout.souvenirPosition(markers: markers))
             XCTAssertGreaterThanOrEqual(token.x, 160)

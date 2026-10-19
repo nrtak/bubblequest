@@ -26,7 +26,7 @@ final class LevelReplayTests: XCTestCase {
     }
 
     func testDifficultyMilestonesHaveRoutesAcrossDifferentLayouts() {
-        for index in [0, 19, 39, 59, 79, 99, 139, 179, 199] {
+        for index in [0] + Array(stride(from: LevelCatalog.levelsPerArea - 1, to: LevelCatalog.levelCount, by: LevelCatalog.levelsPerArea)) {
             for seed in 1...4 {
                 let level = LevelCatalog.level(index).randomized(seed: UInt64(seed))
                 let cleared = [(25, 2000), (600, 300), (1000, 0)].contains { strategy in
@@ -52,7 +52,7 @@ final class LevelReplayTests: XCTestCase {
         for shotNumber in 0..<level.shots {
             if goal.completed(on: board) { return true }
             var landings = Set<Cell>()
-            for angle in stride(from: -1.2, through: 1.2, by: 0.08) {
+            for angle in stride(from: -1.2, through: 1.2, by: 0.04) {
                 if let cell = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: level.ceilingOffset(after: shotNumber, seed: pressureSeed)).landing { landings.insert(cell) }
             }
             var choices: [BubbleShot] = [.color(current), .color(next)]

@@ -26,7 +26,7 @@ final class LevelReplayTests: XCTestCase {
     }
 
     func testDifficultyMilestonesHaveRoutesAcrossDifferentLayouts() {
-        for index in [0, 19, 39, 59, 79, 99, 139, 179, 199] {
+        for index in [0] + Array(stride(from: LevelCatalog.levelsPerArea - 1, to: LevelCatalog.levelCount, by: LevelCatalog.levelsPerArea)) {
             for seed in 1...4 {
                 let level = LevelCatalog.level(index).randomized(seed: UInt64(seed))
                 let cleared = [(25, 2000), (600, 300), (1000, 0)].contains { strategy in

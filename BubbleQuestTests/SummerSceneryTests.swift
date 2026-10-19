@@ -6,8 +6,8 @@ import SpriteKit
 final class SummerSceneryTests: XCTestCase {
     func testLaterAreasUseNewSceneryAndMarkersStayInsideMap() {
         XCTAssertNil(SummerScenery.forArea(4))
-        XCTAssertNil(SummerScenery.forArea(20))
-        for area in 5..<10 {
+        XCTAssertNil(SummerScenery.forArea(LevelCatalog.areas.count))
+        for area in 5..<LevelCatalog.areas.count {
             let scenery = SummerScenery.forArea(area)!
             XCTAssertEqual(LevelCatalog.areas[area].background, scenery.background)
             XCTAssertTrue((area * LevelCatalog.levelsPerArea..<(area + 1) * LevelCatalog.levelsPerArea).allSatisfy { LevelCatalog.level($0).background == scenery.background })
@@ -43,12 +43,12 @@ final class SummerSceneryTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
         let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
         let progress = profiles.makeProgress()
-        progress.recordVictory(index: 199, score: 200, stars: 1)
+        progress.recordVictory(index: LevelCatalog.levelCount - 1, score: 200, stars: 1)
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         scene.handleMenu(["start-adventure"])
         for _ in 0..<20 { scene.handleMenu(["area-prev"]) }
-        for area in 0..<10 {
+        for area in LevelCatalog.areas.indices {
             let overlay = try XCTUnwrap(scene.children.last)
             XCTAssertNil(overlay.childNode(withName: "neighbors"))
             XCTAssertNotNil(overlay.childNode(withName: "courtyard-resident"))

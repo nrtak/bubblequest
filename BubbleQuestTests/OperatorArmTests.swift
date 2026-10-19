@@ -12,14 +12,14 @@ final class OperatorArmTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
         let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
         let progress = profiles.makeProgress()
-        for level in 0..<200 { progress.recordVictory(index: level, score: 200, stars: 1) }
+        for level in 0..<LevelCatalog.levelCount { progress.recordVictory(index: level, score: 200, stars: 1) }
         for quest in FestivalQuest.all {
-            progress.adventure.accept(quest, unlockedLevel: 199)
+            progress.adventure.accept(quest, unlockedLevel: LevelCatalog.levelCount - 1)
             var play = QuestPlay()
             play.collected.insert(quest.id); play.bounces = 1; play.dropped = 1
             play.colors = Set(0..<6)
             for level in quest.area * LevelCatalog.levelsPerArea..<quest.area * LevelCatalog.levelsPerArea + quest.steps.count {
-                progress.adventure.recordWin(level: level, play: play, completedLevels: 200)
+                progress.adventure.recordWin(level: level, play: play, completedLevels: LevelCatalog.levelCount)
             }
         }
         for friend in Companion.all where friend.kind == .human {

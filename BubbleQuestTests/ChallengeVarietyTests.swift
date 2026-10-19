@@ -28,7 +28,7 @@ final class ChallengeVarietyTests: XCTestCase {
         }
         XCTAssertLessThan(averageGroup(60..<80), averageGroup(0..<10))
         XCTAssertLessThanOrEqual(averageGroup(160..<180), averageGroup(60..<80))
-        for index in [19, 59, 99, 159, 199] {
+        for index in [19, 59, 99, 159, 199, 219] {
             let level = LevelCatalog.level(index)
             XCTAssertGreaterThan(level.ceilingOffset(after: 12, seed: 42),
                                  level.ceilingOffset(after: 12, seed: 42, balanceVersion: 3))

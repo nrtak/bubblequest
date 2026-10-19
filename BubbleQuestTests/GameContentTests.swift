@@ -5,13 +5,13 @@ import SpriteKit
 
 final class GameContentTests: XCTestCase {
     @MainActor
-    func testAllTenCourtyardsShowTwentyLevels() {
+    func testAllCourtyardsShowTwentyLevels() {
         let suite = "CourtyardPages-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
         let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
-        profiles.makeProgress().recordVictory(index: 199, score: 100, stars: 1)
+        profiles.makeProgress().recordVictory(index: LevelCatalog.levelCount - 1, score: 100, stars: 1)
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         scene.handleMenu(["start-adventure"])
@@ -19,7 +19,7 @@ final class GameContentTests: XCTestCase {
         for area in LevelCatalog.areas.indices {
             let overlay = scene.children.last!
             let headings = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
-            XCTAssertTrue(headings.contains { $0.hasPrefix("Area \(area + 1)/10") })
+            XCTAssertTrue(headings.contains { $0.hasPrefix("Area \(area + 1)/\(LevelCatalog.areas.count)") })
             let markers = (overlay.childNode(withName: "//map-route")?.children ?? []).flatMap { $0.children.compactMap { ($0 as? SKLabelNode)?.text } }
             XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 1)"))
             XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 10)"))
@@ -33,14 +33,14 @@ final class GameContentTests: XCTestCase {
         }
         let original = Set(LevelCatalog.levels.prefix(50).map(signature))
         let added = Set(LevelCatalog.levels.dropFirst(50).map(signature))
-        XCTAssertEqual(added.count, 150)
+        XCTAssertEqual(added.count, LevelCatalog.levelCount - 50)
         XCTAssertTrue(original.isDisjoint(with: added))
     }
 
     func testExpandedCampaignMigratesOldFinaleAndPersistsLateProgress() throws {
-        XCTAssertEqual(LevelCatalog.areas.count, 10)
-        XCTAssertEqual(LevelCatalog.levels.last?.number, 200)
-        XCTAssertEqual(LevelCatalog.maximumStars, 600)
+        XCTAssertEqual(LevelCatalog.areas.count, 11)
+        XCTAssertEqual(LevelCatalog.levels.last?.number, 220)
+        XCTAssertEqual(LevelCatalog.maximumStars, 1100)
         let suite = "BubbleQuestCampaign-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
@@ -49,19 +49,69 @@ final class GameContentTests: XCTestCase {
         defaults.set(750, forKey: "bestScore-49")
         let progress = GameProgress(defaults: defaults)
         XCTAssertEqual(progress.unlockedLevel, 50)
-        XCTAssertEqual(progress.stars(49), 3)
+        XCTAssertEqual(progress.stars(49), 5)
         XCTAssertEqual(progress.bestScore(49), 750)
-        progress.recordVictory(index: 198, score: 500, stars: 2)
+        progress.recordVictory(index: LevelCatalog.levelCount - 2, score: 500, stars: 2)
         progress.recordChallenge(9)
-        let last = LevelCatalog.level(199)
-        progress.save(GameCheckpoint(level: 199, board: last.board, shots: last.shots,
+        let last = LevelCatalog.level(LevelCatalog.levelCount - 1)
+        progress.save(GameCheckpoint(level: last.index, board: last.board, shots: last.shots,
                                      score: 0, current: 0, next: 1, bag: [], rainbow: 1, bomb: 1, play: QuestPlay()))
         let reopened = GameProgress(defaults: defaults)
-        XCTAssertEqual(reopened.unlockedLevel, 199)
-        XCTAssertEqual(reopened.currentLevel, 199)
+        XCTAssertEqual(reopened.unlockedLevel, last.index)
+        XCTAssertEqual(reopened.currentLevel, last.index)
         XCTAssertNotNil(reopened.checkpoint?.board)
         XCTAssertTrue(reopened.challengeWon(9))
-        XCTAssertEqual(LevelCatalog.level(999).index, 199)
+        XCTAssertEqual(LevelCatalog.level(999).index, last.index)
+    }
+
+    func testNewCourtyardUnlockPreservesFormerFinaleSaves() throws {
+        let suite = "FanFairMigration-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(1, forKey: "courtyardProgressVersion")
+        defaults.set(199, forKey: "unlockedLevel")
+        let rin = try XCTUnwrap(FestivalNeighbor.all.first { $0.id == "rin" })
+        let unfinished = GameProgress(defaults: defaults)
+        XCTAssertFalse(unfinished.neighborIsAvailable(rin))
+        let finale = LevelCatalog.level(199)
+        unfinished.save(GameCheckpoint(level: 199, board: finale.board, shots: finale.shots,
+                                        score: 0, current: 0, next: 1, bag: [], rainbow: 1, bomb: 1, play: QuestPlay()))
+        XCTAssertEqual(GameProgress(defaults: defaults).unlockedLevel, 199)
+        defaults.set(2, forKey: "stars-199")
+        let completed = GameProgress(defaults: defaults)
+        XCTAssertEqual(completed.unlockedLevel, 200)
+        XCTAssertTrue(completed.neighborIsAvailable(rin))
+        XCTAssertEqual(completed.currentLevel, 199, "An unfinished replay must still resume")
+        XCTAssertEqual(completed.stars(199), 2)
+        XCTAssertFalse(completed.hasSouvenir(area: 10))
+        defaults.removeObject(forKey: "stars-199")
+        defaults.set(199, forKey: "unlockedLevel")
+        defaults.set(500, forKey: "bestScore-199")
+        XCTAssertEqual(GameProgress(defaults: defaults).unlockedLevel, 200)
+    }
+
+    func testEleventhCourtyardHasTwentyValidLevelsAndNoLegacySouvenir() throws {
+        let suite = "FanFairContent-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(3, forKey: "stars-109")
+        let progress = GameProgress(defaults: defaults)
+        XCTAssertFalse(progress.hasSouvenir(area: 10))
+        XCTAssertEqual(FestivalNeighbor.all.filter { $0.area == 10 }.map(\.id), ["rin"])
+        let levels = LevelCatalog.levels.filter { $0.area == 10 }
+        XCTAssertEqual(levels.map(\.number), Array(201...220))
+        XCTAssertTrue(levels.last!.isMilestone)
+        for base in levels {
+            for seed in 1...4 {
+                let level = base.randomized(seed: UInt64(seed))
+                XCTAssertFalse(level.board.bubbles.isEmpty)
+                XCTAssertTrue(level.goal.isValid(on: level.board))
+                XCTAssertGreaterThan(level.shots, 0)
+            }
+        }
+        for level in 200..<220 { progress.recordVictory(index: level, score: 100, stars: 1) }
+        XCTAssertTrue(progress.hasSouvenir(area: 10))
+        XCTAssertEqual(GameProgress(defaults: defaults).unlockedLevel, 219)
     }
 
     func testBuddyPickerConsumesTouchesAboveUnderlyingMapActivities() {
@@ -104,7 +154,7 @@ final class GameContentTests: XCTestCase {
         XCTAssertLessThan(averageAllowance(150..<200), averageAllowance(50..<100))
         XCTAssertLessThan(averageGroupSize(50..<100), averageGroupSize(0..<10))
         XCTAssertTrue(LevelCatalog.levels[50..<100].allSatisfy { Set($0.initialBubbles.values).count == 5 })
-        XCTAssertTrue(LevelCatalog.levels[150..<200].filter { !$0.isPrecision }.allSatisfy { $0.initialBubbles.keys.map(\.row).max() == 6 })
+        XCTAssertTrue(LevelCatalog.levels[150..<LevelCatalog.levelCount].filter { !$0.isPrecision }.allSatisfy { $0.initialBubbles.keys.map(\.row).max() == 6 })
         // The same depth can have different routes, not just a new color permutation.
         let shapes = Set(LevelCatalog.levels[50..<100].map { Set($0.initialBubbles.keys) })
         XCTAssertGreaterThan(shapes.count, 5)
@@ -134,7 +184,7 @@ final class GameContentTests: XCTestCase {
     }
 
     func testAllLevelsHaveLegalAnchoredBoardsAndSafeStartingHeight() {
-        XCTAssertEqual(LevelCatalog.levels.count, 200)
+        XCTAssertEqual(LevelCatalog.levels.count, 220)
         XCTAssertEqual(Set(LevelCatalog.levels.map(\.area)), Set(LevelCatalog.areas.indices))
         for level in LevelCatalog.levels {
             let board = level.board
@@ -194,9 +244,9 @@ final class GameContentTests: XCTestCase {
         let progress = GameProgress(defaults: defaults)
         XCTAssertEqual(progress.unlockedLevel, 0)
         XCTAssertFalse(progress.hostIsAvailable(FestivalHost.all[1]))
-        for index in 0..<20 { progress.recordVictory(index: index, score: 200, stars: 3) }
+        for index in 0..<20 { progress.recordVictory(index: index, score: 200, stars: 5) }
         progress.recordVictory(index: 0, score: 100, stars: 1)
-        XCTAssertEqual(progress.totalStars, 60)
+        XCTAssertEqual(progress.totalStars, 100)
         XCTAssertEqual(progress.bestScore(0), 200)
         XCTAssertEqual(progress.unlockedLevel, 20)
         XCTAssertTrue(progress.unlocked(Companion.all[1]))
@@ -237,8 +287,8 @@ final class GameContentTests: XCTestCase {
 
     func testStarThresholdsAndInvalidShots() {
         let level = LevelCatalog.level(0)
-        XCTAssertEqual(level.stars(shotsRemaining: level.shots), 3)
-        XCTAssertEqual(level.stars(shotsRemaining: level.shots / 4), 2)
+        XCTAssertEqual(level.stars(shotsRemaining: level.shots), 5)
+        XCTAssertEqual(level.stars(shotsRemaining: level.shots / 4), 3)
         XCTAssertEqual(level.stars(shotsRemaining: 0), 1)
         var board = level.board
         let original = board.bubbles

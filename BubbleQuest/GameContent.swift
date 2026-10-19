@@ -271,6 +271,13 @@ enum LevelCatalog {
                 return index % 10 == 9 ? cell.column != width / 2 : (cell.column > 0 && cell.column < width - 1)
             }
         }
+        // These dense clear-board stops need an access lane as pressure rises.
+        // Preserve the lane during randomized attempts, like the bank-shot boards.
+        if [148, 160].contains(index) {
+            cells = cells.filter { cell, _ in
+                cell.row < 3 || cell.column != (BubbleBoard.columns - cell.row % 2) / 2
+            }
+        }
         if index >= 15 && index % 10 == 5 {
             let depth = index < 100 ? 4 : 5
             cells = cells.filter { $0.key.row < depth }

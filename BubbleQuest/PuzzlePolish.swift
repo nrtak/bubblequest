@@ -1,11 +1,17 @@
 import Foundation
 
 extension GameLevel {
+    var residentMilestone: Int? {
+        let stop = index % LevelCatalog.levelsPerArea + 1
+        return [5, 10, LevelCatalog.levelsPerArea].contains(stop) ? stop : nil
+    }
+
     func objectiveHelp(board: BubbleBoard, goal: PuzzleGoal) -> String {
         var parts = [goal.kind.instruction]
         if goal.kind != .clear { parts.append("\(goal.remaining.count) of \(goal.total) objects still need freeing.") }
         if !board.armor.isEmpty { parts.append("Silver rings need two matches.") }
         if !board.blockers.isEmpty { parts.append("Wooden blocks can be dropped or bombed.") }
+        parts.append("The ceiling also descends over time after your first shot. Menus pause it.")
         parts.append("Bank-shot matches earn 50 extra points.")
         return parts.joined(separator: " ")
     }
@@ -76,4 +82,24 @@ enum PuzzleRating {
         if shotsRemaining >= minimumSaved(for: 2, budget: budget) { return 2 }
         return 1
     }
+}
+
+/// Counts active puzzle time only; movement waits until a shot or aiming gesture settles.
+struct TimedCeilingPressure {
+    var elapsed: Double = 0
+    var drops: Int = 0
+
+    mutating func advance(by seconds: Double, level: GameLevel, canDescend: Bool) -> Bool {
+        // Ignore a clock jump after suspension, rather than catching up missed drops.
+        guard seconds.isFinite, seconds >= 0, seconds <= 1 else { return false }
+        elapsed = min(level.timedCeilingInterval, elapsed + seconds)
+        guard canDescend, elapsed >= level.timedCeilingInterval, drops < 999 else { return false }
+        elapsed = 0; drops += 1
+        return true
+    }
+}
+
+extension GameLevel {
+    var timedCeilingInterval: Double { index < 3 ? 45 : max(16, 36 - Double(index) / 12) }
+    var timedCeilingStep: Double { max(12, min(24, ceilingStep * 0.6)) }
 }

@@ -10,7 +10,7 @@ final class FestivalAudio {
 
     static func track(menu: String, area: Int, challenge: Bool) -> String {
         if ["title", "players", "saved-progress"].contains(menu) { return "music-menu" }
-        if ["host", "neighbor-detail", "buddy-welcome", "ending"].contains(menu) { return "music-story" }
+        if ["host", "neighbor-detail", "buddy-welcome", "courtyard-welcome", "ending"].contains(menu) { return "music-story" }
         if ["map", "album", "neighbors", "map-buddies", "quests", "quest-detail", "wheel", "wheel-reward"].contains(menu) { return "music-map" }
         if challenge { return "music-challenge" }
         if let scenery = SummerScenery.forArea(area) {

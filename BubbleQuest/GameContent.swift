@@ -551,6 +551,12 @@ final class GameProgress {
             }
         }
     }
+    func hasWelcomedCourtyard(_ area: Int) -> Bool { defaults.bool(forKey: "learned-courtyard-\(area)") }
+    func markCourtyardWelcomed(_ area: Int) {
+        guard area > 0, LevelCatalog.areas.indices.contains(area), area <= unlockedLevel / LevelCatalog.levelsPerArea else { return }
+        defaults.set(true, forKey: "learned-courtyard-\(area)")
+    }
+
     func hasSeenObjective(_ kind: PuzzleObjective) -> Bool { defaults.bool(forKey: "learned-objective-\(kind.rawValue)") }
     func markObjectiveSeen(_ kind: PuzzleObjective) { defaults.set(true, forKey: "learned-objective-\(kind.rawValue)") }
     var hasSeenTriesHelp: Bool {
@@ -671,6 +677,7 @@ enum BubbleGeometry {
     // Artwork includes a soft glass rim and glow. Use the inner cores for contact
     // so a bank shot can thread a visible opening without catching that halo.
     static let collisionDistance = 33.0
+    static let openingCollisionDistance = 25.0
     static let left = 48.0
     static let right = 342.0
     static let ceiling = 688.0
@@ -700,6 +707,16 @@ enum BubbleGeometry {
         let occupied = board.bubbles.keys.sorted {
             $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row
         }.map { (cell: $0, center: point($0, ceilingOffset: ceilingOffset)) }
+        // Keep normal contact around isolated bubbles and solid rows. Only soften
+        // the edges of a genuine missing-cell lane between two bubbles in a row.
+        var openings: [Int: [ClosedRange<Double>]] = [:]
+        for (row, bubbles) in Dictionary(grouping: occupied, by: { $0.cell.row }) {
+            for (leftBubble, rightBubble) in zip(bubbles, bubbles.dropFirst()) {
+                if rightBubble.center.x - leftBubble.center.x >= radius * 4 - 0.001 {
+                    openings[row, default: []].append((leftBubble.center.x + openingCollisionDistance)...(rightBubble.center.x - openingCollisionDistance))
+                }
+            }
+        }
         for _ in 0..<700 {
             position.x += dx * 3
             position.y += dy * 3
@@ -713,11 +730,14 @@ enum BubbleGeometry {
             }
             points.append(position)
             var hit: Cell?
-            var nearest = collisionDistance * collisionDistance
+            var nearest = Double.infinity
             for bubble in occupied {
                 let x = bubble.center.x - position.x, y = bubble.center.y - position.y
                 let squared = x * x + y * y
-                if squared <= nearest && (hit == nil || squared < nearest) {
+                if squared > collisionDistance * collisionDistance || squared >= nearest { continue }
+                let inOpening = openings[bubble.cell.row]?.contains(where: { $0.contains(position.x) }) ?? false
+                let contact = inOpening ? openingCollisionDistance : collisionDistance
+                if squared <= contact * contact && squared < nearest {
                     hit = bubble.cell; nearest = squared
                 }
             }

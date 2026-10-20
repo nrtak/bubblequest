@@ -15,6 +15,7 @@ final class GameContentTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         scene.handleMenu(["start-adventure"])
+        scene.handleMenu(["courtyard-welcome-explore"])
         for _ in 0..<20 { scene.handleMenu(["area-prev"]) }
         for area in LevelCatalog.areas.indices {
             let overlay = scene.children.last!
@@ -24,6 +25,7 @@ final class GameContentTests: XCTestCase {
             XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 1)"))
             XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 10)"))
             scene.handleMenu(["area-next"])
+            scene.handleMenu(["courtyard-welcome-explore"])
         }
     }
 

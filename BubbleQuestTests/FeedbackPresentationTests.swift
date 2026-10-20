@@ -143,7 +143,7 @@ final class FeedbackPresentationTests: XCTestCase {
                     if let text = (node as? SKLabelNode)?.text { words.append(text) }
                 }
                 XCTAssertEqual(words.contains("Courtyard keepsake earned!"), cleared == 19)
-                XCTAssertEqual(words.contains("Discovered: " + LevelCatalog.areas[1].name), cleared == 19)
+                XCTAssertEqual(words.contains { $0.contains("Discovered: " + LevelCatalog.areas[1].name) }, cleared == 19)
             }
         }
     }
@@ -217,7 +217,7 @@ final class FeedbackPresentationTests: XCTestCase {
                 XCTAssertLessThan(window.width, CGFloat(BubbleGeometry.radius * 2))
                 let rim = try XCTUnwrap(badge.childNode(withName: "target-rim") as? SKShapeNode)
                 XCTAssertEqual(rim.position, .zero)
-                scene.launchShot(angle: 0)
+                scene.launchShot(angle: 0); scene.setActive(false)
                 XCTAssertNotNil(scene.childNode(withName: "//result-objective-icon"))
                 XCTAssertNotNil(scene.childNode(withName: "//rescue-flight"))
             }
@@ -227,13 +227,13 @@ final class FeedbackPresentationTests: XCTestCase {
     @MainActor
     func testResidentCheersAtFirstMilestoneButNotOnReplay() throws {
         try withTargetPuzzle(targets: [Cell(row: 0, column: 3)], level: 4, cleared: 4) { scene, _ in
-            scene.launchShot(angle: 0)
+            scene.launchShot(angle: 0); scene.setActive(false)
             XCTAssertNotNil(scene.childNode(withName: "//milestone-resident"))
             let words = try XCTUnwrap(scene.childNode(withName: "//result-detail") as? SKLabelNode)
             XCTAssertTrue(words.text?.contains("Hana: 5 levels cleared!") == true)
         }
         try withTargetPuzzle(targets: [Cell(row: 0, column: 3)], level: 4, cleared: 5) { scene, _ in
-            scene.launchShot(angle: 0)
+            scene.launchShot(angle: 0); scene.setActive(false)
             XCTAssertNil(scene.childNode(withName: "//milestone-resident"))
         }
     }

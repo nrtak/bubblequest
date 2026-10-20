@@ -632,6 +632,19 @@ final class GameProgress {
         return completed >= companion.unlockAfter
     }
 
+    func unlockLevelProgress(_ companion: Companion) -> String {
+        if unlocked(companion) { return "Unlocked ✓" }
+        let end = companion.unlockAfter
+        let start = max(0, end - LevelCatalog.levelsPerArea)
+        let cleared = (start..<end).filter { stars($0) > 0 }.count
+        return "\(cleared)/\(end - start) area levels"
+    }
+
+    func unlockQuestProgress(_ companion: Companion) -> String? {
+        guard let id = companion.unlockQuest, let quest = FestivalQuest.all.first(where: { $0.id == id }) else { return nil }
+        return adventure.completed(quest) ? "✓ " + quest.title : quest.title + " \(adventure.count(quest))/\(quest.steps.count)"
+    }
+
     func selected(_ kind: Companion.Kind) -> Companion {
         let key = kind == .animal ? "selectedAnimal" : "selectedHuman"
         let saved = defaults.string(forKey: key)

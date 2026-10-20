@@ -301,13 +301,13 @@ final class SceneTransitionTests: XCTestCase {
             for id in ["haru", "mei"] {
                 XCTAssertNotNil(scene.childNode(withName: "//friend-" + id))
                 scene.handleMenu(["friend-" + id])
-                let notice = try XCTUnwrap(scene.childNode(withName: "//team-unlock-notice"))
-                let words = notice.children.compactMap { ($0 as? SKLabelNode)?.text }
-                XCTAssertTrue(words.contains { $0.lowercased().contains("area") })
+                XCTAssertNotNil(scene.childNode(withName: "//companion-preview-portrait"))
                 XCTAssertEqual(profiles.makeProgress().selected(.human).id, selected)
+                XCTAssertNotNil(scene.childNode(withName: "//preview-back"))
+                scene.handleMenu(["friend-guide"])
+                XCTAssertNotNil(scene.childNode(withName: "//preview-back"), "Background team taps must not dismiss a preview")
+                scene.handleMenu(["preview-back"])
                 XCTAssertNotNil(scene.childNode(withName: "//map-buddies-close"))
-                scene.handleMenu(["team-unlock-notice"])
-                XCTAssertNotNil(scene.childNode(withName: "//team-unlock-notice"))
             }
         }
     }
@@ -349,7 +349,7 @@ final class SceneTransitionTests: XCTestCase {
             let choose = try XCTUnwrap(scene.childNode(withName: "//buddy-choose"))
             let overlay = try XCTUnwrap(choose.parent)
             let words = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
-            XCTAssertTrue(words.contains { $0.contains("ready to help load") })
+            XCTAssertTrue(words.contains { $0.contains("buddy loads bubbles") })
             XCTAssertFalse(words.contains { $0.hasPrefix("Hi!") })
         }
     }

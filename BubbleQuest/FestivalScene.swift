@@ -24,6 +24,9 @@ final class FestivalScene: SKScene {
     private var earnedCourtyardSouvenir = false
     private var revealedArea: Int?
     private var courtyardWelcomeArea: Int?
+    private var previewReturnMenu = "map"
+    private var welcomedCompanion: Companion?
+    private var announcedWelcomeArea: Int?
     private var courtyardWelcomeAction = "map"
     private var residentMilestone: String?
     private var nodes: [Cell: SKNode] = [:]
@@ -617,6 +620,8 @@ final class FestivalScene: SKScene {
     }
 
     private func enterPlayer(_ id: String) {
+        announcedWelcomeArea = nil
+        welcomedCompanion = nil
         saveCheckpoint()
         guard profiles.select(id) else { return }
         progress = profiles.makeProgress()
@@ -679,40 +684,58 @@ final class FestivalScene: SKScene {
         let place = LevelCatalog.areas[area]
         let overlay = makeMenu(background: place.background)
         overlay.name = "courtyard-welcome"
-        let title = panel(width: 348, height: 102, point: CGPoint(x: 195, y: 718), parent: overlay)
+        let title = panel(width: 348, height: 172, point: CGPoint(x: 195, y: 708), parent: overlay)
+        title.name = "courtyard-welcome-introduction"
         title.strokeColor = .systemYellow
-        label("NEW AREA UNLOCKED!", size: 17, point: CGPoint(x: 195, y: 746), parent: overlay)
-        label(place.name, size: 27, point: CGPoint(x: 195, y: 706), parent: overlay)
+        if announcedWelcomeArea != area {
+            announcedWelcomeArea = area
+            audio.effect("map-chime", enabled: progress.enabled(.effects), volume: progress.effectsVolume * 0.5)
+        }
+        label("NEW AREA UNLOCKED", size: 12, point: CGPoint(x: 195, y: 771), parent: overlay)
+        (overlay.children.last as? SKLabelNode)?.fontColor = .systemYellow
+        label(place.name, size: 25, point: CGPoint(x: 195, y: 738), parent: overlay)
+        overlay.children.last?.name = "courtyard-area-name"
         if let areaName = overlay.children.last as? SKLabelNode { fitLabel(areaName, width: 320) }
         let host = FestivalHost.all.first { $0.area == area }
         let neighbor = FestivalNeighbor.all.first { $0.area == area }
         let name = host?.name ?? neighbor?.name ?? "Your festival friends"
         let texture = host.map { atlasTexture("festival-hosts", index: $0.portraitIndex) }
             ?? neighbor.map { neighborTexture($0) }
+        let divider = SKShapeNode(rectOf: CGSize(width: 268, height: 1))
+        divider.name = "courtyard-introduction-divider"; divider.position = CGPoint(x: 195, y: 711)
+        divider.fillColor = UIColor.white.withAlphaComponent(0.3); divider.strokeColor = .clear; overlay.addChild(divider)
+        label("Meet \(name)", size: 24, point: CGPoint(x: 195, y: 675), parent: overlay)
+        overlay.children.last?.name = "courtyard-resident-name"
+        label(host?.role ?? neighbor?.role ?? "Your courtyard neighbor", size: 14, point: CGPoint(x: 195, y: 648), parent: overlay)
+        if let role = overlay.children.last as? SKLabelNode {
+            role.name = "courtyard-resident-role"; role.fontColor = UIColor(white: 0.92, alpha: 1)
+            fitLabel(role, width: 310)
+        }
         if let texture {
-            let portrait = SKSpriteNode(texture: texture, size: CGSize(width: 236, height: 236))
-            portrait.name = "courtyard-resident-portrait"
-            portrait.position = CGPoint(x: 195, y: 541)
-            overlay.addChild(portrait)
+            // Bust artwork has a painted lower edge. Contain it inside a portrait
+            // medallion rather than leaving that edge floating over the scenery.
+            let frame = SKShapeNode(circleOfRadius: 116)
+            frame.name = "courtyard-portrait-frame"; frame.position = CGPoint(x: 195, y: 478)
+            frame.fillColor = UIColor(red: 1, green: 0.94, blue: 0.81, alpha: 1)
+            frame.strokeColor = .systemYellow; frame.lineWidth = 3; overlay.addChild(frame)
+            let crop = SKCropNode()
+            let mask = SKShapeNode(circleOfRadius: 112)
+            mask.fillColor = .white; mask.strokeColor = .clear; crop.maskNode = mask; frame.addChild(crop)
+            let portrait = SKSpriteNode(texture: texture, size: CGSize(width: 232, height: 232))
+            portrait.name = "courtyard-resident-portrait"; crop.addChild(portrait)
             if !UIAccessibility.isReduceMotionEnabled && !ProcessInfo.processInfo.isLowPowerModeEnabled {
-                portrait.setScale(0.92)
-                portrait.run(.scale(to: 1, duration: 0.3))
+                portrait.alpha = 0
+                portrait.run(.fadeIn(withDuration: 0.3))
             }
         }
         addCourtyardRewardPreview(area: area, to: overlay)
-        panel(width: 344, height: 164, point: CGPoint(x: 195, y: 281), parent: overlay)
-        label("Meet \(name)", size: 25, point: CGPoint(x: 195, y: 339), parent: overlay)
-        overlay.children.last?.name = "courtyard-resident-name"
-        let greeting = paragraph(host?.introduction.first ?? neighbor?.introduction ?? "Welcome to a new place to play!", y: 282, parent: overlay)
-        greeting.fontSize = 17; greeting.preferredMaxLayoutWidth = 304
-        label("20 new levels • Side quests are optional", size: 12, point: CGPoint(x: 195, y: 218), parent: overlay)
         let continueTitle = action == "play" ? "Play level \(level + 1)" : action == "resume" ? "Resume level \(level + 1)" : "Explore Map"
-        menuButton(continueTitle, name: "courtyard-welcome-explore", point: CGPoint(x: 195, y: 132), parent: overlay, width: 340, height: 54)
-        menuButton("Start Menu", name: "courtyard-welcome-back", point: CGPoint(x: 195, y: 67), parent: overlay, width: 176, height: 44)
+        menuButton(continueTitle, name: "courtyard-welcome-explore", point: CGPoint(x: 195, y: 166), parent: overlay, width: 340, height: 54)
+        menuButton("Start Menu", name: "courtyard-welcome-back", point: CGPoint(x: 195, y: 87), parent: overlay, width: 176, height: 44)
         let quiet = UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled
         for index in 0..<(quiet ? 3 : 12) {
             let charm = questIcon(index % 2 == 0 ? "sparkles" : "star.fill", size: 15, color: index % 2 == 0 ? .systemYellow : .systemPink)
-            charm.position = CGPoint(x: 34 + CGFloat(index) * (quiet ? 160 : 29), y: 650)
+            charm.position = CGPoint(x: 34 + CGFloat(index) * (quiet ? 160 : 29), y: 598)
             overlay.addChild(charm)
             if !quiet {
                 charm.run(.sequence([.group([.moveBy(x: 0, y: -75, duration: 1.2), .fadeOut(withDuration: 1.2)]), .removeFromParent()]))
@@ -722,24 +745,34 @@ final class FestivalScene: SKScene {
 
     private func addCourtyardRewardPreview(area: Int, to overlay: SKNode) {
         let rewards = Companion.all.filter { $0.unlockAfter == (area + 1) * LevelCatalog.levelsPerArea }
-        let strip = panel(width: 344, height: 48, point: CGPoint(x: 195, y: 391), parent: overlay)
+        let strip = panel(width: 344, height: 100, point: CGPoint(x: 195, y: 288), parent: overlay)
         strip.name = "courtyard-reward-preview"
+        label(rewards.isEmpty ? "Area keepsake" : "Characters you can unlock", size: 13, point: CGPoint(x: 0, y: 29), parent: strip)
+        strip.children.last?.name = "courtyard-reward-heading"
         if rewards.isEmpty {
             let style = FestivalCelebration.forArea(area)
             let icon = questIcon(style.symbol, size: 28, color: .systemYellow)
-            icon.position.x = -143; strip.addChild(icon)
-            label("Clear all 20 levels: " + style.souvenir, size: 12, point: CGPoint(x: 14, y: 0), parent: strip)
+            icon.position = CGPoint(x: -143, y: -5); strip.addChild(icon)
+            label("Clear all 20 levels: " + style.souvenir, size: 12, point: CGPoint(x: 14, y: -5), parent: strip)
             if let words = strip.children.last as? SKLabelNode { fitLabel(words, width: 280) }
         } else {
             for (index, reward) in rewards.prefix(2).enumerated() {
                 let x = rewards.count == 1 ? CGFloat(0) : CGFloat(index == 0 ? -83 : 83)
                 let portrait = SKSpriteNode(texture: companionTexture(reward, frame: 0), size: CGSize(width: 37, height: 37))
-                portrait.position = CGPoint(x: x - 55, y: 0); strip.addChild(portrait)
-                label(reward.name, size: 11, point: CGPoint(x: x + 17, y: 7), parent: strip)
+                portrait.position = CGPoint(x: x - 55, y: -3); strip.addChild(portrait)
+                label(reward.name + (reward.kind == .animal ? " • Buddy" : " • Shooter"), size: 11, point: CGPoint(x: x + 17, y: 7), parent: strip)
                 if let words = strip.children.last as? SKLabelNode { fitLabel(words, width: 108) }
-                label(reward.unlockQuest == nil ? "Clear this area" : "Area + side quest", size: 9, point: CGPoint(x: x + 17, y: -10), parent: strip)
+                label(progress.unlockLevelProgress(reward), size: 9, point: CGPoint(x: x + 17, y: -9), parent: strip)
+                if let requirementText = progress.unlockQuestProgress(reward) {
+                    label(requirementText, size: 9, point: CGPoint(x: x + 17, y: -23), parent: strip)
+                    if let requirement = strip.children.last as? SKLabelNode { fitLabel(requirement, width: 108) }
+                }
+                let preview = SKShapeNode(rectOf: CGSize(width: 164, height: 59), cornerRadius: 8)
+                preview.name = "preview-companion-" + reward.id; preview.position = CGPoint(x: x, y: -3)
+                preview.fillColor = .clear; preview.strokeColor = .clear; strip.addChild(preview)
             }
         }
+        label("20 new levels • Side quests are optional", size: 10, point: CGPoint(x: 0, y: -42), parent: strip)
     }
 
     private func showLevels(allowWelcome: Bool = false) {
@@ -754,15 +787,17 @@ final class FestivalScene: SKScene {
         if let scenery, let art = overlay.children.first as? SKSpriteNode {
             art.texture = SKTexture(rect: scenery.mapRegion, in: SKTexture(imageNamed: scenery.mapArtwork))
         }
-        panel(width: 358, height: 84, point: CGPoint(x: 195, y: 750), parent: overlay)
+        let areaHeader = panel(width: 358, height: 116, point: CGPoint(x: 195, y: 736), parent: overlay)
+        areaHeader.name = "map-area-header"
         label(mystery ? "Mystery Courtyard" : area.name, size: 23, point: CGPoint(x: 195, y: 766), parent: overlay)
+        if let heading = overlay.children.last as? SKLabelNode { fitLabel(heading, width: 326) }
         let first = mapArea * LevelCatalog.levelsPerArea
         let cleared = (first..<first + LevelCatalog.levelsPerArea).filter { progress.stars($0) > 0 }.count
-        label("Area \(mapArea + 1)/\(LevelCatalog.areas.count) • \(cleared)/\(LevelCatalog.levelsPerArea) levels cleared", size: 13, point: CGPoint(x: 195, y: 737), parent: overlay)
-        menuButton(mapArea > 0 ? "← Previous" : "First area", name: mapArea > 0 ? "area-prev" : "area-unavailable", point: CGPoint(x: 97, y: 700), parent: overlay, width: 152, height: 44)
+        label("Area \(mapArea + 1)/\(LevelCatalog.areas.count) • \(cleared)/\(LevelCatalog.levelsPerArea) levels cleared", size: 12, point: CGPoint(x: 195, y: 742), parent: overlay)
+        menuButton(mapArea > 0 ? "← Previous" : "First area", name: mapArea > 0 ? "area-prev" : "area-unavailable", point: CGPoint(x: 99, y: 706), parent: overlay, width: 154, height: 44)
         if let button = overlay.childNode(withName: mapArea > 0 ? "area-prev" : "area-unavailable") as? SKShapeNode { button.fillColor = .systemTeal; button.strokeColor = .white }
         if mapArea < LevelCatalog.areas.count - 1 && !mystery {
-            menuButton(mapArea >= unlockedArea ? "Mystery →" : "Next area →", name: "area-next", point: CGPoint(x: 293, y: 700), parent: overlay, width: 152, height: 44)
+            menuButton(mapArea >= unlockedArea ? "Mystery →" : "Next area →", name: "area-next", point: CGPoint(x: 291, y: 706), parent: overlay, width: 154, height: 44)
         }
         if mystery {
             let surprise = panel(width: 310, height: 340, point: CGPoint(x: 195, y: 458), parent: overlay)
@@ -782,7 +817,13 @@ final class FestivalScene: SKScene {
             let edge = SKShapeNode(path: path); edge.strokeColor = .brown.withAlphaComponent(0.65)
             edge.lineWidth = 20; edge.lineCap = .round; route.addChild(edge)
             let road = SKShapeNode(path: path); road.strokeColor = UIColor(red: 1, green: 0.89, blue: 0.62, alpha: 0.95)
+            let roadColors: [UIColor] = [.init(red: 1, green: 0.89, blue: 0.62, alpha: 1), .init(red: 0.83, green: 0.94, blue: 0.72, alpha: 1), .init(red: 1, green: 0.79, blue: 0.63, alpha: 1)]
+            road.strokeColor = roadColors[mapArea % roadColors.count]
             road.lineWidth = 13; road.lineCap = .round; route.addChild(road)
+            for (x, y) in [(CGFloat(34), CGFloat(610)), (CGFloat(356), CGFloat(408))] {
+                let decoration = questIcon(FestivalCelebration.forArea(mapArea).symbol, size: 22, color: .systemYellow)
+                decoration.name = "map-area-decoration"; decoration.position = CGPoint(x: x, y: y); overlay.addChild(decoration)
+            }
             for (local, point) in positions.enumerated() {
                 let index = first + local
                 let current = index == progress.unlockedLevel
@@ -808,22 +849,29 @@ final class FestivalScene: SKScene {
                 }
             }
             scrollMap(to: FestivalMapLayout.focusedOffset(local: progress.unlockedLevel - first))
-            label("Swipe the path to see all 20 levels", size: 12, point: CGPoint(x: 195, y: 308), parent: overlay)
+            label("Swipe the path to see all 20 levels", size: 11, point: CGPoint(x: 195, y: 334), parent: overlay)
+            overlay.children.last?.name = "map-scroll-hint"
             addCourtyardResident(to: overlay)
-            let activities = panel(width: 358, height: 62, point: CGPoint(x: 195, y: 151), parent: overlay)
+            let activities = panel(width: 358, height: 66, point: CGPoint(x: 195, y: 164), parent: overlay)
+            activities.name = "map-activities"
             for (title, name, x, symbol) in [("Team", "friends", CGFloat(-117), "person.2.fill"), ("Album", "album-open", CGFloat(0), "book.closed.fill"), ("Prizes", "open-wheel", CGFloat(117), "gift.fill")] {
-                menuButton(title, name: name, point: CGPoint(x: x, y: -6), parent: activities, width: 104, height: 44)
-                let icon = questIcon(symbol, size: 19, color: name == "open-wheel" ? .systemYellow : .white)
-                icon.position = CGPoint(x: x, y: 22); activities.addChild(icon)
+                menuButton(title, name: name, point: CGPoint(x: x, y: 0), parent: activities, width: 104, height: 44)
+                guard let button = activities.childNode(withName: name) else { continue }
+                if let words = button.children.first as? SKLabelNode {
+                    words.fontSize = 16; words.position = CGPoint(x: 12, y: -6)
+                    fitLabel(words, width: 65)
+                }
+                let icon = questIcon(symbol, size: 17, color: name == "open-wheel" ? .systemYellow : .white)
+                icon.name = "map-activity-icon"; icon.position = CGPoint(x: -33, y: 0); button.addChild(icon)
                 if name == "open-wheel", progress.adventure.availableSpins > 0 {
-                    let badge = SKShapeNode(circleOfRadius: 10); badge.fillColor = .systemYellow; badge.strokeColor = .white
-                    badge.position = CGPoint(x: x + 40, y: 16); activities.addChild(badge)
-                    label("\(progress.adventure.availableSpins)", size: 11, point: CGPoint(x: 0, y: -4), parent: badge)
+                    let badge = SKShapeNode(circleOfRadius: 9); badge.fillColor = .systemYellow; badge.strokeColor = .white
+                    badge.name = "map-prize-count"; badge.position = CGPoint(x: 38, y: 15); button.addChild(badge)
+                    label("\(progress.adventure.availableSpins)", size: 10, point: CGPoint(x: 0, y: -4), parent: badge)
                 }
             }
             let rewards = Companion.all.filter { $0.unlockAfter == (mapArea + 1) * LevelCatalog.levelsPerArea }
             let preview = rewards.isEmpty ? "Area reward: " + FestivalCelebration.forArea(mapArea).souvenir : "Area rewards: " + rewards.map { $0.name + ($0.unlockQuest == nil ? "" : " (side quest)") }.joined(separator: " + ")
-            label(preview, size: 10, point: CGPoint(x: 195, y: 104), parent: overlay)
+            label(preview, size: 10, point: CGPoint(x: 195, y: 112), parent: overlay)
             if let words = overlay.children.last as? SKLabelNode { words.name = "map-reward-preview"; fitLabel(words, width: 352) }
             if let saved = progress.checkpoint {
                 menuButton("Resume \(saved.level + 1)", name: "map-resume", point: CGPoint(x: 99, y: 65), parent: overlay, width: 166, height: 44)
@@ -833,11 +881,26 @@ final class FestivalScene: SKScene {
     }
 
     func scrollMap(to offset: CGFloat) {
-        levelMenu?.childNode(withName: "//map-route")?.position.y = FestivalMapLayout.scrollOffset(offset)
+        guard let route = levelMenu?.childNode(withName: "//map-route") else { return }
+        route.position.y = FestivalMapLayout.scrollOffset(offset)
+        // Keep complete markers visible at the scroll edges; clipped numbers can
+        // otherwise look like they belong underneath the area navigation.
+        for stop in route.children where stop.name == "locked" || stop.name?.hasPrefix("level-") == true {
+            let centerY = stop.position.y + route.position.y
+            stop.isHidden = centerY - 32 < FestivalMapLayout.viewport.minY || centerY + 32 > FestivalMapLayout.viewport.maxY
+        }
+        levelMenu?.childNode(withName: "map-current-level")?.removeFromParent()
+        let local = progress.unlockedLevel - mapArea * LevelCatalog.levelsPerArea
+        if (0..<LevelCatalog.levelsPerArea).contains(local),
+           let current = route.childNode(withName: "level-\(progress.unlockedLevel)"), current.isHidden,
+           let overlay = levelMenu {
+            menuButton("Current level", name: "map-current-level", point: CGPoint(x: 195, y: 379), parent: overlay, width: 170, height: 44)
+            overlay.childNode(withName: "map-current-level")?.zPosition = 8
+        }
     }
 
     private func addCourtyardResident(to overlay: SKNode) {
-        let card = panel(width: 358, height: 104, point: CGPoint(x: 195, y: 245), parent: overlay)
+        let card = panel(width: 358, height: 104, point: CGPoint(x: 195, y: 267), parent: overlay)
         card.name = "courtyard-resident"
         let name: String
         let portrait: SKTexture
@@ -859,8 +922,12 @@ final class FestivalScene: SKScene {
             let button = panel(width: 214, height: 44, point: CGPoint(x: 49, y: 25 - CGFloat(index) * 50), parent: card)
             button.name = "quest-" + quest.id
             if introduction?.id == quest.id { button.strokeColor = .systemYellow; button.lineWidth = 3 }
-            label(quest.title, size: 13, point: CGPoint(x: 0, y: 3), parent: button)
-            label(progress.adventure.completed(quest) ? "Complete • view reward" : progress.adventure.accepted(quest) ? "Side quest • \(progress.adventure.count(quest))/3" : "Optional side quest", size: 10, point: CGPoint(x: 0, y: -14), parent: button)
+            let complete = progress.adventure.completed(quest)
+            label(quest.title, size: 13, point: CGPoint(x: complete ? 10 : 0, y: 3), parent: button)
+            if let title = button.children.last as? SKLabelNode {
+                title.name = "map-quest-title"; fitLabel(title, width: complete ? 170 : 194)
+            }
+            label(complete ? "Complete • view reward" : progress.adventure.accepted(quest) ? "Side quest • \(progress.adventure.count(quest))/\(quest.steps.count)" : "Optional side quest", size: 10, point: CGPoint(x: 0, y: -14), parent: button)
             if progress.adventure.completed(quest) {
                 let reward = questIcon(quest.symbol, size: 16, color: [.systemPink, .systemYellow, .systemTeal][progress.adventure.style(quest)])
                 reward.name = "quest-display-" + quest.id; reward.position = CGPoint(x: -94, y: 3); button.addChild(reward)
@@ -1038,7 +1105,7 @@ final class FestivalScene: SKScene {
         let location = touch.location(in: self)
         let names = interactionNames(at: location)
         if levelMenu != nil {
-            if menuKind == "map", FestivalMapLayout.viewport.contains(location),
+            if menuKind == "map", !names.contains("map-current-level"), FestivalMapLayout.viewport.contains(location),
                let route = levelMenu?.childNode(withName: "//map-route") {
                 mapTouch = touch; mapTouchStart = location; mapTouchOffset = route.position.y; mapDragged = false
                 return
@@ -1053,6 +1120,7 @@ final class FestivalScene: SKScene {
         if names.contains("quest-objective") { showObjectives(); return }
 
         if finished {
+            if !names.contains("result-next") { dismissCelebrationEffects(); return }
             guard names.contains("result-next") else { return }
             continueAfterResult()
             return
@@ -1112,6 +1180,7 @@ final class FestivalScene: SKScene {
 
     internal func continueAfterResult(showBuddy: Bool = true) {
         guard finished else { return }
+        dismissCelebrationEffects()
         // The result button promises the quest reward before any separate unlock notice.
         if let completedQuest { showQuest(completedQuest); return }
         if won && showBuddy, let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
@@ -1352,7 +1421,9 @@ private extension FestivalScene {
                   width: minimum, height: minimum).contains(point) {
             return names + ["swap-bubble"]
         }
-        let decorationNames: Set<String> = ["board-veil", "result", "control-tip", "courtyard-resident"]
+        let decorationNames: Set<String> = ["board-veil", "result", "control-tip", "courtyard-resident",
+                                            "map-area-header", "map-activities", "courtyard-welcome-introduction",
+                                            "courtyard-portrait-frame", "courtyard-reward-preview", "companion-preview-card"]
         var targets: [SKNode] = []
         func collectTargets(_ container: SKNode) {
             for node in container.children where !node.isHidden && node.alpha > 0 && node.zPosition >= 0 {
@@ -1673,7 +1744,35 @@ private extension FestivalScene {
         }]))
     }
 
+    func showCompanionPreview(_ companion: Companion) {
+        menuKind = "companion-preview"
+        let area = previewReturnMenu == "courtyard-welcome" ? courtyardWelcomeArea ?? mapArea : mapArea
+        let overlay = makeMenu(background: LevelCatalog.areas[area].background)
+        let card = panel(width: 344, height: 560, point: CGPoint(x: 195, y: 455), parent: overlay)
+        card.name = "companion-preview-card"
+        label(companion.name, size: 28, point: CGPoint(x: 195, y: 682), parent: overlay)
+        label(companion.kind == .animal ? "Buddy • loads bubbles" : "Shooter • operates the cannon", size: 15, point: CGPoint(x: 195, y: 648), parent: overlay)
+        let portrait = SKSpriteNode(texture: companionTexture(companion, frame: 0), size: CGSize(width: 210, height: 210))
+        portrait.name = "companion-preview-portrait"; portrait.position = CGPoint(x: 195, y: 513); overlay.addChild(portrait)
+        label(progress.unlockLevelProgress(companion), size: 19, point: CGPoint(x: 195, y: 361), parent: overlay)
+        if let requirement = progress.unlockQuestProgress(companion) {
+            label(requirement, size: 15, point: CGPoint(x: 195, y: 328), parent: overlay)
+            if let words = overlay.children.last as? SKLabelNode { fitLabel(words, width: 302) }
+        }
+        label(progress.unlocked(companion) ? "Choose from Team on the map" : companion.unlockDescription, size: 14, point: CGPoint(x: 195, y: 273), parent: overlay)
+        if let words = overlay.children.last as? SKLabelNode { fitLabel(words, width: 302) }
+        menuButton("Back", name: "preview-back", point: CGPoint(x: 195, y: 131), parent: overlay, height: 48)
+    }
+
+    func dismissCelebrationEffects() {
+        for name in ["victory-confetti", "rescue-flight", "area-celebration"] { gameRoot.enumerateChildNodes(withName: "//" + name) { node, _ in node.removeFromParent() } }
+        levelMenu?.enumerateChildNodes(withName: "//unlock-confetti") { node, _ in node.removeFromParent() }
+        gameRoot.enumerateChildNodes(withName: "//result-star-*") { node, _ in node.removeAllActions(); node.setScale(1) }
+        if let counter = gameRoot.childNode(withName: "//result-score") as? SKLabelNode { counter.removeAllActions(); counter.text = "Score \(score)" }
+    }
+
     func showBuddyWelcome(_ buddy: Companion) {
+        welcomedCompanion = buddy
         menuKind = "buddy-welcome"
         let overlay = makeMenu(background: LevelCatalog.areas[level / LevelCatalog.levelsPerArea].background)
         panel(width: 342, height: 74, point: CGPoint(x: 195, y: 729), parent: overlay)
@@ -1683,7 +1782,7 @@ private extension FestivalScene {
                 let piece = SKShapeNode(rectOf: CGSize(width: 5, height: 8))
                 piece.fillColor = palette[index % palette.count]; piece.strokeColor = .clear
                 piece.position = CGPoint(x: 30 + CGFloat(index) * 22, y: 805)
-                overlay.addChild(piece)
+                piece.name = "unlock-confetti"; overlay.addChild(piece)
                 piece.run(.sequence([.group([.moveBy(x: index % 2 == 0 ? 20 : -20, y: -450, duration: 2), .rotate(byAngle: .pi * 2, duration: 2), .fadeOut(withDuration: 2)]), .removeFromParent()]))
             }
         }
@@ -1691,8 +1790,8 @@ private extension FestivalScene {
         portrait.position = CGPoint(x: 195, y: 549); overlay.addChild(portrait)
         panel(width: 342, height: 147, point: CGPoint(x: 195, y: 351), parent: overlay)
         label(buddy.name, size: 28, point: CGPoint(x: 195, y: 389), parent: overlay)
-        paragraph(buddy.kind == .human ? "Hi! I'd love to help you bring more color to the festival. Let's pop some bubbles together!" : "\(buddy.name) is ready to help load your bubbles. Choose this buddy for your next puzzle!", y: 341, parent: overlay)
-        menuButton(buddy.kind == .human ? "Choose shooter" : "Choose buddy", name: "buddy-choose", point: CGPoint(x: 195, y: 201), parent: overlay, height: 52)
+        paragraph(buddy.kind == .human ? "Your shooter aims and fires the cannon. Add \(buddy.name) to your team for the next puzzle!" : "Your buddy loads bubbles into the cannon. Add \(buddy.name) to your team for the next puzzle!", y: 341, parent: overlay)
+        menuButton("Add to team", name: "buddy-choose", point: CGPoint(x: 195, y: 201), parent: overlay, height: 52)
         menuButton("Maybe later", name: "buddy-later", point: CGPoint(x: 195, y: 128), parent: overlay, height: 48)
     }
 
@@ -2465,7 +2564,7 @@ private extension FestivalScene {
         for index in 0..<(quiet ? 3 : 14) {
             let charm = questIcon(style.symbol, size: quiet ? 15 : 12, color: colors[style.rawValue])
             charm.position = CGPoint(x: 44 + CGFloat(index) * (quiet ? 150 : 23), y: 710)
-            charm.zPosition = 19; gameRoot.addChild(charm)
+            charm.name = "area-celebration"; charm.zPosition = 19; gameRoot.addChild(charm)
             let drift = quiet ? SKAction.wait(forDuration: 0.6) : .moveBy(x: index % 2 == 0 ? 18 : -18, y: style == .lanterns ? 60 : -220, duration: 1.25)
             charm.run(.sequence([.group([drift, .fadeOut(withDuration: quiet ? 0.6 : 1.25)]), .removeFromParent()]))
         }
@@ -3046,6 +3145,20 @@ private extension FestivalScene {
     internal func handleMenu(_ incomingNames: [String]) {
         let names = menuKind == "map-buddies" ? FestivalMenuTargets.buddies(incomingNames) : incomingNames
         if wheelSpinning { return }
+        if let token = names.first(where: { $0.hasPrefix("preview-companion-") }),
+           let companion = Companion.all.first(where: { "preview-companion-" + $0.id == token }) {
+            previewReturnMenu = menuKind; showCompanionPreview(companion); return
+        }
+        if menuKind == "companion-preview" {
+            if names.contains("preview-back") {
+                if previewReturnMenu == "courtyard-welcome", let area = courtyardWelcomeArea { showCourtyardWelcome(area: area, action: courtyardWelcomeAction) }
+                else if previewReturnMenu == "map-buddies" { showMapBuddies() }
+                else { showLevels() }
+            }
+            return
+        }
+        if menuKind == "buddy-welcome", !names.contains("buddy-choose"), !names.contains("buddy-later") { dismissCelebrationEffects(); return }
+        if menuKind == "map", names.contains("map-current-level") { scrollMap(to: FestivalMapLayout.focusedOffset(local: progress.unlockedLevel - mapArea * LevelCatalog.levelsPerArea)); return }
         if menuKind == "courtyard-welcome" {
             if names.contains("courtyard-welcome-back") { courtyardWelcomeArea = nil; showTitle(); return }
             guard names.contains("courtyard-welcome-explore"), let area = courtyardWelcomeArea else { return }
@@ -3119,8 +3232,11 @@ private extension FestivalScene {
         }
         if names.contains("wheel-return") { showWheel(); return }
         if names.contains("new-buddy"), let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
-        if names.contains("buddy-choose") || names.contains("buddy-later") {
-            if let buddy = progress.pendingBuddy { if names.contains("buddy-choose") { progress.select(buddy) }; progress.welcome(buddy) }
+        if menuKind == "buddy-welcome", names.contains("buddy-choose") || names.contains("buddy-later") {
+            guard let buddy = welcomedCompanion else { return }
+            if names.contains("buddy-choose") { progress.select(buddy) }
+            progress.welcome(buddy)
+            welcomedCompanion = nil
             if finished { continueAfterResult(showBuddy: false) }
             else { showLevels() }
             return
@@ -3231,7 +3347,7 @@ private extension FestivalScene {
             showSettings()
         }
         else if let name = names.first(where: { $0.hasPrefix("friend-") }), let friend = Companion.all.first(where: { "friend-\($0.id)" == name }) {
-            guard progress.unlocked(friend) else { showMapBuddies(locked: friend); return }
+            guard progress.unlocked(friend) else { previewReturnMenu = "map-buddies"; showCompanionPreview(friend); return }
             progress.select(friend)
             progress.welcome(friend)
             if friend.kind == .human { updateOperatorAppearance() }

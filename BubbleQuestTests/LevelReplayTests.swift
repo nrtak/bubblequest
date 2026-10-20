@@ -17,8 +17,12 @@ final class LevelReplayTests: XCTestCase {
         for base in LevelCatalog.levels {
             let level = base.randomized(seed: UInt64(base.number) * 991)
             for pressureSeed in [UInt64(0), UInt64(level.number)] {
-                let cleared = [(25, 2000), (600, 300), (1000, 0)].contains { strategy in
+                let strategies = [(25, 2000), (600, 300), (1000, 0)]
+                let cleared = strategies.contains { strategy in
                     hasClearingRoute(level: level, pressureSeed: pressureSeed, specialPenalty: strategy.0, targetPriority: strategy.1)
+                } || strategies.contains { strategy in
+                    // Verify narrow openings with finer aiming before rejecting a board.
+                    hasClearingRoute(level: level, pressureSeed: pressureSeed, specialPenalty: strategy.0, targetPriority: strategy.1, angleStep: 0.01)
                 }
                 XCTAssertTrue(cleared, "Level \(level.number) needs a better layout or shot budget")
             }
@@ -37,7 +41,7 @@ final class LevelReplayTests: XCTestCase {
         }
     }
 
-    private func hasClearingRoute(level: GameLevel, pressureSeed: UInt64, specialPenalty: Int, targetPriority: Int) -> Bool {
+    private func hasClearingRoute(level: GameLevel, pressureSeed: UInt64, specialPenalty: Int, targetPriority: Int, angleStep: Double = 0.04) -> Bool {
         var random = SeededRandom(state: UInt64(level.number))
         var board = level.board
         var goal = level.goal
@@ -52,7 +56,7 @@ final class LevelReplayTests: XCTestCase {
         for shotNumber in 0..<level.shots {
             if goal.completed(on: board) { return true }
             var landings = Set<Cell>()
-            for angle in stride(from: -1.2, through: 1.2, by: 0.04) {
+            for angle in stride(from: -1.2, through: 1.2, by: angleStep) {
                 if let cell = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: level.ceilingOffset(after: shotNumber, seed: pressureSeed)).landing { landings.insert(cell) }
             }
             var choices: [BubbleShot] = [.color(current), .color(next)]

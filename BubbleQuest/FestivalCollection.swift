@@ -101,7 +101,7 @@ enum BuddyPersonality {
 }
 
 enum FestivalMapLayout {
-    static let viewport = CGRect(x: 16, y: 326, width: 358, height: 356)
+    static let viewport = CGRect(x: 16, y: 326, width: 358, height: 346)
     static func position(_ local: Int) -> CGPoint {
         CGPoint(x: 195 + sin(CGFloat(local) * 0.95) * 112, y: 350 + CGFloat(local) * 66)
     }

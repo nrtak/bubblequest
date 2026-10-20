@@ -47,6 +47,7 @@ final class SummerSceneryTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         scene.handleMenu(["start-adventure"])
+        scene.handleMenu(["courtyard-welcome-explore"])
         for _ in 0..<20 { scene.handleMenu(["area-prev"]) }
         for area in LevelCatalog.areas.indices {
             let overlay = try XCTUnwrap(scene.children.last)
@@ -56,6 +57,7 @@ final class SummerSceneryTests: XCTestCase {
                 XCTAssertNotNil(overlay.childNode(withName: "courtyard-resident"))
             }
             scene.handleMenu(["area-next"])
+            scene.handleMenu(["courtyard-welcome-explore"])
         }
         scene.handleMenu(["friends"])
         var visible = Set<String>()

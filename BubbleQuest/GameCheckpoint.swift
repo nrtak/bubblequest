@@ -29,18 +29,21 @@ struct GameCheckpoint: Codable {
     let boosterShots: Int?
     let balanceVersion: Int?
     let shotBudget: Int?
+    let timedCeilingElapsed: Double?
+    let timedCeilingDrops: Int?
     let tryStarted: Bool?
     var hasStartedTry: Bool { tryStarted ?? shotsFired.map { $0 > 0 } ?? true }
 
     init(level: Int, board: BubbleBoard, shots: Int, score: Int, current: Int, next: Int,
          bag: [Int], rainbow: Int, bomb: Int, play: QuestPlay, challenge: Bool = false,
-         freeRainbow: Bool = true, freeBomb: Bool = true, ceilingOffset: Double = 0, shotsFired: Int = 0, pressureSeed: UInt64 = 0, layoutSeed: UInt64? = nil, goal: PuzzleGoal? = nil, bankMatches: Int = 0, boosterShots: Int = 0, balanceVersion: Int = LevelPlayResults.balanceVersion, shotBudget: Int? = nil, tryStarted: Bool? = nil) {
+         freeRainbow: Bool = true, freeBomb: Bool = true, ceilingOffset: Double = 0, shotsFired: Int = 0, pressureSeed: UInt64 = 0, layoutSeed: UInt64? = nil, goal: PuzzleGoal? = nil, bankMatches: Int = 0, boosterShots: Int = 0, balanceVersion: Int = LevelPlayResults.balanceVersion, shotBudget: Int? = nil, tryStarted: Bool? = nil, timedCeilingElapsed: Double = 0, timedCeilingDrops: Int = 0) {
         version = 1; self.level = level; self.shots = shots; self.score = score
         currentColor = current; nextColor = next; self.bag = bag
         self.rainbow = rainbow; self.bomb = bomb; self.play = play
         self.challenge = challenge
         self.freeRainbow = freeRainbow; self.freeBomb = freeBomb
         self.ceilingOffset = ceilingOffset; self.shotsFired = shotsFired
+        self.timedCeilingElapsed = timedCeilingElapsed; self.timedCeilingDrops = timedCeilingDrops
         self.tryStarted = tryStarted ?? (shotsFired > 0)
         self.pressureSeed = pressureSeed; self.layoutSeed = layoutSeed
         armor = board.armor; blockers = board.blockers; self.goal = goal
@@ -51,12 +54,19 @@ struct GameCheckpoint: Codable {
         specials = board.specials.map { Special(row: $0.key.row, column: $0.key.column, kind: $0.value) }
     }
     var board: BubbleBoard? {
-        guard version == 1, LevelCatalog.levels.indices.contains(level), shots > 0, shots <= 999,
+        guard (timedCeilingElapsed ?? 0).isFinite, (0...60).contains(timedCeilingElapsed ?? 0), (0...999).contains(timedCeilingDrops ?? 0),
+              version == 1, LevelCatalog.levels.indices.contains(level), shots > 0, shots <= 999,
               (tryStarted != false || (shotsFired ?? 0) == 0),
               score >= 0, (0..<5).contains(currentColor), (0..<5).contains(nextColor),
               (shotBudget ?? shots) >= shots, (shotBudget ?? shots) <= 999,
               rainbow >= 0, bomb >= 0, (ceilingOffset ?? 0).isFinite, (0...240).contains(ceilingOffset ?? 0), (0...999).contains(shotsFired ?? 0), bag.allSatisfy({ (0..<5).contains($0) }),
               !bubbles.isEmpty, bubbles.count <= BubbleBoard.columns * BubbleBoard.rows else { return nil }
+        let timerElapsed = timedCeilingElapsed ?? 0
+        let timerDrops = timedCeilingDrops ?? 0
+        let levelDefinition = LevelCatalog.level(level)
+        guard timerElapsed <= levelDefinition.timedCeilingInterval,
+              (timerElapsed == 0 && timerDrops == 0) || hasStartedTry,
+              (ceilingOffset ?? 0) + 0.000001 >= min(240, Double(timerDrops) * levelDefinition.timedCeilingStep) else { return nil }
         var values: [Cell: Int] = [:]
         for item in bubbles {
             let cell = Cell(row: item.row, column: item.column)
@@ -75,6 +85,8 @@ struct GameCheckpoint: Codable {
               armor.isDisjoint(with: blockers), (bankMatches ?? 0) >= 0, (boosterShots ?? 0) >= 0 else { return nil }
         let board = BubbleBoard(bubbles: values, specials: specialValues, armor: armor, blockers: blockers)
         guard goal?.isValid(on: board) ?? true else { return nil }
+        // A finished objective belongs on the result screen, never in an unfinished save.
+        if let goal, goal.completed(on: board) { return nil }
         let anchored = values.keys.filter { $0.row == 0 }.reduce(into: Set<Cell>()) { result, root in
             result.formUnion(board.connected(from: root, matchingColor: false))
         }

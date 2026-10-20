@@ -2377,7 +2377,7 @@ private extension FestivalScene {
                 ?? "Your next attempt starts with a fresh board."
         }
         else if completedQuest != nil { detail = "Your reward is ready to view." }
-        else if let residentMilestone { detail = residentMilestone }
+        else if let residentMilestone { detail = residentMilestone + (revealedArea.map { " • Discovered: " + LevelCatalog.areas[$0].name } ?? "") }
         else if challengeMode { detail = progress.challengeWon(level / LevelCatalog.levelsPerArea) ? "Challenge ribbon earned! View it on the map." : "Earn five stars to collect the challenge ribbon." }
         else if let revealedArea { detail = "Discovered: " + LevelCatalog.areas[revealedArea].name }
         else if earnedCourtyardSouvenir { detail = "Keepsake saved in your Festival Album." }

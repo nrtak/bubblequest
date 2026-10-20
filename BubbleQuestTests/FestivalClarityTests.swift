@@ -57,7 +57,10 @@ final class FestivalClarityTests: XCTestCase {
             for index in 0..<20 { progress.recordVictory(index: index, score: 100, stars: 1) }
             let haru = try XCTUnwrap(Companion.all.first { $0.id == "haru" })
             let previousAnimal = progress.selected(.animal).id
-            scene.showBuddyWelcome(haru)
+            let firstBuddy = try XCTUnwrap(Companion.all.first { $0.id == "white-shiba" })
+            progress.welcome(firstBuddy)
+            XCTAssertEqual(progress.pendingBuddy?.id, haru.id)
+            scene.handleMenu(["new-buddy"])
             scene.handleMenu([])
             XCTAssertNotNil(scene.childNode(withName: "//buddy-choose"))
             XCTAssertEqual(progress.selected(.animal).id, previousAnimal)

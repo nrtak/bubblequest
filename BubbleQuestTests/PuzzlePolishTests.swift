@@ -3,6 +3,58 @@ import SpriteKit
 @testable import BubbleQuest
 
 final class PuzzlePolishTests: XCTestCase {
+    func testTimedCeilingWaitsForSafeMovementAndNeverCatchesUpBackgroundTime() {
+        let level = LevelCatalog.level(0)
+        var timer = TimedCeilingPressure()
+        for _ in 0..<44 { XCTAssertFalse(timer.advance(by: 1, level: level, canDescend: true)) }
+        XCTAssertFalse(timer.advance(by: 1, level: level, canDescend: false))
+        XCTAssertEqual(timer.drops, 0)
+        XCTAssertTrue(timer.advance(by: 0, level: level, canDescend: true))
+        XCTAssertEqual(timer.drops, 1)
+        XCTAssertEqual(timer.elapsed, 0)
+        XCTAssertFalse(timer.advance(by: 300, level: level, canDescend: true))
+        XCTAssertEqual(timer.elapsed, 0)
+        XCTAssertLessThan(LevelCatalog.level(100).timedCeilingInterval, level.timedCeilingInterval)
+    }
+
+    func testCorruptTimedPressureAndAlreadyCompletedObjectivesCannotResume() throws {
+        let level = LevelCatalog.level(0)
+        let save = GameCheckpoint(level: 0, board: level.board, shots: level.shots, score: 0, current: 0, next: 1, bag: [], rainbow: 1, bomb: 1, play: QuestPlay(), shotsFired: 1)
+        let json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(save)) as? [String: Any])
+        let patches: [[String: Any]] = [["timedCeilingElapsed": 46], ["timedCeilingDrops": 1], ["timedCeilingElapsed": 1, "tryStarted": false, "shotsFired": 0]]
+        for patch in patches {
+            let damaged = json.merging(patch) { _, new in new }
+            let checkpoint = try JSONDecoder().decode(GameCheckpoint.self, from: JSONSerialization.data(withJSONObject: damaged))
+            XCTAssertNil(checkpoint.board)
+        }
+        var finished = PuzzleGoal(kind: .lanterns, targets: [Cell(row: 0, column: 0)])
+        finished.collect(finished.remaining)
+        let completed = GameCheckpoint(level: 0, board: level.board, shots: 10, score: 100, current: 0, next: 1, bag: [], rainbow: 1, bomb: 1, play: QuestPlay(), goal: finished)
+        XCTAssertNil(completed.board)
+    }
+
+    func testTimedPressureSurvivesSavingAndLegacySavesRemainReadable() throws {
+        let level = LevelCatalog.level(0)
+        let save = GameCheckpoint(level: 0, board: level.board, shots: level.shots, score: 0, current: 0, next: 1, bag: [], rainbow: 1, bomb: 1, play: QuestPlay(), ceilingOffset: 12, shotsFired: 1, timedCeilingElapsed: 12, timedCeilingDrops: 1)
+        let data = try JSONEncoder().encode(save)
+        let restored = try JSONDecoder().decode(GameCheckpoint.self, from: data)
+        XCTAssertEqual(restored.timedCeilingElapsed, 12)
+        XCTAssertEqual(restored.timedCeilingDrops, 1)
+        XCTAssertNotNil(restored.board)
+        var legacy = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+        legacy.removeValue(forKey: "timedCeilingElapsed"); legacy.removeValue(forKey: "timedCeilingDrops")
+        let oldSave = try JSONDecoder().decode(GameCheckpoint.self, from: JSONSerialization.data(withJSONObject: legacy))
+        XCTAssertNil(oldSave.timedCeilingElapsed)
+        XCTAssertNotNil(oldSave.board)
+    }
+
+    func testResidentMilestonesRepeatAtFiveTenAndTwentyInEachArea() {
+        for index in 0..<LevelCatalog.levelCount {
+            let stop = index % LevelCatalog.levelsPerArea + 1
+            XCTAssertEqual(LevelCatalog.level(index).residentMilestone, [5, 10, 20].contains(stop) ? stop : nil)
+        }
+    }
+
     func testRetryHintsWaitForRepeatedLossesAndDescribeTheActualBoard() {
         let level = LevelCatalog.level(13)
         let plain = BubbleBoard(bubbles: [Cell(row: 0, column: 0): 0])

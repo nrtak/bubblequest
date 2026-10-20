@@ -220,8 +220,8 @@ final class SceneTransitionTests: XCTestCase {
         let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
         let progress = profiles.makeProgress()
         progress.tutorialSeen = true; progress.markLearned(.lantern)
-        progress.markCourtyardWelcomed(66 / LevelCatalog.levelsPerArea)
         progress.recordVictory(index: 66, score: 100, stars: 1)
+        progress.markCourtyardWelcomed(66 / LevelCatalog.levelsPerArea)
         progress.save(GameCheckpoint(level: 66, board: LevelCatalog.level(66).board, shots: 20, score: 100,
                                      current: 0, next: 1, bag: [0, 1], rainbow: 1, bomb: 1, play: QuestPlay()))
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)

@@ -5,6 +5,7 @@ final class FestivalAudio {
     private var effects: [AVAudioPlayer] = []
     private var track = ""
     private var suspended = false
+    private var entranceDuration: TimeInterval = 0.8
     private var fadingTracks: [AVAudioPlayer] = []
     private var lastEffects: [String: TimeInterval] = [:]
 
@@ -23,6 +24,7 @@ final class FestivalAudio {
         if track != name {
             guard let url = Bundle.main.url(forResource: name, withExtension: "wav"),
                   let replacement = try? AVAudioPlayer(contentsOf: url) else { return }
+            entranceDuration = track.isEmpty ? 1.2 : 0.8
             track = name
             if let old = music {
                 old.setVolume(0, fadeDuration: 0.8)
@@ -39,7 +41,7 @@ final class FestivalAudio {
         }
         if enabled && !suspended {
             music?.play()
-            music?.setVolume(volume, fadeDuration: 0.8)
+            music?.setVolume(volume, fadeDuration: entranceDuration)
         } else {
             music?.pause()
             fadingTracks.forEach { $0.stop() }

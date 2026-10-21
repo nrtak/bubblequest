@@ -168,7 +168,15 @@ final class FestivalScene: SKScene {
         if ProcessInfo.processInfo.arguments.contains("--spark-preview") { level = 82 }
         if ProcessInfo.processInfo.arguments.contains("--beach-preview") { level = 140 }
         if ProcessInfo.processInfo.arguments.contains("--hill-preview") { level = 180 }
-        if ProcessInfo.processInfo.arguments.contains("--summer-neighbor-preview") { level = 120 }
+        if ProcessInfo.processInfo.arguments.contains("--polish-title-preview") { showTitle() }
+        else if ProcessInfo.processInfo.arguments.contains("--polish-menu-preview") { hasStartedPuzzle = true; showGameMenu() }
+        else if ProcessInfo.processInfo.arguments.contains("--polish-reward-preview") {
+            progress.adventure.synchronize(completedLevels: 1000)
+            var random = LayoutRandom(state: 42)
+            if let prize = progress.adventure.draw(using: &random) { showWheelReward(prize) }
+        }
+        else if ProcessInfo.processInfo.arguments.contains("--polish-victory-preview") { hasStartedPuzzle = true; finish(success: true) }
+        else if ProcessInfo.processInfo.arguments.contains("--summer-neighbor-preview") { level = 120 }
         if ProcessInfo.processInfo.arguments.contains("--summer-buddies-preview") { level = 120 }
         if ProcessInfo.processInfo.arguments.contains("--summer-map-preview") { level = 140 }
         let summerPreview = ["--beach-preview", "--hill-preview", "--summer-neighbor-preview", "--summer-buddies-preview", "--summer-map-preview"].contains(where: ProcessInfo.processInfo.arguments.contains)
@@ -308,7 +316,7 @@ final class FestivalScene: SKScene {
         base.zPosition = -1
         base.fillColor = UIColor(red: 0.43, green: 0.23, blue: 0.13, alpha: 1)
         base.strokeColor = UIColor(red: 1, green: 0.77, blue: 0.42, alpha: 1)
-        base.lineWidth = 3
+        FestivalStyle.finish(base, as: .wood)
         gameRoot.addChild(base)
         let surface = SKShapeNode(rectOf: CGSize(width: 350, height: 88), cornerRadius: 4)
         surface.name = "light-wood-platform"
@@ -316,6 +324,7 @@ final class FestivalScene: SKScene {
         surface.zPosition = -0.5
         surface.fillColor = UIColor(red: 0.76, green: 0.48, blue: 0.26, alpha: 1)
         surface.strokeColor = UIColor(red: 1, green: 0.79, blue: 0.43, alpha: 1)
+        FestivalStyle.finish(surface, as: .wood)
         gameRoot.addChild(surface)
         // Booster controls sit directly in the expanded lighter wooden surface.
         let dock = SKNode()
@@ -354,9 +363,9 @@ final class FestivalScene: SKScene {
     private func panel(width: CGFloat, height: CGFloat, point: CGPoint, parent: SKNode) -> SKShapeNode {
         let node = SKShapeNode(rectOf: CGSize(width: width, height: height), cornerRadius: min(20, height / 2))
         node.position = point
-        node.fillColor = UIColor(red: 0.19, green: 0.22, blue: 0.39, alpha: 0.86)
+        node.fillColor = FestivalStyle.ink.withAlphaComponent(0.94)
         node.strokeColor = UIColor(red: 1, green: 0.90, blue: 0.73, alpha: 0.8)
-        node.lineWidth = 1.5
+        FestivalStyle.finish(node, as: .panel)
         parent.addChild(node)
         return node
     }
@@ -528,6 +537,7 @@ final class FestivalScene: SKScene {
         overlay.zPosition = 40
         addChild(overlay)
         levelMenu = overlay
+        FestivalStyle.reveal(overlay)
         updateMusic()
         let art = SKSpriteNode(imageNamed: background)
         art.size = size
@@ -540,9 +550,10 @@ final class FestivalScene: SKScene {
         let button = SKShapeNode(rectOf: CGSize(width: width, height: height), cornerRadius: min(28, height / 2))
         button.position = point
         button.name = name
-        button.fillColor = UIColor(red: 1, green: 0.44, blue: 0.39, alpha: 1)
-        button.strokeColor = UIColor(red: 1, green: 0.94, blue: 0.81, alpha: 1)
-        button.lineWidth = 3
+        let secondary = name == "home" || name.contains("back") || name.hasSuffix("-close") ||
+            ["buddy-later", "game-map", "game-restart", "settings", "players", "game-music"].contains(name)
+        button.fillColor = secondary ? UIColor(red: 0.22, green: 0.42, blue: 0.46, alpha: 1) : FestivalStyle.coral
+        FestivalStyle.finish(button, as: .lacquer)
         parent.addChild(button)
         label(title, size: min(23, (width - 28) / max(1, CGFloat(title.count) * 0.58)), point: CGPoint(x: 0, y: -8), parent: button)
         if let text = button.children.first as? SKLabelNode { fitLabel(text, width: width - 28) }
@@ -582,11 +593,23 @@ final class FestivalScene: SKScene {
     private func showTitle() {
         menuKind = "title"
         let overlay = makeMenu(background: "festival-day")
-        let logo = SKSpriteNode(imageNamed: "festival-logo")
-        logo.size = CGSize(width: 285, height: 190)
-        logo.position = CGPoint(x: 195, y: 683)
-        overlay.addChild(logo)
+        let logo = SKSpriteNode(imageNamed: "icon-shiba-source")
+        logo.name = "title-brand-mark"; logo.size = CGSize(width: 112, height: 112)
+        let frame = SKCropNode(); frame.position = CGPoint(x: 195, y: 718)
+        let mask = SKShapeNode(rectOf: CGSize(width: 112, height: 112), cornerRadius: 24)
+        mask.fillColor = .white; mask.strokeColor = .clear; frame.maskNode = mask
+        frame.addChild(logo); overlay.addChild(frame)
+        let title = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        title.name = "title-wordmark"; title.text = "Bubble Quest"; title.fontSize = 32
+        title.attributedText = NSAttributedString(string: "Bubble Quest", attributes: [
+            .font: UIFont(name: "AvenirNext-Bold", size: 32) ?? UIFont.boldSystemFont(ofSize: 32),
+            .foregroundColor: FestivalStyle.ink, .strokeColor: FestivalStyle.cream, .strokeWidth: -3
+        ])
+        title.position = CGPoint(x: 195, y: 618); overlay.addChild(title)
+        label("Festival Pop", size: 17, point: CGPoint(x: 195, y: 590), parent: overlay)
+        (overlay.children.last as? SKLabelNode)?.fontColor = FestivalStyle.ink
         label("Start Menu", size: 26, point: CGPoint(x: 195, y: 553), parent: overlay)
+        (overlay.children.last as? SKLabelNode)?.fontColor = FestivalStyle.ink
         panel(width: 342, height: 392, point: CGPoint(x: 195, y: 345), parent: overlay)
         let welcome = SKLabelNode(fontNamed: "AvenirNext-Bold")
         welcome.name = "welcome-player"; welcome.text = "Welcome, \(profiles.active.name)"
@@ -1423,6 +1446,13 @@ private extension FestivalScene {
         // Keep controls at least 44 physical points tall on compact iPhones.
         let scale = min((view?.bounds.width ?? size.width) / size.width, (view?.bounds.height ?? size.height) / size.height)
         let minimum = 44 / max(0.1, scale)
+        // The goal bar is decorative behind the gear's padded touch target.
+        // Give that target priority on compact phones instead of opening goal help.
+        if levelMenu == nil, let gear = gameRoot.childNode(withName: "game-menu"), !gear.isHidden,
+           CGRect(x: gear.position.x - max(48, minimum) / 2, y: gear.position.y - max(44, minimum) / 2,
+                  width: max(48, minimum), height: max(44, minimum)).contains(point) {
+            return ["game-menu"] + names.filter { $0 != "quest-objective" }
+        }
         if levelMenu == nil, !finished, let next = nextNode,
            CGRect(x: next.position.x - minimum / 2, y: next.position.y - minimum / 2,
                   width: minimum, height: minimum).contains(point) {
@@ -1430,7 +1460,7 @@ private extension FestivalScene {
         }
         let decorationNames: Set<String> = ["board-veil", "result", "control-tip", "courtyard-resident",
                                             "map-area-header", "map-activities", "courtyard-welcome-introduction",
-                                            "courtyard-portrait-frame", "courtyard-reward-preview", "companion-preview-card"]
+                                            "courtyard-portrait-frame", "courtyard-reward-preview", "companion-preview-card", "reward-medallion"]
         var targets: [SKNode] = []
         func collectTargets(_ container: SKNode) {
             for node in container.children where !node.isHidden && node.alpha > 0 && node.zPosition >= 0 {
@@ -1612,7 +1642,7 @@ private extension FestivalScene {
             let reward = SKShapeNode(rectOf: CGSize(width: 310, height: 48), cornerRadius: 16)
             reward.name = "quest-earned-reward"; reward.position = CGPoint(x: 195, y: 300)
             reward.fillColor = UIColor(red: 1, green: 0.88, blue: 0.46, alpha: 1)
-            reward.strokeColor = .white; reward.lineWidth = 2; overlay.addChild(reward)
+            FestivalStyle.finish(reward, as: .reward); overlay.addChild(reward)
             let gift = questIcon(quest.rewardSymbol, size: 26, color: .systemOrange)
             gift.position.x = -128; reward.addChild(gift)
             feedbackText("Reward earned", size: 12, at: CGPoint(x: 12, y: 8), parent: reward)
@@ -1772,8 +1802,9 @@ private extension FestivalScene {
     }
 
     func dismissCelebrationEffects() {
-        for name in ["victory-confetti", "rescue-flight", "area-celebration"] { gameRoot.enumerateChildNodes(withName: "//" + name) { node, _ in node.removeFromParent() } }
+        for name in ["victory-confetti", "rescue-flight", "area-celebration", "reward-delivery"] { gameRoot.enumerateChildNodes(withName: "//" + name) { node, _ in node.removeFromParent() } }
         levelMenu?.enumerateChildNodes(withName: "//unlock-confetti") { node, _ in node.removeFromParent() }
+        levelMenu?.enumerateChildNodes(withName: "//reward-delivery") { node, _ in node.removeFromParent() }
         gameRoot.enumerateChildNodes(withName: "//result-star-*") { node, _ in node.removeAllActions(); node.setScale(1) }
         if let counter = gameRoot.childNode(withName: "//result-score") as? SKLabelNode { counter.removeAllActions(); counter.text = "Score \(score)" }
     }
@@ -1810,7 +1841,15 @@ private extension FestivalScene {
         let icon: SKNode = prize == .rainbow ? shotNode(.rainbow) : prize == .bomb ? shotNode(.bomb) : questIcon(prize.symbol, size: 72, color: .systemYellow)
         icon.setScale(prize == .rainbow || prize == .bomb ? 2 : 1)
         icon.position = CGPoint(x: 195, y: 548); overlay.addChild(icon)
-        label(prize.title, size: 25, point: CGPoint(x: 195, y: 470), parent: overlay)
+        let rewardName = SKLabelNode(fontNamed: "AvenirNext-Bold")
+        rewardName.name = "wheel-reward-quantity"; rewardName.text = prize.title + " ×1"
+        rewardName.fontSize = 25; rewardName.position = CGPoint(x: 195, y: 470)
+        fitLabel(rewardName, width: 304); overlay.addChild(rewardName)
+        let medallion = SKShapeNode(circleOfRadius: 55)
+        medallion.name = "reward-medallion"; medallion.position = CGPoint(x: 195, y: 548)
+        medallion.zPosition = 0.1; icon.zPosition = 0.2; medallion.fillColor = FestivalStyle.cream
+        FestivalStyle.finish(medallion, as: .reward); overlay.addChild(medallion)
+        deliverRewardArtwork(icon, on: overlay, to: CGPoint(x: 195, y: 299))
         paragraph(prize == .rainbow || prize == .bomb ? "Saved to your booster supply. Use it from the bottom controls during a puzzle." : "Saved to your collection. Choose pins under Team on the map; bunting decorates each courtyard.", y: 400, parent: overlay)
         label("\(progress.adventure.rainbowGifts) extra rainbow • \(progress.adventure.bombGifts) extra bomb", size: 15, point: CGPoint(x: 195, y: 299), parent: overlay)
         menuButton("Back to the wheel", name: "wheel-return", point: CGPoint(x: 195, y: 185), parent: overlay, height: 48)
@@ -1986,6 +2025,23 @@ private extension FestivalScene {
         } else if !quiet, let animal = gameRoot.childNode(withName: "companion-0"), animal.action(forKey: "breathing") == nil {
             animal.run(.repeatForever(.sequence([.scaleY(to: 1.015, duration: 1.5), .scaleY(to: 1, duration: 1.5)])), withKey: "breathing")
         }
+        if let animal = gameRoot.childNode(withName: "companion-0") as? SKSpriteNode {
+            animal.removeAction(forKey: "idle-expression")
+            if !quiet {
+                animal.run(.repeatForever(.sequence([
+                    .wait(forDuration: 6.5, withRange: 2),
+                    .run { [weak self, weak animal] in
+                        guard let self, animal?.action(forKey: "loading") == nil else { return }
+                        animal?.texture = self.idleExpressionTexture(self.progress.selected(.animal))
+                    },
+                    .wait(forDuration: 0.22),
+                    .run { [weak self, weak animal] in
+                        guard let self, animal?.action(forKey: "loading") == nil else { return }
+                        animal?.texture = self.companionTexture(self.progress.selected(.animal), frame: 0)
+                    }
+                ])), withKey: "idle-expression")
+            }
+        }
         updateOperatorAppearance(quietMotion: quiet)
     }
 
@@ -2084,7 +2140,7 @@ private extension FestivalScene {
         let lacquer = colors[(level / LevelCatalog.levelsPerArea) % colors.count]
         // Keep the counter in the fixed lower housing, independent of barrel aiming/recoil.
         if let housing = gameRoot.childNode(withName: "shots-counter") as? SKShapeNode {
-            housing.fillColor = lacquer; housing.strokeColor = brass
+            housing.fillColor = lacquer; FestivalStyle.finish(housing, as: .lacquer)
         }
         cannon.fillColor = UIColor(red: 0.70, green: 0.91, blue: 0.96, alpha: 0.14)
         cannon.strokeColor = brass
@@ -2101,11 +2157,15 @@ private extension FestivalScene {
         shine.strokeColor = .clear; cannon.addChild(shine)
         let base = SKShapeNode(rectOf: CGSize(width: 42, height: 15), cornerRadius: 3)
         base.position.y = -30; base.fillColor = lacquer; base.strokeColor = brass
+        FestivalStyle.finish(base, as: .lacquer)
         cannon.addChild(base)
+        let crest = questIcon("sun.max.fill", size: 10, color: FestivalStyle.cream)
+        crest.position.y = -30; crest.zPosition = 1; cannon.addChild(crest)
         for y in [CGFloat(-37), -22] {
             let band = SKShapeNode(rectOf: CGSize(width: y == -37 ? 41 : 45, height: 6), cornerRadius: 2)
             band.name = "barrel-band"; band.position.y = y
             band.fillColor = brass; band.strokeColor = UIColor(red: 0.47, green: 0.30, blue: 0.12, alpha: 1)
+            FestivalStyle.finish(band, as: .brass)
             cannon.addChild(band)
         }
         let muzzle = SKShapeNode(ellipseOf: CGSize(width: 60, height: 13))
@@ -2124,15 +2184,16 @@ private extension FestivalScene {
         let neck = SKShapeNode(rectOf: CGSize(width: 62, height: 14), cornerRadius: 3)
         neck.name = "cannon-housing-neck"; neck.position = CGPoint(x: 195, y: 149)
         neck.fillColor = lacquer; neck.strokeColor = brass; neck.lineWidth = 2
+        FestivalStyle.finish(neck, as: .lacquer)
         stand.addChild(neck)
         for x in [CGFloat(167), 223] {
             let foot = SKShapeNode(rectOf: CGSize(width: 13, height: 27), cornerRadius: 3)
             foot.position = CGPoint(x: x, y: 147); foot.fillColor = UIColor(red: 0.39, green: 0.23, blue: 0.13, alpha: 1)
-            foot.strokeColor = brass; foot.lineWidth = 2; stand.addChild(foot)
+            FestivalStyle.finish(foot, as: .wood); stand.addChild(foot)
         }
         let cradle = SKShapeNode(rectOf: CGSize(width: 78, height: 11), cornerRadius: 4)
         cradle.position = CGPoint(x: 195, y: 139); cradle.fillColor = .brown; cradle.strokeColor = brass
-        stand.addChild(cradle)
+        FestivalStyle.finish(cradle, as: .wood); stand.addChild(cradle)
     }
 
     internal func idleExpressionTexture(_ friend: Companion) -> SKTexture {
@@ -2150,6 +2211,7 @@ private extension FestivalScene {
         buddy.removeAction(forKey: "expression")
         let quiet = quietMotion ?? (UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled)
         guard !quiet else { return }
+        buddy.run(.repeatForever(.sequence([.scaleY(to: 1.006, duration: 2.1), .scaleY(to: 1, duration: 2.1)])), withKey: "breathing")
         // Swap complete painted poses, never detach or stretch an individual limb.
         buddy.run(.repeatForever(.sequence([
             .wait(forDuration: 4.8, withRange: 2.0),
@@ -2428,9 +2490,11 @@ private extension FestivalScene {
         let card = SKShapeNode(rectOf: CGSize(width: 344, height: 450), cornerRadius: 28)
         card.name = "result"; card.position = CGPoint(x: 195, y: 425); card.zPosition = 20
         card.fillColor = UIColor(red: 1, green: 0.95, blue: 0.80, alpha: 0.99)
-        card.strokeColor = .systemOrange; card.lineWidth = 3; gameRoot.addChild(card)
+        FestivalStyle.finish(card, as: .reward); gameRoot.addChild(card)
+        FestivalStyle.reveal(card, quiet: quiet)
         let ribbon = SKShapeNode(rectOf: CGSize(width: 354, height: 51), cornerRadius: 12)
-        ribbon.position.y = 200; ribbon.fillColor = .systemOrange; ribbon.strokeColor = .white; ribbon.lineWidth = 2; card.addChild(ribbon)
+        ribbon.position.y = 200; ribbon.fillColor = FestivalStyle.coral
+        FestivalStyle.finish(ribbon, as: .lacquer); card.addChild(ribbon)
         feedbackText(success ? (earnedCourtyardSouvenir ? "Courtyard complete!" : "Level \(level + 1) complete!") : "Level \(level + 1) • Try again", size: 24, at: .zero, parent: ribbon, color: .white)
         let objectiveSummary = feedbackText(success ? puzzleGoal.victorySummary(on: board) : "A fresh angle, a fresh chance", size: 13, at: CGPoint(x: 12, y: 158), parent: card)
         objectiveSummary.preferredMaxLayoutWidth = 268
@@ -2472,7 +2536,8 @@ private extension FestivalScene {
         }
         let reward = SKShapeNode(rectOf: CGSize(width: 298, height: 49), cornerRadius: 15)
         reward.name = "result-earned"; reward.position.y = -65
-        reward.fillColor = UIColor(red: 1, green: 0.86, blue: 0.43, alpha: 1); reward.strokeColor = .white; card.addChild(reward)
+        reward.fillColor = UIColor(red: 1, green: 0.86, blue: 0.43, alpha: 1)
+        FestivalStyle.finish(reward, as: .reward); card.addChild(reward)
         let rewardSymbol = completedQuest?.rewardSymbol ?? (earnedCourtyardSouvenir ? FestivalCelebration.forArea(level / LevelCatalog.levelsPerArea).symbol : !earnedMedals.isEmpty ? "medal.fill" : "star.fill")
         let icon = questIcon(rewardSymbol, size: 28, color: .systemOrange)
         icon.position.x = -123; reward.addChild(icon)
@@ -2521,6 +2586,15 @@ private extension FestivalScene {
             }
             confetti.run(.sequence([.wait(forDuration: 1.4), .removeFromParent()]))
         }
+    }
+
+    func deliverRewardArtwork(_ artwork: SKNode, on parent: SKNode, to destination: CGPoint) {
+        guard !FestivalStyle.quiet, let delivery = artwork.copy() as? SKNode else { return }
+        delivery.name = "reward-delivery"; delivery.zPosition = 8
+        delivery.removeAllActions(); parent.addChild(delivery)
+        let scale = delivery.xScale
+        let travel = SKAction.move(to: destination, duration: 0.5); travel.timingMode = .easeInEaseOut
+        delivery.run(.sequence([.wait(forDuration: 0.9), .group([travel, .scale(to: scale * 0.24, duration: 0.5), .fadeOut(withDuration: 0.5)]), .removeFromParent()]))
     }
 
     func rescueObject(kind: PuzzleObjective) -> SKNode {
@@ -2760,11 +2834,12 @@ private extension FestivalScene {
         let linkage = SKShapeNode(rectOf: CGSize(width: 72, height: 8), cornerRadius: 3)
         linkage.position = CGPoint(x: 249, y: 153)
         linkage.fillColor = UIColor(red: 0.83, green: 0.61, blue: 0.33, alpha: 1)
-        linkage.strokeColor = .brown
+        FestivalStyle.finish(linkage, as: .brass)
         gameRoot.addChild(linkage)
         let wheelSupport = SKShapeNode(rectOf: CGSize(width: 9, height: 22), cornerRadius: 3)
         wheelSupport.position = CGPoint(x: 290, y: 159)
-        wheelSupport.fillColor = linkage.fillColor; wheelSupport.strokeColor = .brown
+        wheelSupport.fillColor = linkage.fillColor
+        FestivalStyle.finish(wheelSupport, as: .brass)
         gameRoot.addChild(wheelSupport)
         let wheel = SKNode()
         wheel.name = "handwheel"
@@ -2773,15 +2848,21 @@ private extension FestivalScene {
         let rim = SKShapeNode(circleOfRadius: 24)
         rim.fillColor = UIColor(red: 0.36, green: 0.23, blue: 0.18, alpha: 1)
         rim.strokeColor = UIColor(red: 1, green: 0.82, blue: 0.5, alpha: 1)
-        rim.lineWidth = 5
+        FestivalStyle.finish(rim, as: .wood); rim.lineWidth = 3
         wheel.addChild(rim)
+        let innerRim = SKShapeNode(circleOfRadius: 20)
+        innerRim.fillColor = .clear; innerRim.strokeColor = FestivalStyle.brass.withAlphaComponent(0.42)
+        innerRim.lineWidth = 1; wheel.addChild(innerRim)
         for index in 0..<6 {
             let spoke = SKShapeNode(rectOf: CGSize(width: 4, height: 37), cornerRadius: 2)
             spoke.zRotation = CGFloat(index) * .pi / 3
             spoke.fillColor = UIColor(red: 0.89, green: 0.69, blue: 0.4, alpha: 1)
-            spoke.strokeColor = .clear
+            FestivalStyle.finish(spoke, as: .brass)
             wheel.addChild(spoke)
         }
+        let hub = SKShapeNode(circleOfRadius: 4)
+        hub.fillColor = FestivalStyle.brass; FestivalStyle.finish(hub, as: .brass)
+        wheel.addChild(hub)
         gameRoot.addChild(wheel)
         let cue = SKNode()
         cue.name = "cancel-cue"
@@ -2913,6 +2994,7 @@ private extension FestivalScene {
         levelMenu = nil
         menuKind = "game"
         gameRoot.isPaused = false
+        FestivalStyle.reveal(gameRoot)
         updateControlLayout()
         showPracticeHint()
         showPuzzleCoachIfNeeded()

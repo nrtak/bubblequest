@@ -1842,7 +1842,7 @@ private extension FestivalScene {
         menuButton("Maybe later", name: "buddy-later", point: CGPoint(x: 195, y: 128), parent: overlay, height: 48)
     }
 
-    func showWheelReward(_ prize: FestivalPrize) {
+    internal func showWheelReward(_ prize: FestivalPrize) {
         menuKind = "wheel-reward"
         let overlay = makeMenu(background: LevelCatalog.areas[mapArea].background)
         panel(width: 342, height: 420, point: CGPoint(x: 195, y: 472), parent: overlay)

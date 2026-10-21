@@ -1810,7 +1810,7 @@ private extension FestivalScene {
         menuButton("Back", name: "preview-back", point: CGPoint(x: 195, y: 131), parent: overlay, height: 48)
     }
 
-    func dismissCelebrationEffects() {
+    internal func dismissCelebrationEffects() {
         for name in ["victory-confetti", "rescue-flight", "area-celebration", "reward-delivery"] { gameRoot.enumerateChildNodes(withName: "//" + name) { node, _ in node.removeFromParent() } }
         levelMenu?.enumerateChildNodes(withName: "//unlock-confetti") { node, _ in node.removeFromParent() }
         levelMenu?.enumerateChildNodes(withName: "//reward-delivery") { node, _ in node.removeFromParent() }

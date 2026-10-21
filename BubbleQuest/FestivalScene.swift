@@ -520,15 +520,16 @@ final class FestivalScene: SKScene {
         saveCheckpoint()
         profiles.persistActive()
         childNode(withName: "outgoing-menu")?.removeFromParent()
-        if let outgoing = levelMenu, !FestivalStyle.quiet {
-            outgoing.name = "outgoing-menu"
-            outgoing.zPosition = 39
-            outgoing.removeAction(forKey: "interface-reveal")
-            outgoing.alpha = 1
-            outgoing.run(.sequence([.wait(forDuration: 0.18), .removeFromParent()]))
-        } else {
-            levelMenu?.removeFromParent()
+        if let outgoing = levelMenu, !FestivalStyle.quiet,
+           let texture = view?.texture(from: outgoing, crop: CGRect(origin: .zero, size: size)) {
+            // A flat image carries the fade; outgoing controls leave the tree immediately.
+            let snapshot = SKSpriteNode(texture: texture, size: size)
+            snapshot.name = "outgoing-menu"; snapshot.zPosition = 39
+            snapshot.position = CGPoint(x: size.width / 2, y: size.height / 2)
+            addChild(snapshot)
+            snapshot.run(.sequence([.wait(forDuration: 0.18), .removeFromParent()]))
         }
+        levelMenu?.removeFromParent()
         gameRoot.childNode(withName: "puzzle-coach")?.removeFromParent()
         gameRoot.childNode(withName: "level-arrival")?.removeFromParent()
         gameRoot.childNode(withName: "target-feedback")?.removeFromParent()

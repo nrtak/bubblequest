@@ -273,7 +273,7 @@ enum LevelCatalog {
         }
         // These dense clear-board stops need an access lane as pressure rises.
         // Preserve the lane during randomized attempts, like the bank-shot boards.
-        if [148, 160].contains(index) {
+        if [148, 157, 160].contains(index) {
             cells = cells.filter { cell, _ in
                 cell.row < 3 || cell.column != (BubbleBoard.columns - cell.row % 2) / 2
             }
@@ -751,13 +751,15 @@ enum BubbleGeometry {
             points.append(position)
             var hit: Cell?
             var nearest = Double.infinity
+            let outsideGrid = position.x < left || position.x > right
+            let maximumContact = outsideGrid ? radius * 2 : collisionDistance
             for bubble in occupied {
                 let x = bubble.center.x - position.x, y = bubble.center.y - position.y
                 let squared = x * x + y * y
+                if squared > maximumContact * maximumContact || squared >= nearest { continue }
                 let inOpening = openings[bubble.cell.row]?.contains(where: { $0.contains(position.x) }) ?? false
                 // Outside the grid, use the full rims. Otherwise a shot can slip
                 // past the exposed edge and hit a sealed cell with no legal slot.
-                let outsideGrid = position.x < left || position.x > right
                 let contact = outsideGrid ? radius * 2 : inOpening ? openingCollisionDistance : collisionDistance
                 if squared <= contact * contact && squared < nearest {
                     hit = bubble.cell; nearest = squared

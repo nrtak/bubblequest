@@ -22,6 +22,7 @@ struct Cell: Hashable, Codable {
 struct BubbleBoard {
     static let columns = 8
     static let rows = 14
+    static let capacity = rows * columns + rows / 2
     var bubbles: [Cell: Int] = [:]
     var specials: [Cell: SpecialBubble] = [:]
     var armor: Set<Cell> = []
@@ -30,8 +31,10 @@ struct BubbleBoard {
     var playableColors: Set<Int> { Set(bubbles.filter { !blockers.contains($0.key) }.map { $0.value }) }
 
     static func valid(_ cell: Cell) -> Bool {
-        cell.row >= 0 && cell.row < rows && cell.column >= 0 &&
-        cell.column < columns - (cell.row % 2)
+        // Staggered rows have one extra slot at each screen edge. Their centers
+        // (27 and 363) fit fully inside the same walls used by moving bubbles.
+        cell.row >= 0 && cell.row < rows &&
+        cell.column >= (cell.row % 2 == 0 ? 0 : -1) && cell.column < columns
     }
 
     static func neighbors(of cell: Cell) -> [Cell] {

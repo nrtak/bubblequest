@@ -24,7 +24,15 @@ final class LevelReplayTests: XCTestCase {
                     // Verify narrow openings with finer aiming before rejecting a board.
                     hasClearingRoute(level: level, pressureSeed: pressureSeed, specialPenalty: strategy.0, targetPriority: strategy.1, angleStep: 0.01)
                 }
-                XCTAssertTrue(cleared, "Level \(level.number) needs a better layout or shot budget")
+                // Extra legal edge slots can tempt a greedy search into building
+                // along the walls. Also test a player who keeps shots in the
+                // original central lanes; every simulated shot still uses real physics.
+                let centralRoute = cleared || strategies.contains { strategy in
+                    hasClearingRoute(level: level, pressureSeed: pressureSeed, specialPenalty: strategy.0, targetPriority: strategy.1, includeEdgeSlots: false)
+                } || strategies.contains { strategy in
+                    hasClearingRoute(level: level, pressureSeed: pressureSeed, specialPenalty: strategy.0, targetPriority: strategy.1, angleStep: 0.01, includeEdgeSlots: false)
+                }
+                XCTAssertTrue(centralRoute, "Level \(level.number) needs a better layout or shot budget")
             }
         }
     }
@@ -41,7 +49,7 @@ final class LevelReplayTests: XCTestCase {
         }
     }
 
-    private func hasClearingRoute(level: GameLevel, pressureSeed: UInt64, specialPenalty: Int, targetPriority: Int, angleStep: Double = 0.04) -> Bool {
+    private func hasClearingRoute(level: GameLevel, pressureSeed: UInt64, specialPenalty: Int, targetPriority: Int, angleStep: Double = 0.04, includeEdgeSlots: Bool = true) -> Bool {
         var random = SeededRandom(state: UInt64(level.number))
         var board = level.board
         var goal = level.goal
@@ -57,7 +65,10 @@ final class LevelReplayTests: XCTestCase {
             if goal.completed(on: board) { return true }
             var landings = Set<Cell>()
             for angle in stride(from: -1.2, through: 1.2, by: angleStep) {
-                if let cell = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: level.ceilingOffset(after: shotNumber, seed: pressureSeed)).landing { landings.insert(cell) }
+                if let cell = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: level.ceilingOffset(after: shotNumber, seed: pressureSeed)).landing,
+                   includeEdgeSlots || (cell.column >= 0 && cell.column < BubbleBoard.columns - cell.row % 2) {
+                    landings.insert(cell)
+                }
             }
             var choices: [BubbleShot] = [.color(current), .color(next)]
             if rainbow { choices.append(.rainbow) }

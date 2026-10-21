@@ -1,6 +1,13 @@
 import SpriteKit
 import UIKit
 
+enum GameplayHUDLayout {
+    static let goalCenter = CGPoint(x: 195, y: 750)
+    static let settingsCenter = CGPoint(x: 34, y: goalCenter.y)
+    static let goalSize = CGSize(width: 390, height: 48)
+    static let rescueDestination = CGPoint(x: goalCenter.x - 99, y: goalCenter.y)
+}
+
 final class FestivalScene: SKScene {
     private let palette: [UIColor] = [UIColor(red: 1, green: 0.36, blue: 0.53, alpha: 1), .systemYellow, .systemBlue, .systemGreen, .systemPurple]
     private let radius: CGFloat = 21
@@ -146,7 +153,7 @@ final class FestivalScene: SKScene {
         shotsLabel.position = CGPoint(x: 0, y: 4)
         shotsLabel.zPosition = 8
         gameRoot.childNode(withName: "shots-counter")?.addChild(shotsLabel)
-        iconButton("gearshape.fill", name: "game-menu", point: CGPoint(x: 34, y: 772))
+        iconButton("gearshape.fill", name: "game-menu", point: GameplayHUDLayout.settingsCenter)
         boosterButton(.rainbow, name: "rainbow", point: CGPoint(x: 263, y: 84))
         boosterButton(.bomb, name: "bomb", point: CGPoint(x: 330, y: 84))
         level = progress.unlockedLevel
@@ -255,7 +262,7 @@ final class FestivalScene: SKScene {
         background.zPosition = -10
         gameRoot.addChild(background)
         backdrop = background
-        let veil = SKShapeNode(rectOf: CGSize(width: 336, height: 360), cornerRadius: 14)
+        let veil = SKShapeNode(rectOf: CGSize(width: 390, height: 360), cornerRadius: 14)
         veil.name = "board-veil"; veil.position = CGPoint(x: 195, y: 529)
         veil.fillColor = .black; veil.strokeColor = .clear; veil.zPosition = -3; veil.alpha = 0.1
         gameRoot.addChild(veil)
@@ -1813,13 +1820,16 @@ private extension FestivalScene {
     internal func showGameMenu() {
         menuKind = "game-menu"; returnMenu = "game"
         let overlay = makeMenu(background: activeLevel.background)
-        panel(width: 330, height: 408, point: CGPoint(x: 195, y: 440), parent: overlay)
-        label("Puzzle menu", size: 28, point: CGPoint(x: 195, y: 594), parent: overlay)
-        menuButton("Keep playing", name: "game-resume", point: CGPoint(x: 195, y: 530), parent: overlay, height: 50)
-        menuButton("Explore Map", name: "game-map", point: CGPoint(x: 195, y: 468), parent: overlay, height: 44)
-        menuButton("Restart puzzle", name: "game-restart", point: CGPoint(x: 195, y: 406), parent: overlay, height: 44)
-        menuButton("Settings", name: "settings", point: CGPoint(x: 195, y: 344), parent: overlay, height: 44)
-        menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 282), parent: overlay, height: 44)
+        panel(width: 330, height: 470, point: CGPoint(x: 195, y: 440), parent: overlay)
+        label("Puzzle menu", size: 28, point: CGPoint(x: 195, y: 624), parent: overlay)
+        menuButton("Keep playing", name: "game-resume", point: CGPoint(x: 195, y: 560), parent: overlay, height: 50)
+        let musicPlaying = progress.enabled(.music) && progress.musicVolume > 0
+        menuButton(musicPlaying ? "Mute music" : "Turn music on", name: "game-music", point: CGPoint(x: 195, y: 498), parent: overlay, height: 44)
+        decorateMenuIcon(musicPlaying ? "speaker.wave.2.fill" : "speaker.slash.fill", name: "game-music", parent: overlay, x: -108)
+        menuButton("Explore Map", name: "game-map", point: CGPoint(x: 195, y: 436), parent: overlay, height: 44)
+        menuButton("Restart puzzle", name: "game-restart", point: CGPoint(x: 195, y: 374), parent: overlay, height: 44)
+        menuButton("Settings", name: "settings", point: CGPoint(x: 195, y: 312), parent: overlay, height: 44)
+        menuButton("Start Menu", name: "home", point: CGPoint(x: 195, y: 250), parent: overlay, height: 44)
     }
 
     func showRetryPrompt() {
@@ -1944,9 +1954,9 @@ private extension FestivalScene {
     }
 
     func updateControlLayout() {
-        gameRoot.childNode(withName: "game-menu")?.position = CGPoint(x: 34, y: 772)
+        gameRoot.childNode(withName: "game-menu")?.position = GameplayHUDLayout.settingsCenter
         gameRoot.childNode(withName: "shots-counter")?.position = CGPoint(x: 195, y: 126)
-        gameRoot.childNode(withName: "quest-objective")?.position.x = 195
+        gameRoot.childNode(withName: "quest-objective")?.position = GameplayHUDLayout.goalCenter
         let boosterNames = ["rainbow", "bomb"]
         // Anchor the last slot at the right edge; each additional slot grows leftward.
         for (index, name) in boosterNames.enumerated() {
@@ -2196,30 +2206,32 @@ private extension FestivalScene {
 
     func refreshQuestBadge() {
         gameRoot.childNode(withName: "quest-objective")?.removeFromParent()
-        let badge = panel(width: 390, height: 64, point: CGPoint(x: 195, y: 772), parent: gameRoot)
+        // Reserve 70 scene points above this compact bar for the status bar and
+        // Dynamic Island, while keeping its lower edge above the ceiling rail.
+        let badge = panel(width: GameplayHUDLayout.goalSize.width, height: GameplayHUDLayout.goalSize.height, point: GameplayHUDLayout.goalCenter, parent: gameRoot)
         badge.name = "quest-objective"; badge.zPosition = 8
-        badge.path = CGPath(rect: CGRect(x: -195, y: -32, width: 390, height: 64), transform: nil)
+        badge.path = CGPath(rect: CGRect(x: -195, y: -24, width: 390, height: 48), transform: nil)
         badge.fillColor = UIColor(red: 0.10, green: 0.19, blue: 0.29, alpha: 0.96)
         badge.strokeColor = .clear
         let edge = SKShapeNode(rectOf: CGSize(width: 390, height: 2))
-        edge.position.y = -32; edge.fillColor = UIColor(red: 0.93, green: 0.73, blue: 0.38, alpha: 1)
+        edge.position.y = -24; edge.fillColor = UIColor(red: 0.93, green: 0.73, blue: 0.38, alpha: 1)
         edge.strokeColor = .clear; badge.addChild(edge)
         let icon = rescueObject(kind: puzzleGoal.kind)
         icon.position.x = -99; icon.setScale(1.15); badge.addChild(icon)
         let info = questIcon("info.circle", size: 13, color: .white)
-        info.position = CGPoint(x: 182, y: 20); badge.addChild(info)
+        info.position = CGPoint(x: 182, y: 14); badge.addChild(info)
         let heading = SKLabelNode(fontNamed: "AvenirNext-Bold")
         heading.text = "LEVEL \(level + 1) • GOAL"; heading.fontSize = 14; heading.fontColor = .white
-        heading.horizontalAlignmentMode = .left; heading.position = CGPoint(x: -76, y: 10)
+        heading.horizontalAlignmentMode = .left; heading.position = CGPoint(x: -76, y: 7)
         badge.addChild(heading)
         let title = SKLabelNode(fontNamed: "AvenirNext-Bold")
         title.text = puzzleGoal.kind.hudTitle
         title.fontSize = 14; title.fontColor = .white; title.verticalAlignmentMode = .center
-        title.horizontalAlignmentMode = .left; title.position = CGPoint(x: -76, y: -12)
+        title.horizontalAlignmentMode = .left; title.position = CGPoint(x: -76, y: -11)
         fitLabel(title, width: 178); badge.addChild(title)
         let count = feedbackText(puzzleGoal.kind == .clear ? "\(board.bubbles.count)" : "\(puzzleGoal.total - puzzleGoal.remaining.count)/\(puzzleGoal.total)", size: 22, at: CGPoint(x: 141, y: 3), parent: badge, color: .white)
         count.name = "objective-progress"
-        label(puzzleGoal.kind == .clear ? "bubbles left" : "complete", size: 9, point: CGPoint(x: 141, y: -21), parent: badge)
+        label(puzzleGoal.kind == .clear ? "bubbles left" : "complete", size: 9, point: CGPoint(x: 141, y: -17), parent: badge)
     }
 
     internal func showObjectives() {
@@ -2396,7 +2408,7 @@ private extension FestivalScene {
         footer.preferredMaxLayoutWidth = 294
         let quiet = UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled
         if !quiet { card.setScale(0.92); card.run(.scale(to: 1, duration: 0.18)) }
-        let exit: SKAction = quiet ? .fadeOut(withDuration: 0.2) : .group([.move(to: CGPoint(x: 195, y: 772), duration: 0.3), .scale(to: 0.08, duration: 0.3), .fadeOut(withDuration: 0.3)])
+        let exit: SKAction = quiet ? .fadeOut(withDuration: 0.2) : .group([.move(to: GameplayHUDLayout.goalCenter, duration: 0.3), .scale(to: 0.08, duration: 0.3), .fadeOut(withDuration: 0.3)])
         card.run(.sequence([.wait(forDuration: hint == nil ? 2.6 : 4), exit, .removeFromParent()]))
     }
 
@@ -2550,7 +2562,7 @@ private extension FestivalScene {
         let quiet = UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled
         if quiet { icon.run(.sequence([.fadeOut(withDuration: 0.2), .removeFromParent()])); return }
         let path = CGMutablePath(); path.move(to: location)
-        path.addQuadCurve(to: completing ? CGPoint(x: 50, y: 583) : CGPoint(x: 96, y: 772), control: CGPoint(x: 52, y: max(710, location.y + 35)))
+        path.addQuadCurve(to: completing ? CGPoint(x: 50, y: 583) : GameplayHUDLayout.rescueDestination, control: CGPoint(x: 52, y: max(710, location.y + 35)))
         icon.run(.sequence([.wait(forDuration: Double(order) * 0.07), .group([.follow(path, asOffset: false, orientToPath: false, duration: 0.48), .scale(to: 0.8, duration: 0.48)]), .run { [weak self] in
             guard !completing else { return }
             self?.gameRoot.childNode(withName: "quest-objective")?.run(.sequence([.scale(to: 1.06, duration: 0.1), .scale(to: 1, duration: 0.1)]), withKey: "rescue-pulse")
@@ -3204,6 +3216,17 @@ private extension FestivalScene {
         if let value = names.first(where: { $0.hasPrefix("album-filter-") }), let filter = ReplayFilter(rawValue: String(value.dropFirst(13))) { replayFilter = filter; showAlbum(); return }
         if let value = names.first(where: { $0.hasPrefix("album-souvenir-") }), let area = Int(value.dropFirst(15)) { albumSelection = area; showAlbum(); return }
         if names.contains("map-chat-dismiss"), let area = mapConversationArea { progress.dismissConversation(area: area); profiles.persistActive(); showLevels(); return }
+        if names.contains("game-music"), menuKind == "game-menu" {
+            if progress.enabled(.music) && progress.musicVolume > 0 { progress.toggle(.music) }
+            else {
+                if !progress.enabled(.music) { progress.toggle(.music) }
+                if progress.volumeStep(music: true) == 0 { progress.changeVolume(music: true, by: 2) }
+            }
+            updateMusic()
+            profiles.persistActive()
+            showGameMenu()
+            return
+        }
         if names.contains("game-resume") { closeMenu(); return }
         if names.contains("map-resume") { resumeSavedPuzzle(); return }
         if names.contains("game-map") { mapArea = level / LevelCatalog.levelsPerArea; showLevels(); return }

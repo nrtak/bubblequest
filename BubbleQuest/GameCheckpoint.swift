@@ -60,7 +60,7 @@ struct GameCheckpoint: Codable {
               score >= 0, (0..<5).contains(currentColor), (0..<5).contains(nextColor),
               (shotBudget ?? shots) >= shots, (shotBudget ?? shots) <= 999,
               rainbow >= 0, bomb >= 0, (ceilingOffset ?? 0).isFinite, (0...240).contains(ceilingOffset ?? 0), (0...999).contains(shotsFired ?? 0), bag.allSatisfy({ (0..<5).contains($0) }),
-              !bubbles.isEmpty, bubbles.count <= BubbleBoard.columns * BubbleBoard.rows else { return nil }
+              !bubbles.isEmpty, bubbles.count <= BubbleBoard.capacity else { return nil }
         let timerElapsed = timedCeilingElapsed ?? 0
         let timerDrops = timedCeilingDrops ?? 0
         let levelDefinition = LevelCatalog.level(level)

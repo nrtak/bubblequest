@@ -273,7 +273,7 @@ final class SceneTransitionTests: XCTestCase {
             scene.showGameMenu()
             let saved = try XCTUnwrap(profiles.makeProgress().checkpoint)
             let mapButton = try XCTUnwrap(scene.childNode(withName: "//game-map"))
-            let controls = try XCTUnwrap(mapButton.parent).children.filter { ["game-resume", "game-map", "game-restart", "settings", "home"].contains($0.name ?? "") }
+            let controls = try XCTUnwrap(mapButton.parent).children.filter { ["game-resume", "game-music", "game-map", "game-restart", "settings", "home"].contains($0.name ?? "") }
             for (index, control) in controls.enumerated() {
                 for other in controls.dropFirst(index + 1) {
                     XCTAssertFalse(control.calculateAccumulatedFrame().intersects(other.calculateAccumulatedFrame()))
@@ -351,6 +351,29 @@ final class SceneTransitionTests: XCTestCase {
             let words = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
             XCTAssertTrue(words.contains { $0.contains("buddy loads bubbles") })
             XCTAssertFalse(words.contains { $0.hasPrefix("Hi!") })
+        }
+    }
+
+    @MainActor
+    func testQuickMusicMuteKeepsEffectsAndTheSamePuzzle() throws {
+        try withScene { scene, profiles in
+            let progress = profiles.makeProgress()
+            let before = try XCTUnwrap(progress.checkpoint)
+            let effects = progress.enabled(.effects)
+            let volume = progress.volumeStep(music: true)
+            scene.showGameMenu()
+            scene.handleMenu(["game-music"])
+            XCTAssertFalse(progress.enabled(.music))
+            XCTAssertEqual(progress.enabled(.effects), effects)
+            XCTAssertEqual(progress.volumeStep(music: true), volume)
+            XCTAssertEqual(progress.checkpoint?.board?.bubbles, before.board?.bubbles)
+            scene.handleMenu(["game-music"])
+            XCTAssertTrue(progress.enabled(.music))
+            progress.changeVolume(music: true, by: -5)
+            scene.showGameMenu()
+            scene.handleMenu(["game-music"])
+            XCTAssertGreaterThan(progress.musicVolume, 0)
+            XCTAssertEqual(progress.enabled(.effects), effects)
         }
     }
 

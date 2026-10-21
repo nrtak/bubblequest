@@ -122,4 +122,19 @@ final class ShotOpeningTests: XCTestCase {
         }
     }
 
+    func testDescendingScreenshotBoardUsesTheAvailableOuterAttachmentSlot() throws {
+        let rows = ["00112200", "0112200", "00....22", ".00..22"]
+        var bubbles: [Cell: Int] = [:]
+        for (row, text) in rows.enumerated() {
+            for (column, character) in text.enumerated() {
+                if let color = character.wholeNumberValue { bubbles[Cell(row: row, column: column)] = color }
+            }
+        }
+        let board = BubbleBoard(bubbles: bubbles)
+        let flight = BubbleGeometry.flight(angle: 0.45, board: board, ceilingOffset: 45)
+        let landing = try XCTUnwrap(flight.landing)
+        XCTAssertEqual(landing, Cell(row: 3, column: 7))
+        XCTAssertNil(board.bubbles[landing])
+    }
+
 }

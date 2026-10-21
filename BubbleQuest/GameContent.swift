@@ -693,6 +693,11 @@ enum BubbleGeometry {
     static let openingCollisionDistance = 25.0
     static let left = 48.0
     static let right = 342.0
+    // The board grid stays inset for save compatibility; only moving shots use
+    // the device edges. One extra point keeps the bubble rim inside the screen.
+    static let sceneWidth = 390.0
+    static let flightLeft = radius + 1
+    static let flightRight = sceneWidth - flightLeft
     static let ceiling = 688.0
     static let origin = BubblePoint(x: 195, y: 176)
     static let lossLine = 360.0
@@ -733,13 +738,15 @@ enum BubbleGeometry {
         for _ in 0..<700 {
             position.x += dx * 3
             position.y += dy * 3
-            if position.x < left {
-                bounces.append(BubblePoint(x: left, y: position.y - (left - position.x) * dy / max(0.0001, abs(dx))))
-                position.x = left * 2 - position.x; dx *= -1
+            if position.x < flightLeft {
+                let bounce = BubblePoint(x: flightLeft, y: position.y - (flightLeft - position.x) * dy / max(0.0001, abs(dx)))
+                bounces.append(bounce); points.append(bounce)
+                position.x = flightLeft * 2 - position.x; dx *= -1
             }
-            if position.x > right {
-                bounces.append(BubblePoint(x: right, y: position.y - (position.x - right) * dy / max(0.0001, abs(dx))))
-                position.x = right * 2 - position.x; dx *= -1
+            if position.x > flightRight {
+                let bounce = BubblePoint(x: flightRight, y: position.y - (position.x - flightRight) * dy / max(0.0001, abs(dx)))
+                bounces.append(bounce); points.append(bounce)
+                position.x = flightRight * 2 - position.x; dx *= -1
             }
             points.append(position)
             var hit: Cell?
@@ -747,9 +754,11 @@ enum BubbleGeometry {
             for bubble in occupied {
                 let x = bubble.center.x - position.x, y = bubble.center.y - position.y
                 let squared = x * x + y * y
-                if squared > collisionDistance * collisionDistance || squared >= nearest { continue }
                 let inOpening = openings[bubble.cell.row]?.contains(where: { $0.contains(position.x) }) ?? false
-                let contact = inOpening ? openingCollisionDistance : collisionDistance
+                // Outside the grid, use the full rims. Otherwise a shot can slip
+                // past the exposed edge and hit a sealed cell with no legal slot.
+                let outsideGrid = position.x < left || position.x > right
+                let contact = outsideGrid ? radius * 2 : inOpening ? openingCollisionDistance : collisionDistance
                 if squared <= contact * contact && squared < nearest {
                     hit = bubble.cell; nearest = squared
                 }

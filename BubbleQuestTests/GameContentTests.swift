@@ -209,7 +209,7 @@ final class GameContentTests: XCTestCase {
         for level in LevelCatalog.levels {
             for angle in stride(from: -1.2, through: 1.2, by: 0.15) {
                 let flight = BubbleGeometry.flight(angle: angle, board: level.board)
-                XCTAssertTrue(flight.points.allSatisfy { $0.x >= BubbleGeometry.left && $0.x <= BubbleGeometry.right })
+                XCTAssertTrue(flight.points.allSatisfy { $0.x >= BubbleGeometry.flightLeft && $0.x <= BubbleGeometry.flightRight })
                 guard let cell = flight.landing else { XCTFail("No landing in level \(level.number)"); continue }
                 XCTAssertTrue(BubbleBoard.valid(cell))
                 XCTAssertNil(level.initialBubbles[cell])

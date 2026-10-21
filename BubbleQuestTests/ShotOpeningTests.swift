@@ -18,7 +18,7 @@ final class ShotOpeningTests: XCTestCase {
                 Cell(row: cell.row, column: reflected ? BubbleBoard.columns - cell.row % 2 - 1 - cell.column : cell.column)
             }
             var board = BubbleBoard(bubbles: Dictionary(uniqueKeysWithValues: opening.map { (cell($0.key), $0.value) }))
-            let preview = BubbleGeometry.flight(angle: reflected ? 0.406 : -0.406, board: board)
+            let preview = BubbleGeometry.flight(angle: reflected ? 0.501 : -0.501, board: board)
             XCTAssertEqual(preview.bounces.count, 1)
             let landing = try XCTUnwrap(preview.landing)
             XCTAssertNil(board.bubbles[landing])
@@ -74,4 +74,52 @@ final class ShotOpeningTests: XCTestCase {
             }
         }
     }
+
+    func testBothDeviceWallsKeepTheWholeBubbleVisibleAndReflectAtTheGuideMarker() throws {
+        for angle in stride(from: -1.2, through: 1.2, by: 0.025) {
+            let path = BubbleGeometry.flight(angle: angle, board: BubbleBoard())
+            let landing = try XCTUnwrap(path.landing)
+            XCTAssertTrue(BubbleBoard.valid(landing))
+            XCTAssertEqual(landing.row, 0)
+            for point in path.points {
+                XCTAssertGreaterThanOrEqual(point.x - BubbleGeometry.radius, 1 - 0.00001)
+                XCTAssertLessThanOrEqual(point.x + BubbleGeometry.radius, BubbleGeometry.sceneWidth - 1 + 0.00001)
+            }
+            for bounce in path.bounces {
+                XCTAssertTrue(bounce.x == BubbleGeometry.flightLeft || bounce.x == BubbleGeometry.flightRight)
+                XCTAssertTrue(path.points.contains { $0.x == bounce.x && $0.y == bounce.y },
+                              "The animated path must reach the exact bank marker before reflecting")
+            }
+        }
+        for angle in [-0.8, 0.8] {
+            let path = BubbleGeometry.flight(angle: angle, board: BubbleBoard())
+            let first = try XCTUnwrap(path.bounces.first)
+            XCTAssertEqual(first.x, angle < 0 ? BubbleGeometry.flightLeft : BubbleGeometry.flightRight)
+            XCTAssertLessThan(BubbleGeometry.flightLeft, BubbleGeometry.left)
+            XCTAssertGreaterThan(BubbleGeometry.flightRight, BubbleGeometry.right)
+        }
+        // Wider flight space must not move existing boards or saved cells.
+        XCTAssertEqual(BubbleGeometry.point(Cell(row: 0, column: 0)).x, 48)
+        XCTAssertEqual(BubbleGeometry.point(Cell(row: 0, column: 7)).x, 342)
+    }
+
+    func testOuterWallShotAttachesInsteadOfEndingTheLevelAtASealedEdgeCell() throws {
+        let cells = [(0,0),(0,1),(0,2),(0,3),(0,4),(0,5),(0,6),(0,7),
+                     (1,0),(1,1),(1,2),(1,3),(1,4),(1,6),
+                     (2,0),(2,3),(2,6),(2,7),(3,2),(3,3),(3,5),(3,6)]
+        for reflected in [false, true] {
+            let values = Dictionary(uniqueKeysWithValues: cells.map { row, column in
+                (Cell(row: row, column: reflected ? 7 - row % 2 - column : column), 0)
+            })
+            let board = BubbleBoard(bubbles: values)
+            for offset in [0.0, 40, 80] {
+                let flight = BubbleGeometry.flight(angle: reflected ? -0.4 : 0.4, board: board, ceilingOffset: offset)
+                let landing = try XCTUnwrap(flight.landing, "A reachable exposed edge must not cause an instant loss")
+                XCTAssertTrue(BubbleBoard.valid(landing))
+                XCTAssertNil(board.bubbles[landing])
+                XCTAssertTrue(BubbleBoard.neighbors(of: landing).contains { board.bubbles[$0] != nil })
+            }
+        }
+    }
+
 }

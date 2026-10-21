@@ -10,7 +10,7 @@ final class CeilingPressureTests: XCTestCase {
                 let cell = try XCTUnwrap(flight.landing)
                 XCTAssertNil(board.bubbles[cell])
                 XCTAssertEqual(flight.points.last, BubbleGeometry.point(cell, ceilingOffset: offset))
-                XCTAssertTrue(flight.points.allSatisfy { $0.x >= BubbleGeometry.left && $0.x <= BubbleGeometry.right })
+                XCTAssertTrue(flight.points.allSatisfy { $0.x >= BubbleGeometry.flightLeft && $0.x <= BubbleGeometry.flightRight })
             }
         }
     }

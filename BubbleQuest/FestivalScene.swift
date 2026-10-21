@@ -519,7 +519,16 @@ final class FestivalScene: SKScene {
     private func makeMenu(background: String) -> SKNode {
         saveCheckpoint()
         profiles.persistActive()
-        levelMenu?.removeFromParent()
+        childNode(withName: "outgoing-menu")?.removeFromParent()
+        if let outgoing = levelMenu, !FestivalStyle.quiet {
+            outgoing.name = "outgoing-menu"
+            outgoing.zPosition = 39
+            outgoing.removeAction(forKey: "interface-reveal")
+            outgoing.alpha = 1
+            outgoing.run(.sequence([.wait(forDuration: 0.18), .removeFromParent()]))
+        } else {
+            levelMenu?.removeFromParent()
+        }
         gameRoot.childNode(withName: "puzzle-coach")?.removeFromParent()
         gameRoot.childNode(withName: "level-arrival")?.removeFromParent()
         gameRoot.childNode(withName: "target-feedback")?.removeFromParent()
@@ -2990,6 +2999,7 @@ private extension FestivalScene {
     }
 
     internal func closeMenu() {
+        childNode(withName: "outgoing-menu")?.removeFromParent()
         levelMenu?.removeFromParent()
         levelMenu = nil
         menuKind = "game"

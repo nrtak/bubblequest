@@ -40,7 +40,7 @@ struct FestivalNeighbor {
         FestivalNeighbor(id: "rui", name: "Rui", role: "Tea terrace neighbor", area: 6, portraitIndex: 9,
                          introduction: "I brought fresh tea from these sunny hills. Take your time and enjoy the view.",
                          greeting: "The tea is ready, and the countryside is glowing today."),
-        FestivalNeighbor(id: "souta", name: "Souta", role: "Seaside kite maker", area: 7, portraitIndex: 10,
+        FestivalNeighbor(id: "souta", name: "Shota", role: "Seaside kite maker", area: 7, portraitIndex: 10,
                          introduction: "The sea breeze is perfect for flying kites. Welcome to our beach festival!",
                          greeting: "My kite is flying high above the bay. Good luck with your next puzzle!"),
         FestivalNeighbor(id: "midori", name: "Midori", role: "Windmill garden neighbor", area: 8, portraitIndex: 11,

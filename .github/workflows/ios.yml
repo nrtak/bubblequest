@@ -77,7 +77,7 @@ jobs:
           xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --ending-preview
           sleep 3
           xcrun simctl io "$DEVICE" screenshot build/ending-iphone.png
-          for SCENE in players festival buddy purple pressure friends quest quest-detail quest-reward wheel lantern pearl spark beach hill summer-map summer-neighbor summer-buddies; do
+          for SCENE in players festival buddy purple pressure friends quest quest-detail quest-reward wheel lantern pearl spark beach hill summer-map summer-neighbor summer-buddies polish-title polish-menu polish-sound polish-controls polish-reward polish-victory; do
             xcrun simctl launch --terminate-running-process "$DEVICE" com.bubbleadventure.app --gameplay-preview "--${SCENE}-preview"
             sleep 3
             xcrun simctl io "$DEVICE" screenshot "build/${SCENE}-iphone.png"
@@ -95,7 +95,7 @@ jobs:
           xcrun simctl bootstatus "$COMPACT" -b
           xcrun simctl status_bar "$COMPACT" override --time '9:41' --batteryState charged --batteryLevel 100
           xcrun simctl install "$COMPACT" build/DerivedData/Build/Products/Debug-iphonesimulator/BubbleQuest.app
-          for SCENE in gameplay map friends settings wheel beach hill summer-map summer-buddies; do
+          for SCENE in gameplay map friends settings wheel beach hill summer-map summer-buddies polish-title polish-menu polish-sound polish-controls polish-reward polish-victory; do
             xcrun simctl launch --terminate-running-process "$COMPACT" com.bubbleadventure.app "--${SCENE}-preview"
             sleep 3
             xcrun simctl io "$COMPACT" screenshot "build/${SCENE}-compact-iphone.png"

@@ -23,7 +23,7 @@ targets:
       path: build/Info.plist
       properties:
         CFBundleDisplayName: Bubble Quest
-        UILaunchScreen: {}
+        UILaunchStoryboardName: LaunchScreen
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         ITSAppUsesNonExemptEncryption: false
   BubbleQuestTests:

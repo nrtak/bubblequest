@@ -936,7 +936,7 @@ final class FestivalScene: SKScene {
     }
 
     private func addCourtyardResident(to overlay: SKNode) {
-        let card = panel(width: 358, height: 112, point: CGPoint(x: 195, y: 271), parent: overlay)
+        let card = panel(width: 358, height: 112, point: CGPoint(x: 195, y: 268), parent: overlay)
         card.name = "courtyard-resident"
         let name: String
         let portrait: SKTexture
@@ -2068,7 +2068,7 @@ private extension FestivalScene {
             let y = CGFloat(505 - index * 112)
             let setting: GameSetting = music ? .music : .effects
             let audible = progress.enabled(setting) && progress.volumeStep(music: music) > 0
-            menuButton("\(setting.title): \(audible ? "On" : "Off")", name: "setting-\(setting.rawValue)", point: CGPoint(x: 195, y: y + 50), parent: overlay, width: 200, height: 40)
+            menuButton("\(setting.title): \(audible ? "On" : "Off")", name: "setting-\(setting.rawValue)", point: CGPoint(x: 195, y: y + 58), parent: overlay, width: 200, height: 40)
             label("\(progress.volumeStep(music: music) * 20)%", size: 23, point: CGPoint(x: 195, y: y - 8), parent: overlay)
             menuButton("−", name: music ? "music-down" : "effects-down", point: CGPoint(x: 80, y: y), parent: overlay, width: 64, height: 44)
             menuButton("+", name: music ? "music-up" : "effects-up", point: CGPoint(x: 310, y: y), parent: overlay, width: 64, height: 44)

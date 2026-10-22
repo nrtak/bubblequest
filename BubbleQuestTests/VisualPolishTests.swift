@@ -5,6 +5,58 @@ import UIKit
 
 final class VisualPolishTests: XCTestCase {
     @MainActor
+    func testNeighborListStaysInTheAreaOfTheCharacterJustMet() throws {
+        try withScene { scene, _, profiles in
+            let progress = profiles.makeProgress()
+            progress.recordVictory(index: 139, score: 100, stars: 1)
+            let shota = try XCTUnwrap(FestivalNeighbor.all.first { $0.name == "Shota" })
+            scene.showNeighbor(shota)
+            scene.handleMenu(["neighbors"])
+            XCTAssertNotNil(scene.childNode(withName: "//neighbor-souta"))
+            XCTAssertNil(scene.childNode(withName: "//neighbor-miki"))
+        }
+    }
+
+    @MainActor
+    func testLeftHandControlsMoveBoostersTogetherAndRestoreDefault() throws {
+        try withScene { scene, _, profiles in
+            scene.closeMenu()
+            let rainbow = try XCTUnwrap(scene.childNode(withName: "//rainbow"))
+            let bomb = try XCTUnwrap(scene.childNode(withName: "//bomb"))
+            let start = [rainbow.position, bomb.position]
+            profiles.makeProgress().toggle(.leftHand)
+            scene.updateControlLayout()
+            XCTAssertLessThan(rainbow.position.x, 150)
+            XCTAssertLessThan(bomb.position.x, 150)
+            XCTAssertEqual(abs(rainbow.position.x - bomb.position.x), 67)
+            XCTAssertTrue(scene.interactionNames(at: rainbow.position).contains("rainbow"))
+            XCTAssertTrue(scene.interactionNames(at: bomb.position).contains("bomb"))
+            profiles.makeProgress().toggle(.leftHand)
+            scene.updateControlLayout()
+            XCTAssertEqual([rainbow.position, bomb.position], start)
+        }
+    }
+
+    @MainActor
+    func testSelectingNormalMapLevelDoesNotResumeSavedChallenge() throws {
+        try withScene { scene, _, profiles in
+            let progress = profiles.makeProgress()
+            let level = LevelCatalog.level(0)
+            progress.save(GameCheckpoint(level: 0, board: level.board, shots: 12, score: 0,
+                                         current: 0, next: 1, bag: [], rainbow: 0, bomb: 0,
+                                         play: QuestPlay(), challenge: true, freeRainbow: false,
+                                         freeBomb: false, shotBudget: 12))
+            scene.handleMenu(["start-adventure"])
+            scene.handleMenu(["level-0"])
+            let normal = try XCTUnwrap(profiles.makeProgress().checkpoint)
+            XCTAssertEqual(normal.challenge, false)
+            XCTAssertEqual(normal.shotBudget, level.shots)
+            XCTAssertEqual(normal.freeRainbow, true)
+            XCTAssertEqual(progress.lives(for: 0).available, 5)
+        }
+    }
+
+    @MainActor
     private func withScene(size: CGSize = CGSize(width: 390, height: 844), check: (FestivalScene, SKView, GameProfiles) throws -> Void) throws {
         let suite = "VisualPolish-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

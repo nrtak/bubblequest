@@ -9,11 +9,19 @@ on:
         description: Upload a signed build to TestFlight
         type: boolean
         default: false
+      capture_screenshots:
+        description: Capture the full iPhone screenshot gallery for a requested review
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
   test:
     runs-on: macos-26
+    # Cancel obsolete review checks, but let explicitly requested releases finish.
+    concurrency:
+      group: ios-tests-${{ github.event_name }}-${{ github.event.pull_request.number || github.ref }}-${{ github.event_name == 'workflow_dispatch' && github.run_id || 'latest' }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
       - name: Prepare project
@@ -34,7 +42,7 @@ jobs:
           -derivedDataPath build/DerivedData -resultBundlePath build/Tests.xcresult
           CODE_SIGNING_ALLOWED=NO
       - name: Capture iPhone gameplay
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'workflow_dispatch' && inputs.capture_screenshots
         env:
           DEVICE: ${{ steps.simulator.outputs.id }}
         run: |
@@ -83,7 +91,7 @@ jobs:
             xcrun simctl io "$DEVICE" screenshot "build/${SCENE}-iphone.png"
           done
       - name: Capture compact iPhone screens
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'workflow_dispatch' && inputs.capture_screenshots
         env:
           DEVICE: ${{ steps.simulator.outputs.id }}
         run: |
@@ -104,7 +112,7 @@ jobs:
           sleep 3
           xcrun simctl io "$COMPACT" screenshot build/home-compact-iphone.png
       - uses: actions/upload-artifact@v4
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'workflow_dispatch' && inputs.capture_screenshots
         with:
           name: gameplay-iphone
           path: build/*-iphone.png

@@ -605,8 +605,8 @@ final class FestivalScene: SKScene {
     private func showTitle() {
         menuKind = "title"
         let overlay = makeMenu(background: "festival-day")
-        let portrait = SKSpriteNode(imageNamed: "festival-title-cast")
-        portrait.name = "title-illustration"; portrait.size = CGSize(width: 190, height: 190)
+        let portrait = SKSpriteNode(imageNamed: "festival-title-group-logo")
+        portrait.name = "title-illustration"; portrait.size = CGSize(width: 285, height: 190)
         portrait.position = CGPoint(x: 195, y: 683); overlay.addChild(portrait)
         label("Start Menu", size: 26, point: CGPoint(x: 195, y: 553), parent: overlay)
         overlay.children.last?.name = "start-menu-heading"
@@ -2008,12 +2008,13 @@ private extension FestivalScene {
         gameRoot.childNode(withName: "shots-counter")?.position = CGPoint(x: 195, y: 126)
         gameRoot.childNode(withName: "quest-objective")?.position = GameplayHUDLayout.goalCenter
         let boosterNames = ["rainbow", "bomb"]
+        let leftHanded = progress.enabled(.leftHand)
         // Anchor the last slot at the right edge; each additional slot grows leftward.
         for (index, name) in boosterNames.enumerated() {
             let x = CGFloat(330 - (boosterNames.count - 1 - index) * 67)
-            gameRoot.childNode(withName: name)?.position = CGPoint(x: x, y: 84)
+            gameRoot.childNode(withName: name)?.position = CGPoint(x: leftHanded ? size.width - x : x, y: 84)
         }
-        gameRoot.childNode(withName: "booster-tray")?.position.x = 296.5
+        gameRoot.childNode(withName: "booster-tray")?.position.x = leftHanded ? 93.5 : 296.5
         gameRoot.childNode(withName: "control-dock")?.position.x = 195
         gameRoot.childNode(withName: "board-veil")?.alpha = progress.enabled(.contrast) ? 0.34 : 0.17
         view?.preferredFramesPerSecond = levelMenu != nil || ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60
@@ -3491,7 +3492,9 @@ private extension FestivalScene {
         else if let name = names.first(where: { $0.hasPrefix("level-") }), let selected = Int(name.dropFirst(6)), LevelCatalog.levels.indices.contains(selected), selected <= progress.unlockedLevel {
             level = selected
             challengeMode = false
-            if progress.checkpoint?.level == level { resumeSavedPuzzle() } else { beginSelectedLevel() }
+            if let saved = progress.checkpoint, saved.level == level, saved.challenge != true {
+                resumeSavedPuzzle()
+            } else { beginSelectedLevel() }
         }
     }
 }

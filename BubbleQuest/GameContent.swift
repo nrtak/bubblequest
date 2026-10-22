@@ -282,7 +282,7 @@ enum LevelCatalog {
         }
         // These dense clear-board stops need an access lane as pressure rises.
         // Preserve the lane during randomized attempts, like the bank-shot boards.
-        if [148, 157, 160].contains(index) {
+        if [148, 152, 157, 160].contains(index) {
             cells = cells.filter { cell, _ in
                 cell.row < 3 || cell.column != (BubbleBoard.columns - cell.row % 2) / 2
             }

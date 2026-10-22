@@ -102,16 +102,33 @@ extension GameLevel {
         }
         // Rescue objects sit inside the board, behind lower supporting layers.
         let depth = initialBubbles.keys.map(\.row).max() ?? 0
-        let buried = ordered.filter { $0.row > 0 && $0.row < max(2, depth - (index >= 40 ? 1 : 0)) }
+        let upperRescueRow = index >= 20 ? max(1, depth / 2) : max(1, depth - 1)
+        let buried = ordered.filter { $0.row > 0 && $0.row <= upperRescueRow }
         let candidates = objective == .ceiling ? ordered.filter { $0.row == 0 } : (buried.isEmpty ? ordered : buried)
         // Reaching the ceiling should leave non-target supports worth planning around.
         let targetCount = objective == .ceiling ? (isMilestone ? 4 : min(5, 3 + index / 100)) : min(7, (objective == .charms ? 4 : 3) + index / 60)
         let count = min(candidates.count, targetCount)
-        let targets = Set((0..<count).map { candidates[$0 * candidates.count / count] })
+        var targets = Set<Cell>()
+        for index in 0..<count {
+            if objective == .ceiling || self.index < 20 {
+                targets.insert(candidates[index * candidates.count / count])
+            } else {
+                // Separate rescue routes across the width of the board, instead
+                // of grouping all prizes near an exposed edge or one bomb radius.
+                let column = (2 * index + 1) * BubbleBoard.columns / (2 * count)
+                let row = 1 + index % min(2, upperRescueRow)
+                let choice = candidates.filter { !targets.contains($0) }.min { a, b in
+                    let da = abs(a.row - row) * 8 + abs(a.column - column)
+                    let db = abs(b.row - row) * 8 + abs(b.column - column)
+                    return da == db ? (a.row == b.row ? a.column < b.column : a.row < b.row) : da < db
+                }
+                if let choice { targets.insert(choice) }
+            }
+        }
         return PuzzleGoal(kind: objective, targets: targets)
     }
     var initialArmor: Set<Cell> {
-        guard index >= 20, ([2, 9].contains(index % 10) || (index >= 40 && [.lanterns, .charms].contains(objective))) else { return [] }
+        guard index >= 20, ([2, 9].contains(index % 10) || [.lanterns, .charms].contains(objective)) else { return [] }
         let excluded = Set(initialSpecials.keys).union(goal.remaining)
         let targetRow = goal.remaining.map(\.row).max() ?? 0
         let candidates = initialBubbles.keys.filter { $0.row > 0 && !excluded.contains($0) }

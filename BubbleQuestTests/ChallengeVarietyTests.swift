@@ -3,6 +3,34 @@ import SpriteKit
 @testable import BubbleQuest
 
 final class ChallengeVarietyTests: XCTestCase {
+    func testLaterRescueGoalsRequireReachingSeveralUpperSupports() {
+        for index in [24, 26, 44, 66, 104, 146, 204] {
+            let level = LevelCatalog.level(index).randomized(seed: 382)
+            let bottom = level.initialBubbles.keys.map(\.row).max()!
+            XCTAssertTrue(level.goal.remaining.allSatisfy { $0.row > 0 && $0.row <= max(1, bottom / 2) })
+            let columns = level.goal.remaining.map(\.column)
+            XCTAssertGreaterThanOrEqual(columns.max()! - columns.min()!, 4)
+            XCTAssertTrue(level.goal.isValid(on: level.board))
+        }
+        // The reported level previously allowed 23 shots and exposed its charms.
+        XCTAssertLessThan(LevelCatalog.level(26).shots, 23)
+    }
+
+    func testCombinedStartingChainsStaySmallOnRegularLaterBoards() {
+        for index in 20..<LevelCatalog.levelCount where !LevelCatalog.level(index).isMilestone {
+            for seed in 1...6 {
+                let level = LevelCatalog.level(index).randomized(seed: UInt64(seed))
+                let board = BubbleBoard(bubbles: level.initialBubbles)
+                var seen = Set<Cell>()
+                for cell in board.bubbles.keys where !seen.contains(cell) {
+                    let group = board.connected(from: cell, matchingColor: true)
+                    seen.formUnion(group)
+                    XCTAssertLessThanOrEqual(group.count, level.maximumStartingGroup, "Level \(index + 1), seed \(seed)")
+                }
+            }
+        }
+    }
+
     func testBankShotOpeningsSurviveRandomization() {
         for base in LevelCatalog.levels where base.isBankRoute {
             for seed in 1...6 {

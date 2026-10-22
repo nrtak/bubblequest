@@ -40,6 +40,7 @@ final class VisualPolishTests: XCTestCase {
         for (size, topInset) in phones {
             try withScene(size: size) { scene, _, _ in
                 let mark = try XCTUnwrap(scene.childNode(withName: "//title-illustration"))
+                XCTAssertNil(scene.childNode(withName: "//title-cast"), "Keep one main portrait instead of duplicating it inside the menu.")
                 let title = try XCTUnwrap(scene.childNode(withName: "//start-menu-heading"))
                 XCTAssertGreaterThan(sceneFrame(mark, in: scene).minY, sceneFrame(title, in: scene).maxY + 8)
                 let top = scene.convertPoint(toView: CGPoint(x: 195, y: sceneFrame(mark, in: scene).maxY)).y

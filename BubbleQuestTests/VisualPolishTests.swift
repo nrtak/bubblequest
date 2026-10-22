@@ -39,8 +39,8 @@ final class VisualPolishTests: XCTestCase {
         ]
         for (size, topInset) in phones {
             try withScene(size: size) { scene, _, _ in
-                let mark = try XCTUnwrap(scene.childNode(withName: "//title-brand-mark"))
-                let title = try XCTUnwrap(scene.childNode(withName: "//title-wordmark"))
+                let mark = try XCTUnwrap(scene.childNode(withName: "//title-illustration"))
+                let title = try XCTUnwrap(scene.childNode(withName: "//start-menu-heading"))
                 XCTAssertGreaterThan(sceneFrame(mark, in: scene).minY, sceneFrame(title, in: scene).maxY + 8)
                 let top = scene.convertPoint(toView: CGPoint(x: 195, y: sceneFrame(mark, in: scene).maxY)).y
                 XCTAssertGreaterThanOrEqual(top, topInset + 6)
@@ -111,8 +111,35 @@ final class VisualPolishTests: XCTestCase {
     }
 
     @MainActor
+    func testGroupedSettingsKeepPreferencesAndReturnToPausedPuzzle() throws {
+        try withScene { scene, _, profiles in
+            scene.closeMenu(); scene.showGameMenu(); scene.handleMenu(["settings"])
+            let categories = ["sound-levels", "control-settings", "tutorial", "play-results"]
+            for name in categories { XCTAssertNotNil(scene.childNode(withName: "//" + name)) }
+            XCTAssertNil(scene.childNode(withName: "//setting-musicEnabled"))
+            scene.handleMenu(["sound-levels"])
+            let saved = profiles.makeProgress()
+            let effects = saved.volumeStep(music: false)
+            saved.changeVolume(music: true, by: -5)
+            scene.handleMenu(["setting-musicEnabled"])
+            XCTAssertTrue(saved.enabled(.music)); XCTAssertGreaterThan(saved.volumeStep(music: true), 0)
+            XCTAssertEqual(saved.volumeStep(music: false), effects)
+            XCTAssertNotNil(scene.childNode(withName: "//sound-back"))
+            scene.handleMenu(["sound-back"]); scene.handleMenu(["control-settings"])
+            let contrast = saved.enabled(.contrast)
+            scene.handleMenu(["setting-highContrastEnabled"])
+            XCTAssertEqual(saved.enabled(.contrast), !contrast)
+            XCTAssertNotNil(scene.childNode(withName: "//setting-leftHandedEnabled"))
+            scene.handleMenu(["sound-back"]); scene.handleMenu(["back"])
+            XCTAssertNotNil(scene.childNode(withName: "//game-resume"))
+            scene.handleMenu(["game-resume"])
+            XCTAssertNil(scene.childNode(withName: "//game-resume"))
+        }
+    }
+
+    @MainActor
     func testNativeLaunchScreenHasBrandArtworkAndFitsCompactPhones() throws {
-        XCTAssertNotNil(UIImage(named: "icon-shiba-source"))
+        XCTAssertNotNil(UIImage(named: "festival-logo"))
         let controller = try XCTUnwrap(UIStoryboard(name: "LaunchScreen", bundle: .main).instantiateInitialViewController())
         for size in [CGSize(width: 375, height: 667), CGSize(width: 430, height: 932)] {
             controller.view.frame = CGRect(origin: .zero, size: size); controller.view.layoutIfNeeded()

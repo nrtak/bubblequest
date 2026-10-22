@@ -14,7 +14,7 @@ struct FestivalQuest {
     var rewardSymbol: String { id == "toy" ? "star.fill" : "gift.fill" }
     var rewardSummary: String {
         if id == "toy" { return "Star pin + free spin" }
-        return Companion.all.contains(where: { $0.unlockQuest == id }) ? "Shooter + decor + spin" : "Decoration + free spin"
+        return Companion.all.contains(where: { $0.unlockQuest == id }) ? "Friend + decor + spin" : "Decoration + free spin"
     }
     var objectiveSummary: String {
         switch id {

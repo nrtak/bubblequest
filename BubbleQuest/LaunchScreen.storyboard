@@ -14,21 +14,16 @@
                         <rect key="frame" x="0.0" y="0.0" width="390" height="844"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="icon-shiba-source" translatesAutoresizingMaskIntoConstraints="NO" id="launch-mark">
-                                <rect key="frame" x="139" y="328" width="112" height="112"/>
+                            <imageView clipsSubviews="YES" userInteractionEnabled="NO" contentMode="scaleAspectFit" image="festival-logo" translatesAutoresizingMaskIntoConstraints="NO" id="launch-mark">
+                                <rect key="frame" x="52.5" y="289" width="285" height="190"/>
                                 <constraints>
-                                    <constraint firstAttribute="width" constant="112" id="mark-width"/>
-                                    <constraint firstAttribute="height" constant="112" id="mark-height"/>
+                                    <constraint firstAttribute="width" constant="285" id="mark-width"/>
+                                    <constraint firstAttribute="height" constant="190" id="mark-height"/>
                                 </constraints>
                             </imageView>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Bubble Quest" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="launch-title">
-                                <rect key="frame" x="24" y="460" width="342" height="38"/>
-                                <fontDescription key="fontDescription" type="boldSystem" pointSize="28"/>
-                                <color key="textColor" red="0.16" green="0.21" blue="0.32" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
-                            </label>
-                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Festival Pop" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="launch-subtitle">
-                                <rect key="frame" x="24" y="504" width="342" height="24"/>
-                                <fontDescription key="fontDescription" type="system" pointSize="16"/>
+                            <label opaque="NO" userInteractionEnabled="NO" contentMode="left" text="Welcome to the festival" textAlignment="center" translatesAutoresizingMaskIntoConstraints="NO" id="launch-title">
+                                <rect key="frame" x="24" y="499" width="342" height="38"/>
+                                <fontDescription key="fontDescription" type="boldSystem" pointSize="22"/>
                                 <color key="textColor" red="0.16" green="0.21" blue="0.32" alpha="1" colorSpace="custom" customColorSpace="sRGB"/>
                             </label>
                         </subviews>
@@ -41,10 +36,6 @@
                             <constraint firstItem="launch-title" firstAttribute="leading" secondItem="launch-safe" secondAttribute="leading" constant="24" id="title-left"/>
                             <constraint firstItem="launch-safe" firstAttribute="trailing" secondItem="launch-title" secondAttribute="trailing" constant="24" id="title-right"/>
                             <constraint firstItem="launch-title" firstAttribute="height" constant="38" id="title-height"/>
-                            <constraint firstItem="launch-subtitle" firstAttribute="top" secondItem="launch-title" secondAttribute="bottom" constant="6" id="subtitle-top"/>
-                            <constraint firstItem="launch-subtitle" firstAttribute="leading" secondItem="launch-title" secondAttribute="leading" id="subtitle-left"/>
-                            <constraint firstItem="launch-subtitle" firstAttribute="trailing" secondItem="launch-title" secondAttribute="trailing" id="subtitle-right"/>
-                            <constraint firstItem="launch-subtitle" firstAttribute="height" constant="24" id="subtitle-height"/>
                         </constraints>
                     </view>
                 </viewController>
@@ -53,5 +44,5 @@
             <point key="canvasLocation" x="0.0" y="0.0"/>
         </scene>
     </scenes>
-    <resources><image name="icon-shiba-source" width="1254" height="1254"/></resources>
+    <resources><image name="festival-logo" width="1536" height="1024"/></resources>
 </document>

@@ -1576,6 +1576,7 @@ private extension FestivalScene {
 
     internal func showNeighbor(_ neighbor: FestivalNeighbor) {
         guard progress.neighborIsAvailable(neighbor) else { return }
+        questArea = neighbor.area
         if menuKind != "neighbor-detail" { neighborFromMap = menuKind == "map" }
         let met = progress.hasMet(neighbor)
         progress.markMet(neighbor)

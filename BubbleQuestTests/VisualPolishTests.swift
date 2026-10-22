@@ -24,15 +24,19 @@ final class VisualPolishTests: XCTestCase {
             let rainbow = try XCTUnwrap(scene.childNode(withName: "//rainbow"))
             let bomb = try XCTUnwrap(scene.childNode(withName: "//bomb"))
             let start = [rainbow.position, bomb.position]
-            profiles.makeProgress().toggle(.leftHand)
-            scene.updateControlLayout()
+            scene.handleMenu(["settings"])
+            scene.handleMenu(["control-settings"])
+            scene.handleMenu(["setting-leftHandedEnabled"])
+            scene.closeMenu()
             XCTAssertLessThan(rainbow.position.x, 150)
             XCTAssertLessThan(bomb.position.x, 150)
             XCTAssertEqual(abs(rainbow.position.x - bomb.position.x), 67)
             XCTAssertTrue(scene.interactionNames(at: rainbow.position).contains("rainbow"))
             XCTAssertTrue(scene.interactionNames(at: bomb.position).contains("bomb"))
-            profiles.makeProgress().toggle(.leftHand)
-            scene.updateControlLayout()
+            scene.handleMenu(["settings"])
+            scene.handleMenu(["control-settings"])
+            scene.handleMenu(["setting-leftHandedEnabled"])
+            scene.closeMenu()
             XCTAssertEqual([rainbow.position, bomb.position], start)
         }
     }

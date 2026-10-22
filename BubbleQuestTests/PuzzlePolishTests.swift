@@ -3,6 +3,27 @@ import SpriteKit
 @testable import BubbleQuest
 
 final class PuzzlePolishTests: XCTestCase {
+    func testNewPressureIsFasterButSavedAttemptsKeepTheirOriginalClock() throws {
+        let level = LevelCatalog.level(26)
+        XCTAssertLessThan(level.timedCeilingInterval, level.timedCeilingInterval(balanceVersion: 4))
+        for version in [4, GameLevel.balanceVersion] {
+            var timer = TimedCeilingPressure()
+            for _ in 0..<24 { _ = timer.advance(by: 1, level: level, canDescend: true, balanceVersion: version) }
+            XCTAssertEqual(timer.drops, version == 4 ? 0 : 1)
+        }
+        let old = GameCheckpoint(level: 26, board: level.board, shots: 20, score: 0,
+                                 current: 0, next: 1, bag: [], rainbow: 1, bomb: 1,
+                                 play: QuestPlay(), shotsFired: 1, balanceVersion: 4,
+                                 shotBudget: 23, timedCeilingElapsed: 30)
+        let restored = try JSONDecoder().decode(GameCheckpoint.self, from: JSONEncoder().encode(old))
+        XCTAssertNotNil(restored.board)
+        XCTAssertEqual(restored.shotBudget, 23)
+        var json = try XCTUnwrap(JSONSerialization.jsonObject(with: JSONEncoder().encode(old)) as? [String: Any])
+        json["balanceVersion"] = GameLevel.balanceVersion
+        let invalidNewClock = try JSONDecoder().decode(GameCheckpoint.self, from: JSONSerialization.data(withJSONObject: json))
+        XCTAssertNil(invalidNewClock.board)
+    }
+
     func testTimedCeilingWaitsForSafeMovementAndNeverCatchesUpBackgroundTime() {
         let level = LevelCatalog.level(0)
         var timer = TimedCeilingPressure()

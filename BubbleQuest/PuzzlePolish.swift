@@ -89,17 +89,22 @@ struct TimedCeilingPressure {
     var elapsed: Double = 0
     var drops: Int = 0
 
-    mutating func advance(by seconds: Double, level: GameLevel, canDescend: Bool) -> Bool {
+    mutating func advance(by seconds: Double, level: GameLevel, canDescend: Bool, balanceVersion: Int = GameLevel.balanceVersion) -> Bool {
         // Ignore a clock jump after suspension, rather than catching up missed drops.
         guard seconds.isFinite, seconds >= 0, seconds <= 1 else { return false }
-        elapsed = min(level.timedCeilingInterval, elapsed + seconds)
-        guard canDescend, elapsed >= level.timedCeilingInterval, drops < 999 else { return false }
+        let interval = level.timedCeilingInterval(balanceVersion: balanceVersion)
+        elapsed = min(interval, elapsed + seconds)
+        guard canDescend, elapsed >= interval, drops < 999 else { return false }
         elapsed = 0; drops += 1
         return true
     }
 }
 
 extension GameLevel {
-    var timedCeilingInterval: Double { index < 3 ? 45 : max(16, 36 - Double(index) / 12) }
+    var timedCeilingInterval: Double { timedCeilingInterval(balanceVersion: GameLevel.balanceVersion) }
+    func timedCeilingInterval(balanceVersion: Int) -> Double {
+        if index < 3 { return 45 }
+        return balanceVersion < 5 ? max(16, 36 - Double(index) / 12) : max(16, 30 - Double(index) / 4)
+    }
     var timedCeilingStep: Double { max(12, min(24, ceilingStep * 0.6)) }
 }

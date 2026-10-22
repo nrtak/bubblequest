@@ -21,14 +21,16 @@ struct FestivalArea {
 }
 
 struct GameLevel {
+    static let balanceVersion = 5
     let index: Int
     let area: Int
     let shots: Int
     let initialBubbles: [Cell: Int]
     var number: Int { index + 1 }
+    var maximumStartingGroup: Int { index < 20 ? 8 : index < 80 ? 4 : 3 }
     var ceilingInterval: Int { index < 3 ? 10 : max(4, 8 - index / 8) }
     var ceilingStep: Double { index < 3 ? 6 + Double(index) * 0.2 : 14 + Double(min(index, 59)) * 0.5 + Double(max(0, index - 59)) * 0.06 }
-    func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0, balanceVersion: Int = LevelPlayResults.balanceVersion) -> Double {
+    func ceilingOffset(after shotsFired: Int, seed: UInt64 = 0, balanceVersion: Int = GameLevel.balanceVersion) -> Double {
         // An unfinished puzzle retains the ceiling schedule it started with.
         let interval = balanceVersion < 4 ? (index < 3 ? 10 : max(4, 10 - index / 5)) : ceilingInterval
         let step = balanceVersion < 4 ? (index < 3 ? 6 + Double(index) * 0.2 : 6 + Double(min(index, 49)) * 0.60 + Double(max(0, index - 49)) * 0.05) : ceilingStep
@@ -100,19 +102,22 @@ struct GameLevel {
                     if colorBag.isEmpty { colorBag = palette.shuffled(using: &random) }
                     if colorBag.last == color && colorBag.count > 1 { colorBag.swapAt(0, colorBag.count - 1) }
                     color = colorBag.removeLast()
-                    if index >= 20 {
-                        // Keep useful supports, but cap chains that trivialize a whole board.
-                        let shell = BubbleBoard(bubbles: values)
-                        let limit = index < 80 ? 8 : 6
-                        let largeColors = Set(BubbleBoard.neighbors(of: Cell(row: row, column: column))
-                            .filter { $0.row < row && shell.connected(from: $0, matchingColor: true).count >= limit }
-                            .compactMap { values[$0] })
-                        if largeColors.contains(color), let alternative = palette.shuffled(using: &random).first(where: { !largeColors.contains($0) }) {
-                            color = alternative
-                        }
-                    }
+
                 }
                 values[Cell(row: row, column: column)] = color
+                if index >= 20 {
+                    let cell = Cell(row: row, column: column)
+                    func groupSize(_ candidate: Int) -> Int {
+                        var trial = values; trial[cell] = candidate
+                        return BubbleBoard(bubbles: trial).connected(from: cell, matchingColor: true).count
+                    }
+                    // Check the combined group at every cell, including the second
+                    // half of a pair, instead of only checking individual supports.
+                    if groupSize(color) > maximumStartingGroup,
+                       let replacement = palette.shuffled(using: &random).first(where: { groupSize($0) <= maximumStartingGroup }) {
+                        color = replacement; values[cell] = color
+                    }
+                }
                 remaining -= 1
             }
         }
@@ -235,16 +240,20 @@ enum LevelCatalog {
         if index < 3 {
             shots = max(18, cells.count / 2 + budgetColors * 2 + 8 - index / 4)
         } else if index < 10 {
-            shots = max(18, (cells.count + 2) / 3 + budgetColors + 6)
+            shots = max(index < 5 ? 18 : 15, (cells.count + 2) / 3 + budgetColors + (index < 5 ? 6 : 3))
         } else {
-            let allowance = max(1, 6 - index / 30)
-            shots = max(18, (cells.count + 2) / 3 + budgetColors + allowance)
+            let allowance = index < 20 ? 3 : max(0, 2 - index / 40)
+            shots = max(index < 20 ? 16 : 14, (cells.count + 2) / 3 + budgetColors + allowance)
         }
         let precision = index >= 15 && index % 10 == 5
         let budget = precision ? max(12, (cells.count + 2) / 3 + budgetColors + 2) : shots
         let draft = GameLevel(index: index, area: area, shots: budget, initialBubbles: cells)
+        let objectiveAllowance = index >= 20 && [.lanterns, .charms].contains(draft.objective) ? -2 : 0
+        // Obstacles should add decisions rather than refund their entire cost.
+        let protectionAllowance = index < 20 ? draft.initialArmor.count + draft.initialBlockers.count :
+            (draft.initialArmor.count + draft.initialBlockers.count + 1) / 2
         return GameLevel(index: index, area: area,
-                         shots: budget + draft.initialArmor.count + draft.initialBlockers.count + (draft.isMilestone ? 2 : 0),
+                         shots: max(12, budget + objectiveAllowance + protectionAllowance + (draft.isMilestone ? 1 : 0)),
                          initialBubbles: cells)
     }
 
@@ -273,7 +282,7 @@ enum LevelCatalog {
         }
         // These dense clear-board stops need an access lane as pressure rises.
         // Preserve the lane during randomized attempts, like the bank-shot boards.
-        if [148, 157, 160].contains(index) {
+        if [148, 152, 157, 160].contains(index) {
             cells = cells.filter { cell, _ in
                 cell.row < 3 || cell.column != (BubbleBoard.columns - cell.row % 2) / 2
             }

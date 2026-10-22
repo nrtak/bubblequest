@@ -36,7 +36,7 @@ struct GameCheckpoint: Codable {
 
     init(level: Int, board: BubbleBoard, shots: Int, score: Int, current: Int, next: Int,
          bag: [Int], rainbow: Int, bomb: Int, play: QuestPlay, challenge: Bool = false,
-         freeRainbow: Bool = true, freeBomb: Bool = true, ceilingOffset: Double = 0, shotsFired: Int = 0, pressureSeed: UInt64 = 0, layoutSeed: UInt64? = nil, goal: PuzzleGoal? = nil, bankMatches: Int = 0, boosterShots: Int = 0, balanceVersion: Int = LevelPlayResults.balanceVersion, shotBudget: Int? = nil, tryStarted: Bool? = nil, timedCeilingElapsed: Double = 0, timedCeilingDrops: Int = 0) {
+         freeRainbow: Bool = true, freeBomb: Bool = true, ceilingOffset: Double = 0, shotsFired: Int = 0, pressureSeed: UInt64 = 0, layoutSeed: UInt64? = nil, goal: PuzzleGoal? = nil, bankMatches: Int = 0, boosterShots: Int = 0, balanceVersion: Int = GameLevel.balanceVersion, shotBudget: Int? = nil, tryStarted: Bool? = nil, timedCeilingElapsed: Double = 0, timedCeilingDrops: Int = 0) {
         version = 1; self.level = level; self.shots = shots; self.score = score
         currentColor = current; nextColor = next; self.bag = bag
         self.rainbow = rainbow; self.bomb = bomb; self.play = play
@@ -64,7 +64,7 @@ struct GameCheckpoint: Codable {
         let timerElapsed = timedCeilingElapsed ?? 0
         let timerDrops = timedCeilingDrops ?? 0
         let levelDefinition = LevelCatalog.level(level)
-        guard timerElapsed <= levelDefinition.timedCeilingInterval,
+        guard timerElapsed <= levelDefinition.timedCeilingInterval(balanceVersion: balanceVersion ?? 3),
               (timerElapsed == 0 && timerDrops == 0) || hasStartedTry,
               (ceilingOffset ?? 0) + 0.000001 >= min(240, Double(timerDrops) * levelDefinition.timedCeilingStep) else { return nil }
         var values: [Cell: Int] = [:]

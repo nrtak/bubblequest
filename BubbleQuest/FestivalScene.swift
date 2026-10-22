@@ -50,7 +50,7 @@ final class FestivalScene: SKScene {
     private var mapTouchStart = CGPoint.zero
     private var mapTouchOffset: CGFloat = 0
     private var mapDragged = false
-    private var pressureBalanceVersion = LevelPlayResults.balanceVersion
+    private var pressureBalanceVersion = GameLevel.balanceVersion
     private var menuKind = "title" { didSet { updateMusic() } }
     private var lastMapInteraction: TimeInterval = -10
     private var musicMenu = "title"
@@ -388,7 +388,7 @@ final class FestivalScene: SKScene {
             gameRoot.childNode(withName: "puzzle-coach") == nil && gameRoot.childNode(withName: "control-tip") == nil &&
             gameRoot.childNode(withName: "level-arrival") == nil &&
             !ProcessInfo.processInfo.arguments.contains(where: { $0.hasSuffix("-preview") })
-        if canCount && timedPressure.advance(by: delta, level: activeLevel, canDescend: !aiming && projectile == nil && !loadingBubble && !ceilingMoving) {
+        if canCount && timedPressure.advance(by: delta, level: activeLevel, canDescend: !aiming && projectile == nil && !loadingBubble && !ceilingMoving, balanceVersion: pressureBalanceVersion) {
             ceilingOffset = min(240, ceilingOffset + activeLevel.timedCeilingStep)
             positionCeiling(animated: true)
             if board.bubbles.keys.contains(where: { point($0).y < CGFloat(BubbleGeometry.lossLine) }) { finish(success: false) }
@@ -423,7 +423,7 @@ final class FestivalScene: SKScene {
             generatedLevel = fresh.level; layoutSeed = fresh.seed
         }
         pressureSeed = saved.map { $0.pressureSeed ?? 0 } ?? UInt64.random(in: 1...UInt64.max)
-        pressureBalanceVersion = saved.map { $0.balanceVersion ?? 3 } ?? LevelPlayResults.balanceVersion
+        pressureBalanceVersion = saved.map { $0.balanceVersion ?? 3 } ?? GameLevel.balanceVersion
         shotsFired = saved?.shotsFired ?? 0
         ceilingOffset = saved?.ceilingOffset ?? 0
         timedPressure = TimedCeilingPressure(elapsed: saved?.timedCeilingElapsed ?? 0, drops: saved?.timedCeilingDrops ?? 0)
@@ -605,28 +605,25 @@ final class FestivalScene: SKScene {
     private func showTitle() {
         menuKind = "title"
         let overlay = makeMenu(background: "festival-day")
-        let logo = SKSpriteNode(imageNamed: "festival-logo")
-        logo.name = "title-illustration"; logo.size = CGSize(width: 285, height: 190)
-        logo.position = CGPoint(x: 195, y: 683); overlay.addChild(logo)
+        let portrait = SKSpriteNode(imageNamed: "festival-title-group-logo")
+        portrait.name = "title-illustration"; portrait.size = CGSize(width: 285, height: 190)
+        portrait.position = CGPoint(x: 195, y: 683); overlay.addChild(portrait)
         label("Start Menu", size: 26, point: CGPoint(x: 195, y: 553), parent: overlay)
         overlay.children.last?.name = "start-menu-heading"
         (overlay.children.last as? SKLabelNode)?.fontColor = FestivalStyle.ink
-        panel(width: 342, height: 392, point: CGPoint(x: 195, y: 345), parent: overlay)
+        panel(width: 342, height: 300, point: CGPoint(x: 195, y: 365), parent: overlay)
         let welcome = SKLabelNode(fontNamed: "AvenirNext-Bold")
         welcome.name = "welcome-player"; welcome.text = "Welcome, \(profiles.active.name)"
         welcome.fontSize = 18; welcome.numberOfLines = 2; welcome.preferredMaxLayoutWidth = 300
         welcome.lineBreakMode = .byCharWrapping; welcome.verticalAlignmentMode = .center
-        welcome.position = CGPoint(x: 195, y: 518); overlay.addChild(welcome)
-        let cast = SKSpriteNode(imageNamed: "festival-title-cast")
-        cast.name = "title-cast"; cast.size = CGSize(width: 110, height: 110)
-        cast.position = CGPoint(x: 195, y: 430); overlay.addChild(cast)
-        navigationCard("Continue Playing", detail: progress.checkpoint == nil ? "Explore your courtyard map" : "Resume level \(progress.currentLevel + 1)", symbol: "play.fill", name: "start-continue", y: 317, parent: overlay, primary: true)
-        menuButton("Players", name: "players", point: CGPoint(x: 147, y: 230), parent: overlay, width: 166, height: 44)
+        welcome.position = CGPoint(x: 195, y: 477); overlay.addChild(welcome)
+        navigationCard("Continue Playing", detail: progress.checkpoint == nil ? "Explore your courtyard map" : "Resume level \(progress.currentLevel + 1)", symbol: "play.fill", name: "start-continue", y: 410, parent: overlay, primary: true)
+        menuButton("Players", name: "players", point: CGPoint(x: 147, y: 315), parent: overlay, width: 166, height: 44)
         decorateMenuIcon("person.2.fill", name: "players", parent: overlay, x: -56)
-        let settings = panel(width: 48, height: 48, point: CGPoint(x: 303, y: 230), parent: overlay)
+        let settings = panel(width: 48, height: 48, point: CGPoint(x: 303, y: 315), parent: overlay)
         settings.name = "settings"; settings.fillColor = UIColor(white: 0.96, alpha: 1)
         let gear = questIcon("gearshape.fill", size: 26, color: UIColor(white: 0.55, alpha: 1)); settings.addChild(gear)
-        label("Saved automatically • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 169), parent: overlay)
+        label("Saved automatically • \(progress.totalStars) stars", size: 14, point: CGPoint(x: 195, y: 240), parent: overlay)
         label("Irvine Dynamics", size: 12, point: CGPoint(x: 195, y: 62), parent: overlay)
     }
 
@@ -1579,6 +1576,7 @@ private extension FestivalScene {
 
     internal func showNeighbor(_ neighbor: FestivalNeighbor) {
         guard progress.neighborIsAvailable(neighbor) else { return }
+        questArea = neighbor.area
         if menuKind != "neighbor-detail" { neighborFromMap = menuKind == "map" }
         let met = progress.hasMet(neighbor)
         progress.markMet(neighbor)
@@ -2011,12 +2009,13 @@ private extension FestivalScene {
         gameRoot.childNode(withName: "shots-counter")?.position = CGPoint(x: 195, y: 126)
         gameRoot.childNode(withName: "quest-objective")?.position = GameplayHUDLayout.goalCenter
         let boosterNames = ["rainbow", "bomb"]
+        let leftHanded = progress.enabled(.leftHand)
         // Anchor the last slot at the right edge; each additional slot grows leftward.
         for (index, name) in boosterNames.enumerated() {
             let x = CGFloat(330 - (boosterNames.count - 1 - index) * 67)
-            gameRoot.childNode(withName: name)?.position = CGPoint(x: x, y: 84)
+            gameRoot.childNode(withName: name)?.position = CGPoint(x: leftHanded ? size.width - x : x, y: 84)
         }
-        gameRoot.childNode(withName: "booster-tray")?.position.x = 296.5
+        gameRoot.childNode(withName: "booster-tray")?.position.x = leftHanded ? 93.5 : 296.5
         gameRoot.childNode(withName: "control-dock")?.position.x = 195
         gameRoot.childNode(withName: "board-veil")?.alpha = progress.enabled(.contrast) ? 0.34 : 0.17
         view?.preferredFramesPerSecond = levelMenu != nil || ProcessInfo.processInfo.isLowPowerModeEnabled ? 30 : 60
@@ -3494,7 +3493,9 @@ private extension FestivalScene {
         else if let name = names.first(where: { $0.hasPrefix("level-") }), let selected = Int(name.dropFirst(6)), LevelCatalog.levels.indices.contains(selected), selected <= progress.unlockedLevel {
             level = selected
             challengeMode = false
-            if progress.checkpoint?.level == level { resumeSavedPuzzle() } else { beginSelectedLevel() }
+            if let saved = progress.checkpoint, saved.level == level, saved.challenge != true {
+                resumeSavedPuzzle()
+            } else { beginSelectedLevel() }
         }
     }
 }

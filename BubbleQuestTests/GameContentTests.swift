@@ -173,7 +173,7 @@ final class GameContentTests: XCTestCase {
 
     func testEveryRuntimeImageAndAudioCueIsBundled() {
         let images = Set(LevelCatalog.levels.map(\.background)).union([
-            "festival-title-cast", "festival-hosts", "festival-companion-atlas",
+            "festival-title-cast", "festival-title-group-logo", "festival-hosts", "festival-companion-atlas",
             "festival-companion-motion", "festival-companion-glance", "festival-new-human-motion", "festival-special-bubbles",
             "festival-neighbors", "festival-neighbors-extra", "festival-operator-rig",
             "festival-logo", "festival-bubbles", "festival-map", "festival-map-day",
@@ -201,7 +201,7 @@ final class GameContentTests: XCTestCase {
                 XCTAssertTrue((0..<5).contains(color))
                 XCTAssertGreaterThan(BubbleGeometry.point(cell).y, BubbleGeometry.lossLine)
             }
-            XCTAssertGreaterThanOrEqual(level.shots, level.isPrecision ? 12 : 18)
+            XCTAssertGreaterThanOrEqual(level.shots, 12, "Every puzzle needs a usable allowance; route tests verify the tighter budgets.")
         }
     }
 

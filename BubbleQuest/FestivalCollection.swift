@@ -101,15 +101,85 @@ enum BuddyPersonality {
 }
 
 enum FestivalMapLayout {
-    static let viewport = CGRect(x: 16, y: 356, width: 358, height: 306)
-    static func position(_ local: Int) -> CGPoint {
-        CGPoint(x: 195 + sin(CGFloat(local) * 0.95) * 112, y: 388 + CGFloat(local) * 66)
+    static let viewport = CGRect(x: 0, y: 204, width: 390, height: 512)
+    static let segmentHeight: CGFloat = 576
+    static let blendHeight: CGFloat = 128
+    static let tileHeight: CGFloat = 704
+    static func artworkArea(segment: Int) -> Int {
+        level(at: CGFloat(segment) * segmentHeight + segmentHeight / 2) / LevelCatalog.levelsPerArea
+    }
+    static func mapScenery(area: Int) -> SummerScenery? {
+        area == 3 ? .river : SummerScenery.forArea(area)
+    }
+    static func sourceTop(area: Int) -> CGFloat {
+        mapScenery(area: area) != nil ? 0 : (area == 2 || area == 4 ? 0.5 : 0.35)
+    }
+    static func sceneryBlend(fromBottom height: CGFloat, x: CGFloat) -> CGFloat {
+        let edge = blendHeight / 2 + sin(x * .pi / 195) * 16 + sin(x * 0.083) * 5
+        let value = min(1, max(0, (height - edge + 20) / 40))
+        return value * value * (3 - 2 * value)
+    }
+    static func roadX(area: Int, fraction: CGFloat) -> CGFloat {
+        // These anchors follow the street painted into each map, bottom to top.
+        // Markers follow the illustration; no independent road is drawn over it.
+        let xs: [CGFloat]
+        if let scenery = mapScenery(area: area) {
+            xs = scenery.markerPositions.map { $0.x / 390 }
+        } else if area == 2 || area == 4 {
+            xs = [0.50, 0.50, 0.52, 0.58, 0.64, 0.61, 0.52, 0.48, 0.50]
+        } else {
+            xs = [0.50, 0.51, 0.52, 0.55, 0.61, 0.65, 0.68, 0.60, 0.47]
+        }
+        let value = min(1, max(0, fraction)) * CGFloat(xs.count - 1)
+        let index = min(xs.count - 2, Int(value))
+        return (xs[index] + (xs[index + 1] - xs[index]) * (value - CGFloat(index))) * 390
+    }
+    static func roadX(at height: CGFloat) -> CGFloat {
+        let segment = max(0, Int(floor((height + blendHeight / 2) / segmentHeight)))
+        let lower = CGFloat(segment) * segmentHeight - blendHeight / 2
+        let current = roadX(area: artworkArea(segment: segment), fraction: (height - lower) / tileHeight)
+        guard segment > 0 else { return current }
+        let previous = roadX(area: artworkArea(segment: segment - 1), fraction: (height - lower + segmentHeight) / tileHeight)
+        let blend = sceneryBlend(fromBottom: height - lower, x: (previous + current) / 2)
+        return previous + (current - previous) * blend
+    }
+    static func position(_ level: Int) -> CGPoint {
+        let y = 292 + CGFloat(level) * 96
+        return CGPoint(x: roadX(at: y), y: y)
     }
     static func scrollOffset(_ value: CGFloat) -> CGFloat {
-        min(0, max(viewport.maxY - position(19).y - 36, value))
+        min(136, max(428 - position(LevelCatalog.levelCount - 1).y, value))
     }
     static func focusedOffset(local: Int) -> CGFloat {
-        scrollOffset(480 - position(min(19, max(0, local))).y)
+        scrollOffset(428 - position(min(LevelCatalog.levelCount - 1, max(0, local))).y)
+    }
+    static func level(at height: CGFloat) -> Int {
+        min(LevelCatalog.levelCount - 1, max(0, Int(((height - 292) / 96).rounded())))
+    }
+    static func visibleSegments(offset: CGFloat) -> ClosedRange<Int> {
+        let first = max(0, Int(floor((0 - offset - blendHeight) / segmentHeight)))
+        let last = max(first, Int(ceil((844 - offset + blendHeight) / segmentHeight)))
+        return first...last
+    }
+    static func variant(_ segment: Int, salt: Int = 0) -> Int {
+        var seed = UInt64(max(0, segment)) &* 6364136223846793005 &+ UInt64(max(0, salt)) &* 1442695040888963407 &+ 42
+        seed = (seed ^ (seed >> 30)) &* 0xbf58476d1ce4e5b9
+        return Int((seed ^ (seed >> 27)) % 997)
+    }
+    static func visitorFoot(segment: Int, slot: Int) -> CGPoint? {
+        let target = CGFloat(segment) * segmentHeight + 80 + CGFloat(slot) * 155
+        guard target >= position(0).y, target < position(LevelCatalog.levelCount - 1).y else { return nil }
+        let index = min(LevelCatalog.levelCount - 2, max(0, Int(floor((target - 292) / 96))))
+        let a = position(index), b = position(index + 1)
+        let middleY = (a.y + b.y) / 2
+        let centerX = roadX(at: middleY)
+        let options = [max(116, centerX - 34), min(350, centerX + 34)]
+        func clearance(_ x: CGFloat) -> CGFloat {
+            min(hypot(x - a.x, middleY - a.y), hypot(x - b.x, middleY - b.y))
+        }
+        let x = options.max { clearance($0) < clearance($1) }!
+        guard clearance(x) >= 50 else { return nil }
+        return CGPoint(x: x, y: middleY - 24)
     }
 
     static func souvenirPosition(markers: [CGPoint]) -> CGPoint? {

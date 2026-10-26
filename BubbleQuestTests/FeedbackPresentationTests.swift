@@ -19,7 +19,7 @@ final class FeedbackPresentationTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         view.presentScene(scene); defer { view.presentScene(nil) }
-        scene.handleMenu(["start-continue"])
+        scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
         try check(scene, profiles)
     }
 
@@ -49,8 +49,7 @@ final class FeedbackPresentationTests: XCTestCase {
             XCTAssertEqual(progress.levelResults(17).wins, 1)
             XCTAssertNil(progress.checkpoint)
             XCTAssertNotNil(scene.childNode(withName: "//result-earned"))
-            XCTAssertNotNil(scene.childNode(withName: "//quest-objective"), "The objective bar stays visible on the result screen")
-            XCTAssertEqual((scene.childNode(withName: "//objective-progress") as? SKLabelNode)?.text, "1/1")
+            XCTAssertNil(scene.childNode(withName: "//quest-objective"))
             let next = try XCTUnwrap(scene.childNode(withName: "//result-next"))
             XCTAssertTrue(next.children.contains { ($0 as? SKLabelNode)?.text == "Next • Level 19" })
             for index in 0..<5 { XCTAssertNotNil(scene.childNode(withName: "//result-star-\(index)")) }
@@ -59,8 +58,8 @@ final class FeedbackPresentationTests: XCTestCase {
             let objective = try XCTUnwrap(scene.childNode(withName: "//result-objective-summary") as? SKLabelNode)
             XCTAssertTrue(objective.text?.contains("other bubble didn't need clearing") == true)
             scene.setActive(true)
-            scene.handleMenu(["result-next"])
-            scene.handleMenu(["result-next"])
+            scene.handleMenu(["result-next"]); scene.handleMenu(["briefing-play"])
+            scene.handleMenu(["result-next"]); scene.handleMenu(["briefing-play"])
             XCTAssertEqual(profiles.makeProgress().levelResults(17).wins, 1)
             XCTAssertEqual(profiles.makeProgress().checkpoint?.level, 18)
             XCTAssertNil(scene.childNode(withName: "//result"))
@@ -73,9 +72,9 @@ final class FeedbackPresentationTests: XCTestCase {
             scene.launchShot(angle: 0); scene.setActive(false); scene.setActive(true)
             let button = try XCTUnwrap(scene.childNode(withName: "//result-next"))
             XCTAssertTrue(button.children.contains { ($0 as? SKLabelNode)?.text == "Meet " + buddy.name })
-            scene.continueAfterResult()
+            scene.continueAfterResult(); scene.handleMenu(["briefing-play"])
             XCTAssertNotNil(scene.childNode(withName: "//buddy-later"))
-            scene.handleMenu(["buddy-later"])
+            scene.handleMenu(["buddy-later"]); scene.handleMenu(["briefing-play"])
             XCTAssertNotNil(scene.childNode(withName: "//map-route"))
             XCTAssertNotEqual(profiles.makeProgress().pendingBuddy?.id, buddy.id)
         }
@@ -86,7 +85,7 @@ final class FeedbackPresentationTests: XCTestCase {
         try withTargetPuzzle(targets: [Cell(row: 0, column: 3)], level: 0, cleared: 20, shots: 1, color: 1) { scene, profiles in
             let pending = profiles.makeProgress().pendingBuddy?.id
             scene.launchShot(angle: 0); scene.setActive(false); scene.setActive(true)
-            scene.continueAfterResult()
+            scene.continueAfterResult(); scene.handleMenu(["briefing-play"])
             XCTAssertNil(scene.childNode(withName: "//buddy-choose"))
             XCTAssertEqual(profiles.makeProgress().checkpoint?.level, 0)
             XCTAssertEqual(profiles.makeProgress().pendingBuddy?.id, pending)
@@ -101,7 +100,7 @@ final class FeedbackPresentationTests: XCTestCase {
             XCTAssertEqual(profiles.makeProgress().lives(for: 17).available, 4)
             XCTAssertEqual(profiles.makeProgress().attempts(17), 1)
             scene.setActive(true)
-            scene.handleMenu(["start-continue"])
+            scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
             scene.launchShot(angle: 0); scene.setActive(false)
             XCTAssertEqual(profiles.makeProgress().checkpoint?.shotsFired, 2)
             XCTAssertEqual(profiles.makeProgress().lives(for: 17).available, 4)
@@ -110,15 +109,44 @@ final class FeedbackPresentationTests: XCTestCase {
     }
 
     @MainActor
-    func testObjectiveAndTriesCoachIsNonBlockingAndOnlyShownUntilLearned() throws {
+    func testLevelBriefingNeedsASeparatePlayTapAndDoesNotUseAShotOrTry() throws {
         try withTargetPuzzle(targets: [Cell(row: 0, column: 7)]) { scene, profiles in
-            XCTAssertNotNil(scene.childNode(withName: "//puzzle-coach"))
+            scene.handleMenu(["home"])
+            scene.handleMenu(["start-continue"])
+            XCTAssertNotNil(scene.childNode(withName: "//level-briefing-card"))
+            let before = try XCTUnwrap(profiles.makeProgress().checkpoint)
+            scene.handleMenu(["level-17"])
+            scene.handleMenu(["result-next"])
+            XCTAssertNotNil(scene.childNode(withName: "//level-briefing-card"), "Stale map/result taps cannot start a level")
+            XCTAssertNil(scene.childNode(withName: "//flying-bubble"))
+            XCTAssertEqual(profiles.makeProgress().checkpoint?.shots, before.shots)
+            XCTAssertEqual(profiles.makeProgress().lives(for: 17).available, 5)
+            scene.handleMenu(["briefing-play"])
+            XCTAssertNil(scene.childNode(withName: "//level-briefing-card"))
+            XCTAssertNil(scene.childNode(withName: "//quest-objective"))
+            XCTAssertNil(scene.childNode(withName: "//flying-bubble"))
+            XCTAssertEqual(profiles.makeProgress().checkpoint?.shotsFired, 0)
             scene.launchShot(angle: 0); scene.setActive(false)
-            XCTAssertTrue(profiles.makeProgress().hasSeenObjective(.ceiling))
-            XCTAssertTrue(profiles.makeProgress().hasSeenTriesHelp)
             XCTAssertEqual(profiles.makeProgress().checkpoint?.shotsFired, 1)
-            scene.setActive(true); scene.handleMenu(["start-continue"])
-            XCTAssertNil(scene.childNode(withName: "//puzzle-coach"))
+            XCTAssertEqual(profiles.makeProgress().lives(for: 17).available, 4)
+        }
+    }
+
+    @MainActor
+    func testLeavingTheBriefingDoesNotStartAnAttemptAndResumingAnUnstartedPuzzleShowsItAgain() throws {
+        try withTargetPuzzle(targets: [Cell(row: 0, column: 7)]) { scene, profiles in
+            let before = try XCTUnwrap(profiles.makeProgress().checkpoint)
+            scene.handleMenu(["home"]); scene.handleMenu(["start-continue"])
+            XCTAssertNotNil(scene.childNode(withName: "//level-briefing-card"))
+            scene.handleMenu(["briefing-back"])
+            XCTAssertNotNil(scene.childNode(withName: "//map-route"))
+            XCTAssertEqual(profiles.makeProgress().checkpoint?.shots, before.shots)
+            scene.handleMenu(["level-17"])
+            XCTAssertNotNil(scene.childNode(withName: "//level-briefing-card"))
+            XCTAssertEqual(profiles.makeProgress().lives(for: 17).available, 5)
+            scene.handleMenu(["briefing-play"])
+            scene.launchShot(angle: 0); scene.setActive(false)
+            XCTAssertEqual(profiles.makeProgress().checkpoint?.shots, before.shots - 1)
         }
     }
 
@@ -143,20 +171,16 @@ final class FeedbackPresentationTests: XCTestCase {
                     if let text = (node as? SKLabelNode)?.text { words.append(text) }
                 }
                 XCTAssertEqual(words.contains("Courtyard keepsake earned!"), cleared == 19)
-                XCTAssertEqual(words.contains { $0.contains("Discovered: " + LevelCatalog.areas[1].name) }, cleared == 19)
+                XCTAssertFalse(words.contains { $0.contains("Discovered:") })
             }
         }
     }
 
     @MainActor
-    func testAnObstacleLessonHiddenByTheCoachIsNotPrematurelyLearned() throws {
+    func testReadingTheLevelBriefingDoesNotPrematurelyLearnAnObstacle() throws {
         try withTargetPuzzle(targets: [Cell(row: 0, column: 7)], level: 15) { scene, profiles in
-            XCTAssertNotNil(scene.childNode(withName: "//puzzle-coach"))
+            XCTAssertNil(scene.childNode(withName: "//puzzle-coach"))
             XCTAssertFalse(profiles.makeProgress().hasLearnedObstacle("precision"))
-            scene.launchShot(angle: 0); scene.setActive(false)
-            XCTAssertNotNil(scene.childNode(withName: "//control-tip"))
-            XCTAssertFalse(profiles.makeProgress().hasLearnedObstacle("precision"))
-            scene.setActive(true); scene.handleMenu(["start-continue"])
             scene.launchShot(angle: 0); scene.setActive(false)
             XCTAssertTrue(profiles.makeProgress().hasLearnedObstacle("precision"))
         }
@@ -165,21 +189,17 @@ final class FeedbackPresentationTests: XCTestCase {
     @MainActor
     func testShotsAreIntegratedIntoFixedCannonHousing() throws {
         try withTargetPuzzle(targets: [Cell(row: 0, column: 7)]) { scene, _ in
-            let badge = try XCTUnwrap(scene.childNode(withName: "//quest-objective"))
+            XCTAssertNil(scene.childNode(withName: "//quest-objective"))
             let counter = try XCTUnwrap(scene.childNode(withName: "//shots-counter"))
             XCTAssertEqual(counter.position, CGPoint(x: 195, y: 126))
-            XCTAssertEqual(badge.position, CGPoint(x: 195, y: 750))
             XCTAssertEqual(counter.zRotation, 0)
             XCTAssertEqual(counter.position.x, CGFloat(BubbleGeometry.origin.x))
             XCTAssertNotNil(scene.childNode(withName: "//cannon-housing-neck"))
             let settings = try XCTUnwrap(scene.childNode(withName: "//game-menu") as? SKShapeNode)
             XCTAssertEqual(settings.position, CGPoint(x: 34, y: 750))
             XCTAssertGreaterThanOrEqual(try XCTUnwrap(settings.path).boundingBox.width, 48)
-            XCTAssertGreaterThan(settings.zPosition, badge.zPosition)
             XCTAssertTrue(scene.interactionNames(at: CGPoint(x: 34, y: 750)).contains("game-menu"))
             XCTAssertLessThan(counter.position.y + 18, CGFloat(BubbleGeometry.lossLine), "Utilities stay below the board")
-            XCTAssertGreaterThan(badge.position.y - 24, 724.5, "Mission clears the hanging rail")
-            XCTAssertLessThan(badge.position.y + 24, 775, "Mission leaves 70 points for the status bar and Dynamic Island")
             XCTAssertEqual((counter.childNode(withName: "shots-caption") as? SKLabelNode)?.text, "SHOTS LEFT")
             XCTAssertGreaterThan(counter.position.y - 19, 105, "Housing clears the booster artwork")
             XCTAssertNotNil(scene.childNode(withName: "//control-dock"))

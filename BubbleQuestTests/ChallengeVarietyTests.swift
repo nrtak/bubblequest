@@ -112,7 +112,7 @@ final class ChallengeVarietyTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         view.presentScene(scene); defer { view.presentScene(nil) }
-        scene.handleMenu(["start-continue"])
+        scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
         scene.launchShot(angle: 0)
         scene.setActive(false)
         let saved = try XCTUnwrap(profiles.makeProgress().checkpoint)
@@ -150,6 +150,6 @@ final class ChallengeVarietyTests: XCTestCase {
         let hidden = try XCTUnwrap(scene.childNode(withName: "//level-0"))
         XCTAssertFalse(scene.interactionNames(at: hidden.convert(CGPoint.zero, to: scene)).contains("level-0"))
         scene.scrollMap(to: 10000)
-        XCTAssertEqual(route.position.y, 0)
+        XCTAssertEqual(route.position.y, FestivalMapLayout.scrollOffset(10000))
     }
 }

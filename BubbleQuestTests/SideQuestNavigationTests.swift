@@ -90,7 +90,7 @@ final class SideQuestNavigationTests: XCTestCase {
         }
         for id in ["parcels", "toy"] {
             let stop = try XCTUnwrap(scene.childNode(withName: "//quest-" + id))
-            XCTAssertTrue(stop.children.compactMap { $0 as? SKLabelNode }.contains { $0.text?.hasPrefix("Optional") == true })
+            XCTAssertTrue(stop.children.compactMap { $0 as? SKLabelNode }.contains { $0.text == "Side quest" })
             let location = stop.convert(CGPoint.zero, to: scene)
             XCTAssertTrue(scene.interactionNames(at: location).contains("quest-" + id))
             scene.handleMenu(["quest-" + id])
@@ -118,17 +118,17 @@ final class SideQuestNavigationTests: XCTestCase {
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         scene.handleMenu(["start-adventure"])
         scene.handleMenu(["quest-parcels"])
-        scene.handleMenu(["quest-accept"])
+        scene.handleMenu(["quest-accept"]); scene.handleMenu(["briefing-play"])
         XCTAssertTrue(profiles.makeProgress().hasMet(FestivalHost.all[0]))
         let adventure = profiles.makeProgress().adventure
         let quest = FestivalQuest.all[0]
         for level in 0..<3 { adventure.recordWin(level: level, play: QuestPlay(collected: [quest.id]), completedLevels: 6) }
         adventure.chooseStyle(2, for: quest)
         // Reload progress as the game does when selecting a player.
-        scene.handleMenu(["home"]); scene.handleMenu(["players"]); scene.handleMenu(["player-original"])
+        scene.handleMenu(["home"]); scene.handleMenu(["players"]); scene.handleMenu(["player-original"]); scene.handleMenu(["briefing-play"])
         scene.handleMenu(["start-adventure"])
         let reward = try XCTUnwrap(scene.childNode(withName: "//quest-display-parcels"))
-        XCTAssertNotNil(reward.parent?.parent?.childNode(withName: "courtyard-greeting"))
+        XCTAssertEqual(reward.parent?.name, "quest-parcels")
     }
 
 }

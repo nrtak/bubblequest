@@ -99,7 +99,7 @@ final class SceneTransitionTests: XCTestCase {
             scene.handleMenu(["players"])
             let overlay = try XCTUnwrap(scene.children.last)
             let labels = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
-            XCTAssertTrue(labels.contains("1 â€¢ Saved on this iPhone"))
+            XCTAssertTrue(labels.contains("1 • Saved on this iPhone"))
             let card = try XCTUnwrap(overlay.childNode(withName: "player-original"))
             let title = try XCTUnwrap(card.children.first as? SKLabelNode)
             let font = UIFont(name: title.fontName!, size: title.fontSize)!

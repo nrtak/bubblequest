@@ -161,7 +161,7 @@ final class VisualPolishTests: XCTestCase {
             let spins = adventure.availableSpins, rainbows = adventure.rainbowGifts, bombs = adventure.bombGifts
             scene.showWheelReward(prize)
             let label = try XCTUnwrap(scene.childNode(withName: "//wheel-reward-quantity") as? SKLabelNode)
-            XCTAssertEqual(label.text, prize.title + " Ã—1")
+            XCTAssertEqual(label.text, prize.title + " ×1")
             scene.dismissCelebrationEffects()
             XCTAssertNil(scene.childNode(withName: "//reward-delivery"))
             XCTAssertTrue(scene.interactionNames(at: CGPoint(x: 195, y: 185)).contains("wheel-return"))

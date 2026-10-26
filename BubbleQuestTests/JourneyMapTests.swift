@@ -64,10 +64,10 @@ final class JourneyMapTests: XCTestCase {
         view.presentScene(scene); defer { view.presentScene(nil) }
         scene.handleMenu(["start-adventure"])
         let quest = try XCTUnwrap(scene.childNode(withName: "//quest-parcels"))
-        let point = quest.convert(.zero, to: scene)
+        let point = quest.convert(CGPoint.zero, to: scene)
         let route = try XCTUnwrap(scene.childNode(withName: "//map-route"))
         scene.scrollMap(to: route.position.y - 30)
-        XCTAssertEqual(quest.convert(.zero, to: scene), point)
+        XCTAssertEqual(quest.convert(CGPoint.zero, to: scene), point)
         XCTAssertTrue(scene.interactionNames(at: point).contains("quest-parcels"))
         scene.handleMenu(["quest-parcels"])
         scene.handleMenu(["quest-dialogue-back"])

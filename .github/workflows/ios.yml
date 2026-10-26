@@ -177,6 +177,8 @@ jobs:
       - uses: Apple-Actions/upload-testflight-build@v5
         with:
           backend: altool
+          # Apple processes the build asynchronously; preserve existing TestFlight metadata.
+          wait-for-processing: 'false'
           app-path: build/export/BubbleQuest.ipa
           issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
           api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}

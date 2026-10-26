@@ -1,0 +1,27 @@
+name: Retry signed TestFlight upload
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+  actions: read
+jobs:
+  testflight:
+    runs-on: macos-26
+    environment: testflight
+    steps:
+      # Build 199 already passed all 171 tests and was signed successfully.
+      # Reuse its immutable artifact instead of compiling another copy.
+      - uses: actions/download-artifact@v4
+        with:
+          name: BubbleQuest-ipa
+          run-id: '40376484368'
+          github-token: ${{ github.token }}
+          path: build/export
+      - uses: Apple-Actions/upload-testflight-build@v5
+        with:
+          backend: altool
+          wait-for-processing: 'false'
+          app-path: build/export/BubbleQuest.ipa
+          issuer-id: ${{ secrets.APPSTORE_ISSUER_ID }}
+          api-key-id: ${{ secrets.APPSTORE_API_KEY_ID }}
+          api-private-key: ${{ secrets.APPSTORE_API_PRIVATE_KEY }}

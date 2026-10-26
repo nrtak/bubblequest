@@ -5,7 +5,7 @@ import SpriteKit
 
 final class GameContentTests: XCTestCase {
     @MainActor
-    func testAllCourtyardsShowTwentyLevels() {
+    func testContinuousJourneyContainsEveryLevel() {
         let suite = "CourtyardPages-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
@@ -15,17 +15,13 @@ final class GameContentTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         scene.handleMenu(["start-adventure"])
-        scene.handleMenu(["courtyard-welcome-explore"])
-        for _ in 0..<20 { scene.handleMenu(["area-prev"]) }
+        let route = scene.childNode(withName: "//map-route")!
+        let markers = route.children.filter { $0.name == "locked" || $0.name?.hasPrefix("level-") == true }
+        XCTAssertEqual(markers.count, LevelCatalog.levelCount)
         for area in LevelCatalog.areas.indices {
-            let overlay = scene.children.last!
-            let headings = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
-            XCTAssertTrue(headings.contains { $0.hasPrefix("Area \(area + 1)/\(LevelCatalog.areas.count)") })
-            let markers = (overlay.childNode(withName: "//map-route")?.children ?? []).flatMap { $0.children.compactMap { ($0 as? SKLabelNode)?.text } }
-            XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 1)"))
-            XCTAssertTrue(markers.contains("\(area * LevelCatalog.levelsPerArea + 10)"))
-            scene.handleMenu(["area-next"])
-            scene.handleMenu(["courtyard-welcome-explore"])
+            let level = area * LevelCatalog.levelsPerArea
+            scene.scrollMap(to: FestivalMapLayout.focusedOffset(local: level))
+            XCTAssertFalse(route.childNode(withName: "level-\(level)")!.isHidden)
         }
     }
 

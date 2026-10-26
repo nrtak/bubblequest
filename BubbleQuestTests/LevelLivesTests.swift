@@ -84,7 +84,7 @@ final class LevelLivesTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         view.presentScene(scene); defer { view.presentScene(nil) }
-        scene.handleMenu(["level-0"])
+        scene.handleMenu(["level-0"]); scene.handleMenu(["briefing-play"])
         XCTAssertNotNil(scene.childNode(withName: "//lives-countdown"))
         XCTAssertTrue(try XCTUnwrap(scene.childNode(withName: "//lives-play")).isHidden)
         XCTAssertEqual(profiles.makeProgress().attempts(0), 0)
@@ -108,7 +108,7 @@ final class LevelLivesTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         view.presentScene(scene); defer { view.presentScene(nil) }
-        scene.handleMenu(["start-continue"])
+        scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
         XCTAssertNil(scene.childNode(withName: "//lives-countdown"))
         scene.launchShot(angle: 0); scene.setActive(false)
         XCTAssertEqual(profiles.makeProgress().lives(for: 0).available, 0)
@@ -135,11 +135,11 @@ final class LevelLivesTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         view.presentScene(scene); defer { view.presentScene(nil) }
-        scene.handleMenu(["start-continue"])
-        scene.handleMenu(["level-1"])
+        scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
+        scene.handleMenu(["level-1"]); scene.handleMenu(["briefing-play"])
         XCTAssertEqual(profiles.makeProgress().checkpoint?.level, 0)
         XCTAssertEqual(profiles.makeProgress().checkpoint?.shotsFired, 1)
-        scene.handleMenu(["challenge-play"])
+        scene.handleMenu(["challenge-play"]); scene.handleMenu(["briefing-play"])
         XCTAssertEqual(profiles.makeProgress().checkpoint?.challenge, false)
         XCTAssertEqual(profiles.makeProgress().checkpoint?.level, 0)
     }
@@ -185,7 +185,7 @@ final class LevelLivesTests: XCTestCase {
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         view.presentScene(scene); defer { view.presentScene(nil) }
         for _ in 0..<2 {
-            scene.handleMenu(["start-continue"])
+            scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
             scene.setActive(false); scene.setActive(true)
             XCTAssertNil(scene.childNode(withName: "//lives-countdown"))
             XCTAssertEqual(profiles.makeProgress().checkpoint?.tryStarted, true)

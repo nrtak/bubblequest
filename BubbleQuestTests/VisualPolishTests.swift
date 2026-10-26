@@ -51,7 +51,7 @@ final class VisualPolishTests: XCTestCase {
                                          play: QuestPlay(), challenge: true, freeRainbow: false,
                                          freeBomb: false, shotBudget: 12))
             scene.handleMenu(["start-adventure"])
-            scene.handleMenu(["level-0"])
+            scene.handleMenu(["level-0"]); scene.handleMenu(["briefing-play"])
             let normal = try XCTUnwrap(profiles.makeProgress().checkpoint)
             XCTAssertEqual(normal.challenge, false)
             XCTAssertEqual(normal.shotBudget, level.shots)
@@ -97,14 +97,19 @@ final class VisualPolishTests: XCTestCase {
             try withScene(size: size) { scene, _, _ in
                 let mark = try XCTUnwrap(scene.childNode(withName: "//title-illustration"))
                 XCTAssertNil(scene.childNode(withName: "//title-cast"), "Keep one main portrait instead of duplicating it inside the menu.")
-                let title = try XCTUnwrap(scene.childNode(withName: "//start-menu-heading"))
-                XCTAssertGreaterThan(sceneFrame(mark, in: scene).minY, sceneFrame(title, in: scene).maxY + 8)
+                XCTAssertNil(scene.childNode(withName: "//start-menu-heading"))
+                let continuePanel = try XCTUnwrap(scene.childNode(withName: "//continue-panel"))
+                XCTAssertGreaterThan(sceneFrame(mark, in: scene).minY, sceneFrame(continuePanel, in: scene).maxY + 20)
+                let playerName = try XCTUnwrap(scene.childNode(withName: "//players"))
+                let settings = try XCTUnwrap(scene.childNode(withName: "//settings"))
+                XCTAssertLessThan(sceneFrame(playerName, in: scene).maxY, sceneFrame(continuePanel, in: scene).minY - 20)
+                XCTAssertLessThan(sceneFrame(settings, in: scene).maxY, sceneFrame(continuePanel, in: scene).minY - 20)
+                XCTAssertLessThan(sceneFrame(playerName, in: scene).maxX, sceneFrame(settings, in: scene).minX - 12)
+                XCTAssertTrue(playerName.children.contains { ($0 as? SKLabelNode)?.text == "Player name" })
                 let top = scene.convertPoint(toView: CGPoint(x: 195, y: sceneFrame(mark, in: scene).maxY)).y
                 XCTAssertGreaterThanOrEqual(top, topInset + 6)
                 scene.closeMenu()
-                let header = try XCTUnwrap(scene.childNode(withName: "//quest-objective"))
-                let box = sceneFrame(header, in: scene)
-                XCTAssertGreaterThanOrEqual(scene.convertPoint(toView: CGPoint(x: box.midX, y: box.maxY)).y, topInset + 6)
+                XCTAssertNil(scene.childNode(withName: "//quest-objective"))
                 let gear = try XCTUnwrap(scene.childNode(withName: "//game-menu"))
                 XCTAssertTrue(scene.interactionNames(at: gear.position).contains("game-menu"))
                 let widthScale = min(size.width / 390, size.height / 844)
@@ -195,18 +200,17 @@ final class VisualPolishTests: XCTestCase {
     }
 
     @MainActor
-    func testNativeLaunchScreenHasBrandArtworkAndFitsCompactPhones() throws {
-        XCTAssertNotNil(UIImage(named: "festival-logo"))
+    func testNativeLaunchUsesOnlyTheMenuBackgroundAndFitsCompactPhones() throws {
+        let background = try XCTUnwrap(UIImage(named: "festival-day"))
         let controller = try XCTUnwrap(UIStoryboard(name: "LaunchScreen", bundle: .main).instantiateInitialViewController())
         for size in [CGSize(width: 375, height: 667), CGSize(width: 430, height: 932)] {
             controller.view.frame = CGRect(origin: .zero, size: size); controller.view.layoutIfNeeded()
             let image = try XCTUnwrap(controller.view.subviews.compactMap { $0 as? UIImageView }.first)
             XCTAssertNotNil(image.image)
-            for label in controller.view.subviews.compactMap({ $0 as? UILabel }) {
-                XCTAssertGreaterThan(label.frame.minY, image.frame.maxY)
-                XCTAssertLessThan(label.frame.maxY, size.height - 20)
-                XCTAssertGreaterThanOrEqual(label.frame.width, label.intrinsicContentSize.width)
-            }
+            XCTAssertEqual(image.image?.pngData(), background.pngData())
+            XCTAssertEqual(image.contentMode, .scaleAspectFill)
+            XCTAssertEqual(image.frame, controller.view.bounds)
+            XCTAssertEqual(controller.view.subviews.count, 1, "No separate logo or welcome screen before the menu")
         }
     }
 }

@@ -53,8 +53,8 @@ final class CourtyardRefreshTests: XCTestCase {
     }
 
     @MainActor
-    func testStartMenuHasOnePlayActionAndNextAreaIsMystery() throws {
-        let suite = "CourtyardMenus-\(UUID().uuidString)"
+    func testStartMenuOpensOneContinuousJourneyAndPreservesAnAttempt() throws {
+        let suite = "JourneyMenus-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
@@ -63,80 +63,54 @@ final class CourtyardRefreshTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
         XCTAssertNotNil(scene.childNode(withName: "//start-continue"))
-        XCTAssertNil(scene.childNode(withName: "//start-adventure"))
-        scene.handleMenu(["start-continue"])
-        XCTAssertNotNil(scene.childNode(withName: "//courtyard-resident"))
-        XCTAssertNil(scene.childNode(withName: "//continue-stop"))
-        scene.handleMenu(["area-next"])
-        XCTAssertNil(scene.childNode(withName: "//courtyard-resident"))
-        let labels = scene.children.last!.children.compactMap { ($0 as? SKLabelNode)?.text }
-        XCTAssertTrue(labels.contains("Mystery Courtyard"))
-        XCTAssertNotNil(scene.childNode(withName: "//area-prev"))
+        scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
+        XCTAssertNotNil(scene.childNode(withName: "//map-route"))
         XCTAssertNil(scene.childNode(withName: "//area-next"))
-        scene.handleMenu(["area-prev"])
-        scene.handleMenu(["level-0"])
-        scene.setActive(false)
-        scene.setActive(true)
+        XCTAssertNil(scene.childNode(withName: "//courtyard-resident"))
+        scene.handleMenu(["level-0"]); scene.handleMenu(["briefing-play"])
         let before = try XCTUnwrap(profiles.makeProgress().checkpoint)
-        XCTAssertNotNil(before.layoutSeed)
-        scene.handleMenu(["home"])
-        scene.handleMenu(["start-continue"])
-        scene.setActive(false)
-        scene.setActive(true)
+        scene.handleMenu(["home"]); scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
         let after = try XCTUnwrap(profiles.makeProgress().checkpoint)
         XCTAssertEqual(after.layoutSeed, before.layoutSeed)
         XCTAssertEqual(after.board?.bubbles, before.board?.bubbles)
         XCTAssertEqual(after.shots, before.shots)
     }
     @MainActor
-    func testMapSectionsAndToolbarIconsDoNotOverlap() throws {
-        let suite = "MapSpacing-\(UUID().uuidString)"
+    func testJourneyKeepsFixedControlsClearOfTheScrollableLevels() throws {
+        let suite = "JourneySpacing-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
         defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
         let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
-        let progress = profiles.makeProgress()
-        progress.recordVictory(index: 19, score: 100, stars: 1)
-        progress.markCourtyardWelcomed(1)
+        profiles.makeProgress().recordVictory(index: 19, score: 100, stars: 1)
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
-        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 320, height: 568))
         view.presentScene(scene); defer { view.presentScene(nil) }
         scene.handleMenu(["start-adventure"])
-        // On a compact screen a 44-point button needs padding beyond its artwork.
-        // Its background panel must not swallow taps in that padding.
-        view.frame = CGRect(x: 0, y: 0, width: 320, height: 568)
-        XCTAssertTrue(scene.interactionNames(at: CGPoint(x: 99, y: 735)).contains("area-prev"))
-        XCTAssertTrue(scene.interactionNames(at: CGPoint(x: 78, y: 194)).contains("friends"))
-        let header = try XCTUnwrap(scene.childNode(withName: "//map-area-header") as? SKShapeNode)
-        let resident = try XCTUnwrap(scene.childNode(withName: "//courtyard-resident") as? SKShapeNode)
-        let activities = try XCTUnwrap(scene.childNode(withName: "//map-activities") as? SKShapeNode)
-        XCTAssertGreaterThan(header.frame.minY, FestivalMapLayout.viewport.maxY + 10)
-        XCTAssertLessThan(resident.frame.maxY + 30, FestivalMapLayout.viewport.minY)
-        XCTAssertLessThan(activities.frame.maxY + 12, resident.frame.minY)
-        for name in ["area-prev", "area-next"] {
-            let button = try XCTUnwrap(scene.childNode(withName: "//" + name) as? SKShapeNode)
-            XCTAssertTrue(header.frame.contains(button.frame))
-            XCTAssertGreaterThanOrEqual(try XCTUnwrap(button.path).boundingBox.height, 44)
-        }
-        for name in ["friends", "album-open", "open-wheel"] {
-            let button = try XCTUnwrap(activities.childNode(withName: name) as? SKShapeNode)
-            let icon = try XCTUnwrap(button.childNode(withName: "map-activity-icon"))
-            XCTAssertTrue(try XCTUnwrap(button.path).boundingBox.contains(icon.frame))
-            XCTAssertTrue(try XCTUnwrap(activities.path).boundingBox.contains(button.frame))
+        let header = try XCTUnwrap(scene.childNode(withName: "//map-journey-header"))
+        XCTAssertGreaterThan(header.frame.minY, FestivalMapLayout.viewport.maxY + 8)
+        for name in ["home", "map-extras", "continue-stop"] {
+            let button = try XCTUnwrap(scene.childNode(withName: "//" + name))
+            XCTAssertLessThan(button.frame.maxY, FestivalMapLayout.viewport.minY - 12)
+            XCTAssertTrue(scene.interactionNames(at: button.position).contains(name))
         }
         let route = try XCTUnwrap(scene.childNode(withName: "//map-route"))
-        for stop in route.children where stop.name == "locked" || stop.name?.hasPrefix("level-") == true {
-            if !stop.isHidden {
-                let y = stop.position.y + route.position.y
-                XCTAssertGreaterThanOrEqual(y - 32, FestivalMapLayout.viewport.minY)
-                XCTAssertLessThanOrEqual(y + 32, FestivalMapLayout.viewport.maxY)
-            }
+        let scenery = try XCTUnwrap(route.childNode(withName: "journey-scenery"))
+        XCTAssertLessThanOrEqual(scenery.children.count, 5)
+        let marker = try XCTUnwrap(route.childNode(withName: "level-20"))
+        let before = marker.convert(.zero, to: scene)
+        let tile = try XCTUnwrap(scenery.children.first)
+        let tileBefore = tile.convert(.zero, to: scene)
+        scene.scrollMap(to: route.position.y - 20)
+        XCTAssertEqual(marker.convert(.zero, to: scene).y - before.y, -20, accuracy: 0.01)
+        XCTAssertEqual(tile.convert(.zero, to: scene).y - tileBefore.y, -20, accuracy: 0.01)
+        XCTAssertEqual(header.position.y, 754)
+        scene.scrollMap(to: FestivalMapLayout.focusedOffset(local: 219))
+        XCTAssertLessThanOrEqual(scenery.children.count, 5)
+        scene.handleMenu(["map-extras"])
+        for name in ["friends", "album-open", "open-wheel", "map-objective"] {
+            XCTAssertNotNil(scene.childNode(withName: "//" + name))
         }
-        let first = try XCTUnwrap(scene.childNode(withName: "//level-20") as? SKShapeNode)
-        XCTAssertFalse(first.isHidden)
-        XCTAssertGreaterThan(first.position.y + route.position.y - 28, FestivalMapLayout.viewport.minY)
-        let home = try XCTUnwrap(scene.childNode(withName: "//home") as? SKShapeNode)
-        XCTAssertLessThan(home.frame.maxY + 20, activities.frame.minY)
     }
 
 }

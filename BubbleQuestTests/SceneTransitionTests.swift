@@ -73,6 +73,9 @@ final class SceneTransitionTests: XCTestCase {
             scene.requestPlayerName = { _, completion in completion("Guest") }
             scene.handleMenu(["player-create"])
             XCTAssertEqual(profiles.active.name, "Guest")
+            XCTAssertNotNil(scene.childNode(withName: "//level-briefing-card"))
+            XCTAssertNil(profiles.makeProgress().checkpoint, "Creating a name does not start an attempt before Play")
+            scene.handleMenu(["briefing-play"])
             XCTAssertEqual(profiles.makeProgress().checkpoint?.shotsFired, 0)
             scene.handleMenu(["home"])
             scene.handleMenu(["players"])
@@ -96,7 +99,7 @@ final class SceneTransitionTests: XCTestCase {
             scene.handleMenu(["players"])
             let overlay = try XCTUnwrap(scene.children.last)
             let labels = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
-            XCTAssertTrue(labels.contains("1 • Saved on this iPhone"))
+            XCTAssertTrue(labels.contains("1 â€¢ Saved on this iPhone"))
             let card = try XCTUnwrap(overlay.childNode(withName: "player-original"))
             let title = try XCTUnwrap(card.children.first as? SKLabelNode)
             let font = UIFont(name: title.fontName!, size: title.fontSize)!
@@ -148,10 +151,16 @@ final class SceneTransitionTests: XCTestCase {
             // A 320pt display scales the 844pt scene to about 67 percent.
             let compact = try XCTUnwrap(scene.view)
             compact.frame = CGRect(x: 0, y: 0, width: 320, height: 568)
-            for name in ["quest-parcels", "friends", "album-open"] {
+            for name in ["quest-parcels", "map-extras"] {
                 let control = try XCTUnwrap(scene.childNode(withName: "//" + name))
-                let edge = control.convert(CGPoint(x: 0, y: name == "album-open" ? -27 : 27), to: scene)
+                let edge = control.convert(CGPoint(x: 0, y: 27), to: scene)
                 XCTAssertTrue(scene.interactionNames(at: edge).contains(name), "Expanded nested target: \(name)")
+            }
+            scene.handleMenu(["map-extras"])
+            for name in ["friends", "album-open"] {
+                let control = try XCTUnwrap(scene.childNode(withName: "//" + name))
+                let edge = control.convert(CGPoint(x: 0, y: -27), to: scene)
+                XCTAssertTrue(scene.interactionNames(at: edge).contains(name))
             }
             scene.handleMenu(["friends"])
             let hiddenMapLevel = try XCTUnwrap(scene.childNode(withName: "//level-6"))

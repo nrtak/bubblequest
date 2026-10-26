@@ -107,7 +107,7 @@ final class VisualPolishTests: XCTestCase {
                 XCTAssertLessThan(sceneFrame(playerName, in: scene).maxX, sceneFrame(settings, in: scene).minX - 12)
                 XCTAssertTrue(playerName.children.contains { ($0 as? SKLabelNode)?.text == "Player name" })
                 let top = scene.convertPoint(toView: CGPoint(x: 195, y: sceneFrame(mark, in: scene).maxY)).y
-                XCTAssertGreaterThanOrEqual(top, topInset + 6)
+                XCTAssertGreaterThanOrEqual(top + 0.01, topInset + 6, "Allow subpixel conversion rounding")
                 scene.closeMenu()
                 XCTAssertNil(scene.childNode(withName: "//quest-objective"))
                 let gear = try XCTUnwrap(scene.childNode(withName: "//game-menu"))
@@ -161,7 +161,7 @@ final class VisualPolishTests: XCTestCase {
             let spins = adventure.availableSpins, rainbows = adventure.rainbowGifts, bombs = adventure.bombGifts
             scene.showWheelReward(prize)
             let label = try XCTUnwrap(scene.childNode(withName: "//wheel-reward-quantity") as? SKLabelNode)
-            XCTAssertEqual(label.text, prize.title + " ×1")
+            XCTAssertEqual(label.text, prize.title + " Ã—1")
             scene.dismissCelebrationEffects()
             XCTAssertNil(scene.childNode(withName: "//reward-delivery"))
             XCTAssertTrue(scene.interactionNames(at: CGPoint(x: 195, y: 185)).contains("wheel-return"))

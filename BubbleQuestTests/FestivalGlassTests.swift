@@ -104,6 +104,29 @@ final class FestivalGlassTests: XCTestCase {
         }
     }
 
+    @MainActor
+    func testLeavingGlassMapKeepsTheStreetInTheLevelBriefingSnapshot() throws {
+        try withHost { scene, host, _ in
+            scene.handleMenu(["start-adventure"]); scene.refreshGlassPresentation()
+            XCTAssertGreaterThan(host.artworkCount, 0)
+            scene.handleMenu(["level-0"]); scene.refreshGlassPresentation()
+            XCTAssertEqual(host.artworkCount, 0)
+            let card = try XCTUnwrap(scene.childNode(withName: "//level-briefing-card"))
+            let background = try XCTUnwrap(card.parent?.children.first as? SKSpriteNode)
+            let image = try XCTUnwrap(background.texture).cgImage()
+            let sample = try XCTUnwrap(image.cropping(to: CGRect(x: CGFloat(image.width) * 0.9,
+                                                                 y: CGFloat(image.height) * 0.5, width: 1, height: 1)))
+            var pixel = [UInt8](repeating: 0, count: 4)
+            pixel.withUnsafeMutableBytes { bytes in
+                let context = CGContext(data: bytes.baseAddress, width: 1, height: 1, bitsPerComponent: 8,
+                                        bytesPerRow: 4, space: CGColorSpaceCreateDeviceRGB(),
+                                        bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+                context?.draw(sample, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+            }
+            XCTAssertGreaterThan(pixel[3], 200, "The walking street must remain behind the briefing")
+        }
+    }
+
     func testGlassPreferenceDefaultsOnAndIsIncludedInPlayerBackup() throws {
         let suite = "GlassPreference-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

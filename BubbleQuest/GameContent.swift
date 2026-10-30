@@ -365,6 +365,7 @@ enum GameSetting: String, CaseIterable {
     case guide = "aimGuideEnabled"
     case contrast = "highContrastEnabled"
     case leftHand = "leftHandedEnabled"
+    case glass = "glassMenusEnabled"
 
     var title: String {
         switch self {
@@ -374,6 +375,7 @@ enum GameSetting: String, CaseIterable {
         case .guide: return "Aim guide"
         case .contrast: return "High contrast"
         case .leftHand: return "Left-hand controls"
+        case .glass: return "Glass menus"
         }
     }
 }

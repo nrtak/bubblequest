@@ -47,7 +47,9 @@ final class FestivalScene: SKScene {
     private let gameRoot = SKNode()
     private var briefingGoal: PuzzleObjective = .clear
     private var briefingRestores = false
+    weak var glassHost: FestivalGlassHost?
     private var journeyTextures: [Int: SKTexture] = [:]
+    private var journeyImages: [Int: UIImage] = [:]
     private var mapArea = 0
     private var mapTouch: UITouch?
     private var mapTouchStart = CGPoint.zero
@@ -398,6 +400,7 @@ final class FestivalScene: SKScene {
         node.fillColor = FestivalStyle.ink.withAlphaComponent(0.94)
         node.strokeColor = UIColor(red: 1, green: 0.90, blue: 0.73, alpha: 0.8)
         FestivalStyle.finish(node, as: .panel)
+        node.userData = ["glassRole": "panel"] as NSMutableDictionary
         parent.addChild(node)
         return node
     }
@@ -409,6 +412,25 @@ final class FestivalScene: SKScene {
     private func point(_ cell: Cell) -> CGPoint {
         CGPoint(x: left + CGFloat(cell.column) * radius * 2 + CGFloat(cell.row % 2) * radius,
                 y: ceiling - CGFloat(ceilingOffset) - CGFloat(cell.row) * radius * sqrt(3))
+    }
+
+    override func didFinishUpdate() { refreshGlassPresentation() }
+
+    func refreshGlassPresentation() {
+        guard let host = glassHost else { return }
+        guard let menu = levelMenu, FestivalGlassPolicy.enabled(menu: menuKind, preference: progress.enabled(.glass),
+            reduceTransparency: UIAccessibility.isReduceTransparencyEnabled,
+            highContrast: progress.enabled(.contrast) || UIAccessibility.isDarkerSystemColorsEnabled) else {
+            host.reset(); gameRoot.isHidden = false
+            return
+        }
+        gameRoot.isHidden = true
+        host.synchronize(menu: menu, scene: self)
+    }
+
+    override func willMove(from view: SKView) {
+        glassHost?.reset(); gameRoot.isHidden = false
+        super.willMove(from: view)
     }
 
     override func update(_ currentTime: TimeInterval) {
@@ -554,11 +576,12 @@ final class FestivalScene: SKScene {
     }
 
     private func makeMenu(background: String) -> SKNode {
+        glassHost?.reset(); gameRoot.isHidden = false
         mapMomentum.stop()
         saveCheckpoint()
         profiles.persistActive()
         childNode(withName: "outgoing-menu")?.removeFromParent()
-        if let outgoing = levelMenu, !FestivalStyle.quiet,
+        if let outgoing = levelMenu, glassHost == nil, !FestivalStyle.quiet,
            let texture = view?.texture(from: outgoing, crop: CGRect(origin: .zero, size: size)) {
             // A flat image carries the fade; outgoing controls leave the tree immediately.
             let snapshot = SKSpriteNode(texture: texture, size: size)
@@ -568,6 +591,7 @@ final class FestivalScene: SKScene {
             snapshot.run(.sequence([.wait(forDuration: 0.18), .removeFromParent()]))
         }
         levelMenu?.removeFromParent()
+        journeyTextures.removeAll(); journeyImages.removeAll()
         gameRoot.childNode(withName: "puzzle-coach")?.removeFromParent()
         gameRoot.childNode(withName: "level-arrival")?.removeFromParent()
         gameRoot.childNode(withName: "target-feedback")?.removeFromParent()
@@ -585,9 +609,10 @@ final class FestivalScene: SKScene {
         overlay.zPosition = 40
         addChild(overlay)
         levelMenu = overlay
-        FestivalStyle.reveal(overlay)
+        if glassHost == nil { FestivalStyle.reveal(overlay) }
         updateMusic()
         let art = SKSpriteNode(imageNamed: background)
+        if let image = UIImage(named: background) { art.userData = ["glassImage": image] as NSMutableDictionary }
         art.size = size
         art.position = CGPoint(x: size.width / 2, y: size.height / 2)
         overlay.addChild(art)
@@ -602,6 +627,7 @@ final class FestivalScene: SKScene {
             ["buddy-later", "game-map", "game-restart", "settings", "players", "game-music", "sound-levels", "control-settings", "play-results", "tutorial"].contains(name)
         button.fillColor = secondary ? UIColor(red: 0.22, green: 0.42, blue: 0.46, alpha: 1) : FestivalStyle.coral
         FestivalStyle.finish(button, as: .lacquer)
+        button.userData = ["glassRole": secondary ? "secondary" : "primary"] as NSMutableDictionary
         parent.addChild(button)
         label(title, size: min(23, (width - 28) / max(1, CGFloat(title.count) * 0.58)), point: CGPoint(x: 0, y: -8), parent: button)
         if let text = button.children.first as? SKLabelNode { fitLabel(text, width: width - 28) }
@@ -633,6 +659,7 @@ final class FestivalScene: SKScene {
         let card = panel(width: 292, height: 82, point: CGPoint(x: 195, y: y), parent: parent)
         card.name = name
         card.fillColor = primary ? UIColor(red: 0.94, green: 0.39, blue: 0.31, alpha: 1) : UIColor(red: 0.22, green: 0.55, blue: 0.48, alpha: 1)
+        card.userData?["glassRole"] = primary ? "primary" : "secondary"
         let icon = questIcon(symbol, size: 30, color: .white); icon.position = CGPoint(x: -111, y: 0); card.addChild(icon)
         label(title, size: 22, point: CGPoint(x: 15, y: 5), parent: card)
         label(detail, size: 14, point: CGPoint(x: 15, y: -22), parent: card)
@@ -657,7 +684,8 @@ final class FestivalScene: SKScene {
         decorateMenuIcon("person.fill", name: "players", parent: overlay, x: -82)
         let settings = panel(width: 48, height: 48, point: CGPoint(x: 315, y: 230), parent: overlay)
         settings.name = "settings"; settings.fillColor = UIColor(white: 0.96, alpha: 1)
-        let gear = questIcon("gearshape.fill", size: 26, color: UIColor(white: 0.55, alpha: 1)); settings.addChild(gear)
+        settings.userData?["glassRole"] = "light"
+        let gear = questIcon("gearshape.fill", size: 26, color: FestivalStyle.ink); settings.addChild(gear)
     }
 
     private func showPlayers(message: String? = nil) {
@@ -842,7 +870,7 @@ final class FestivalScene: SKScene {
     private func showLevels(allowWelcome: Bool = false) {
         menuKind = "map"
         let overlay = makeMenu(background: LevelCatalog.areas[min(mapArea, LevelCatalog.areas.count - 1)].background)
-        journeyTextures.removeAll()
+        journeyTextures.removeAll(); journeyImages.removeAll()
         // The scrolling world is the only map background, not a layer over a second scene.
         (overlay.children.first as? SKSpriteNode)?.removeFromParent()
         let crop = SKCropNode(); crop.name = "map-viewport"
@@ -925,6 +953,7 @@ final class FestivalScene: SKScene {
             if let raw = node.userData?["segment"] as? Int, !visible.contains(raw) { node.removeFromParent() }
         }
         journeyTextures = journeyTextures.filter { visible.contains($0.key) }
+        journeyImages = journeyImages.filter { visible.contains($0.key) }
         let friends = Companion.all
         for segment in visible where scenery.childNode(withName: "journey-segment-\(segment)") == nil {
             let node = SKNode(); node.name = "journey-segment-\(segment)"
@@ -934,6 +963,7 @@ final class FestivalScene: SKScene {
             let texture = journeyTexture(segment: segment)
             let artHeight = FestivalMapLayout.tileHeight + (segment == 0 ? 192 : 0)
             let art = SKSpriteNode(texture: texture, size: CGSize(width: 390, height: artHeight))
+            if let image = journeyImages[segment] { art.userData = ["glassImage": image] as NSMutableDictionary }
             art.position = CGPoint(x: 195, y: FestivalMapLayout.segmentHeight + FestivalMapLayout.blendHeight / 2 - artHeight / 2); art.zPosition = -20 + CGFloat(segment) * 0.001
             node.addChild(art)
             for slot in 0..<3 where !friends.isEmpty {
@@ -1012,6 +1042,7 @@ final class FestivalScene: SKScene {
             }
             context.restoreGState()
         }
+        journeyImages[segment] = image
         let texture = SKTexture(image: image); journeyTextures[segment] = texture; return texture
     }
 
@@ -1022,6 +1053,7 @@ final class FestivalScene: SKScene {
         let quests = FestivalQuest.all.filter { $0.area == mapArea && progress.adventure.available($0, unlockedLevel: progress.unlockedLevel) }
         for (index, quest) in quests.prefix(2).enumerated() {
             let bubble = SKShapeNode(circleOfRadius: 27); bubble.name = "quest-" + quest.id
+            bubble.userData = ["glassRole": "secondary"] as NSMutableDictionary
             bubble.position = CGPoint(x: 45, y: 638 - CGFloat(index) * 92)
             bubble.fillColor = FestivalStyle.ink; bubble.strokeColor = .systemYellow; bubble.lineWidth = 2; dock.addChild(bubble)
             bubble.addChild(questIcon(quest.symbol, size: 25, color: .systemYellow))
@@ -3040,8 +3072,10 @@ private extension FestivalScene {
     }
 
     internal func closeMenu() {
+        glassHost?.reset(); gameRoot.isHidden = false
         childNode(withName: "outgoing-menu")?.removeFromParent()
         levelMenu?.removeFromParent()
+        journeyTextures.removeAll(); journeyImages.removeAll()
         levelMenu = nil
         menuKind = "game"
         gameRoot.isPaused = false
@@ -3090,6 +3124,8 @@ private extension FestivalScene {
             showLevels()
         }
         scrollMap(to: FestivalMapLayout.focusedOffset(local: level))
+        // A SpriteKit snapshot needs its artwork restored from the UIKit glass layer.
+        glassHost?.reset()
         let walkingMap = levelMenu.flatMap { view?.texture(from: $0, crop: CGRect(origin: .zero, size: size)) }
         briefingRestores = restoring
         let saved = restoring ? progress.checkpoint : nil
@@ -3224,10 +3260,10 @@ private extension FestivalScene {
     func showControlSettings() {
         menuKind = "control-settings"
         let overlay = makeMenu(background: activeLevel.background)
-        panel(width: 342, height: 354, point: CGPoint(x: 195, y: 478), parent: overlay)
-        label("Controls & display", size: 27, point: CGPoint(x: 195, y: 601), parent: overlay)
-        for (index, setting) in [GameSetting.guide, .contrast, .leftHand].enumerated() {
-            menuButton("\(setting.title): \(progress.enabled(setting) ? "On" : "Off")", name: "setting-\(setting.rawValue)", point: CGPoint(x: 195, y: 530 - CGFloat(index) * 76), parent: overlay, height: 48)
+        panel(width: 342, height: 390, point: CGPoint(x: 195, y: 474), parent: overlay)
+        label("Controls & display", size: 27, point: CGPoint(x: 195, y: 618), parent: overlay)
+        for (index, setting) in [GameSetting.guide, .contrast, .leftHand, .glass].enumerated() {
+            menuButton("\(setting.title): \(progress.enabled(setting) ? "On" : "Off")", name: "setting-\(setting.rawValue)", point: CGPoint(x: 195, y: 552 - CGFloat(index) * 72), parent: overlay, height: 48)
         }
         menuButton("Back to Settings", name: "sound-back", point: CGPoint(x: 195, y: 211), parent: overlay, height: 44)
     }

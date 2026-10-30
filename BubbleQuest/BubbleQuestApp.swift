@@ -15,7 +15,7 @@ struct GameView: View {
     @State private var saveName = ""
     @State private var nameCompletion: ((String?) -> Void)?
     var body: some View {
-        SpriteView(scene: scene)
+        FestivalGlassView(scene: scene)
             .ignoresSafeArea()
             .onAppear {
                 scene.scaleMode = .aspectFit

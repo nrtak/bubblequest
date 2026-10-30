@@ -69,8 +69,11 @@ final class FestivalGlassHost: UIView {
             effect.layer.borderColor = UIColor.white.withAlphaComponent(0.32).cgColor
             effect.layer.borderWidth = 0.7
             effect.clipsToBounds = true
-            // A subtle dark wash keeps white labels legible on bright street art.
-            let wash = UIView(); wash.backgroundColor = tint.withAlphaComponent(role == "primary" ? 0.20 : 0.16)
+            // Limit the brightest possible backdrop under small white labels.
+            // The material and its refractive edge remain visible underneath.
+            let wash = UIView()
+            let washColor = role == "primary" ? UIColor(red: 0.65, green: 0.15, blue: 0.12, alpha: 1) : tint
+            wash.backgroundColor = washColor.withAlphaComponent(role == "light" || role == "primary" ? 0.80 : 0.72)
             wash.autoresizingMask = [.flexibleWidth, .flexibleHeight]
             wash.frame = effect.bounds; wash.isUserInteractionEnabled = false
             effect.contentView.addSubview(wash)

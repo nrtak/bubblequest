@@ -591,6 +591,7 @@ final class FestivalScene: SKScene {
             snapshot.run(.sequence([.wait(forDuration: 0.18), .removeFromParent()]))
         }
         levelMenu?.removeFromParent()
+        journeyTextures.removeAll(); journeyImages.removeAll()
         gameRoot.childNode(withName: "puzzle-coach")?.removeFromParent()
         gameRoot.childNode(withName: "level-arrival")?.removeFromParent()
         gameRoot.childNode(withName: "target-feedback")?.removeFromParent()
@@ -684,7 +685,7 @@ final class FestivalScene: SKScene {
         let settings = panel(width: 48, height: 48, point: CGPoint(x: 315, y: 230), parent: overlay)
         settings.name = "settings"; settings.fillColor = UIColor(white: 0.96, alpha: 1)
         settings.userData?["glassRole"] = "light"
-        let gear = questIcon("gearshape.fill", size: 26, color: UIColor(white: 0.55, alpha: 1)); settings.addChild(gear)
+        let gear = questIcon("gearshape.fill", size: 26, color: FestivalStyle.ink); settings.addChild(gear)
     }
 
     private func showPlayers(message: String? = nil) {
@@ -3074,6 +3075,7 @@ private extension FestivalScene {
         glassHost?.reset(); gameRoot.isHidden = false
         childNode(withName: "outgoing-menu")?.removeFromParent()
         levelMenu?.removeFromParent()
+        journeyTextures.removeAll(); journeyImages.removeAll()
         levelMenu = nil
         menuKind = "game"
         gameRoot.isPaused = false
@@ -3122,6 +3124,8 @@ private extension FestivalScene {
             showLevels()
         }
         scrollMap(to: FestivalMapLayout.focusedOffset(local: level))
+        // A SpriteKit snapshot needs its artwork restored from the UIKit glass layer.
+        glassHost?.reset()
         let walkingMap = levelMenu.flatMap { view?.texture(from: $0, crop: CGRect(origin: .zero, size: size)) }
         briefingRestores = restoring
         let saved = restoring ? progress.checkpoint : nil

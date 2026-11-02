@@ -115,6 +115,7 @@ final class AdventureProgress {
         var equippedPin: FestivalPrize?
         var rainbowGifts = 0
         var bombGifts = 0
+        var dailyRewards: Set<String>?
         var lastPrize: FestivalPrize?
     }
     private let defaults: UserDefaults
@@ -123,7 +124,7 @@ final class AdventureProgress {
         self.defaults = defaults
         state = defaults.data(forKey: "festivalAdventure").flatMap { try? JSONDecoder().decode(State.self, from: $0) } ?? State()
     }
-    private func save() { if let data = try? JSONEncoder().encode(state) { defaults.set(data, forKey: "festivalAdventure") } }
+    private func save() { if let data = try? JSONEncoder().encode(state) { defaults.set(data, forKey: "festivalAdventure"); defaults.set(Date(), forKey: "lastSaved") } }
     func takeMapIntroduction(unlockedLevel: Int, area: Int) -> FestivalQuest? {
         guard state.mapIntroduced != true,
               let quest = FestivalQuest.all.first(where: { $0.area == area && available($0, unlockedLevel: unlockedLevel) && !accepted($0) }) else { return nil }
@@ -146,7 +147,8 @@ final class AdventureProgress {
     var rainbowGifts: Int { state.rainbowGifts }
     var bombGifts: Int { state.bombGifts }
     var equippedPin: FestivalPrize? { state.equippedPin }
-    var lastPrize: FestivalPrize? { state.lastPrize }
+    var dailyRewards: Set<String>?
+        var lastPrize: FestivalPrize? { state.lastPrize }
     // Draw converts owned keepsakes into a 50/50 booster reward. Show those
     // same effective odds on the wheel instead of six equal-looking sectors.
     var wheelPrizes: [FestivalPrize] { FestivalPrize.allCases.filter { wheelWeight($0) > 0 } }
@@ -173,12 +175,17 @@ final class AdventureProgress {
             $0 <= unlockedLevel && !(state.wins[quest.id] ?? []).contains($0)
         }
     }
+    func awardDailyRainbow(day: String) {
+        guard !(state.dailyRewards ?? []).contains(day) else { return }
+        state.dailyRewards = (state.dailyRewards ?? []).union([day])
+        state.rainbowGifts += 1; save()
+    }
     func consumeGift(_ shot: BubbleShot) {
         if shot == .rainbow { state.rainbowGifts = max(0, state.rainbowGifts - 1) }
         if shot == .bomb { state.bombGifts = max(0, state.bombGifts - 1) }
         save()
     }
-    func style(_ quest: FestivalQuest) -> Int { state.styles[quest.id] ?? 0 }
+    func style(_ quest: FestivalQuest) -> Int { min(2, max(0, state.styles[quest.id] ?? 0)) }
     func chooseStyle(_ value: Int, for quest: FestivalQuest) {
         guard completed(quest), (0..<3).contains(value) else { return }
         state.styles[quest.id] = value; save()

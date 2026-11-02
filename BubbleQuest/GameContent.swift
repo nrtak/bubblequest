@@ -21,7 +21,7 @@ struct FestivalArea {
 }
 
 struct GameLevel {
-    static let balanceVersion = 5
+    static let balanceVersion = 6
     let index: Int
     let area: Int
     let shots: Int
@@ -253,7 +253,7 @@ enum LevelCatalog {
         let protectionAllowance = index < 20 ? draft.initialArmor.count + draft.initialBlockers.count :
             (draft.initialArmor.count + draft.initialBlockers.count + 1) / 2
         return GameLevel(index: index, area: area,
-                         shots: max(12, budget + objectiveAllowance + protectionAllowance + (draft.isMilestone ? 1 : 0)),
+                         shots: max(12, budget + objectiveAllowance + protectionAllowance + (draft.isMilestone ? 1 : 0) - (index < 20 ? 0 : index < 60 ? 1 : 2)),
                          initialBubbles: cells)
     }
 
@@ -383,10 +383,12 @@ enum GameSetting: String, CaseIterable {
 final class GameProgress {
     private let defaults: UserDefaults
     let adventure: AdventureProgress
+    let activities: FestivalActivities
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
         adventure = AdventureProgress(defaults: defaults)
+        activities = FestivalActivities(defaults: defaults)
         if defaults.integer(forKey: "starRatingVersion") < 1 {
             // Preserve old achievements: 1/3 -> 1/5, 2/3 -> 3/5, 3/3 -> 5/5.
             for level in LevelCatalog.levels.indices {
@@ -736,16 +738,27 @@ enum BubbleGeometry {
         let occupied = board.bubbles.keys.sorted {
             $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row
         }.map { (cell: $0, center: point($0, ceilingOffset: ceilingOffset)) }
-        // Keep normal contact around isolated bubbles and solid rows. Only soften
-        // the edges of a genuine missing-cell lane between two bubbles in a row.
-        var openings: [Int: [ClosedRange<Double>]] = [:]
-        for (row, bubbles) in Dictionary(grouping: occupied, by: { $0.cell.row }) {
-            for (leftBubble, rightBubble) in zip(bubbles, bubbles.dropFirst()) {
-                if rightBubble.center.x - leftBubble.center.x >= radius * 4 - 0.001 {
-                    openings[row, default: []].append((leftBubble.center.x + openingCollisionDistance)...(rightBubble.center.x - openingCollisionDistance))
+        // Test clearance perpendicular to the actual shot, rather than only
+        // looking for a missing cell in one horizontal row. This covers diagonal
+        // and bank-shot lanes without shrinking isolated bubbles or solid rows.
+        func laneContacts(from start: BubblePoint, dx: Double) -> Set<Cell> {
+            var softened = Set<Cell>()
+            let offsets = occupied.map { bubble -> (side: Double, along: Double) in
+                let x = bubble.center.x - start.x, y = bubble.center.y - start.y
+                return (x * dy - y * dx, x * dx + y * dy)
+            }
+            for i in occupied.indices {
+                guard offsets[i].side <= -openingCollisionDistance else { continue }
+                for j in occupied.indices {
+                    guard offsets[j].side >= openingCollisionDistance,
+                          abs(offsets[i].along - offsets[j].along) <= radius * 2,
+                          offsets[i].along >= -radius * 2, offsets[j].along >= -radius * 2 else { continue }
+                    softened.insert(occupied[i].cell); softened.insert(occupied[j].cell)
                 }
             }
+            return softened
         }
+        var lane = laneContacts(from: origin, dx: dx)
         for _ in 0..<700 {
             position.x += dx * 3
             position.y += dy * 3
@@ -753,11 +766,13 @@ enum BubbleGeometry {
                 let bounce = BubblePoint(x: flightLeft, y: position.y - (flightLeft - position.x) * dy / max(0.0001, abs(dx)))
                 bounces.append(bounce); points.append(bounce)
                 position.x = flightLeft * 2 - position.x; dx *= -1
+                lane = laneContacts(from: bounce, dx: dx)
             }
             if position.x > flightRight {
                 let bounce = BubblePoint(x: flightRight, y: position.y - (position.x - flightRight) * dy / max(0.0001, abs(dx)))
                 bounces.append(bounce); points.append(bounce)
                 position.x = flightRight * 2 - position.x; dx *= -1
+                lane = laneContacts(from: bounce, dx: dx)
             }
             points.append(position)
             var hit: Cell?
@@ -768,10 +783,10 @@ enum BubbleGeometry {
                 let x = bubble.center.x - position.x, y = bubble.center.y - position.y
                 let squared = x * x + y * y
                 if squared > maximumContact * maximumContact || squared >= nearest { continue }
-                let inOpening = openings[bubble.cell.row]?.contains(where: { $0.contains(position.x) }) ?? false
+                let inOpening = lane.contains(bubble.cell)
                 // Outside the grid, use the full rims. Otherwise a shot can slip
                 // past the exposed edge and hit a sealed cell with no legal slot.
-                let contact = outsideGrid ? radius * 2 : inOpening ? openingCollisionDistance : collisionDistance
+                let contact = inOpening ? openingCollisionDistance : outsideGrid ? radius * 2 : collisionDistance
                 if squared <= contact * contact && squared < nearest {
                     hit = bubble.cell; nearest = squared
                 }

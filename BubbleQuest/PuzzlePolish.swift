@@ -9,7 +9,7 @@ extension GameLevel {
     func objectiveHelp(board: BubbleBoard, goal: PuzzleGoal) -> String {
         var parts = [goal.kind.instruction]
         if goal.kind != .clear { parts.append("\(goal.remaining.count) of \(goal.total) objects still need freeing.") }
-        if !board.armor.isEmpty { parts.append("Silver rings need two matches.") }
+        if !board.armor.isEmpty { parts.append("Ice rings need two matches.") }
         if !board.blockers.isEmpty { parts.append("Wooden blocks can be dropped or bombed.") }
         parts.append("The ceiling also descends over time after your first shot. Menus pause it.")
         parts.append("Bank-shot matches earn 50 extra points.")
@@ -18,7 +18,7 @@ extension GameLevel {
 
     func retryHint(board: BubbleBoard, goal: PuzzleGoal, consecutiveLosses: Int) -> String? {
         guard consecutiveLosses >= 2 else { return nil }
-        if !board.armor.isEmpty { return "Silver rings need two matches. Try clearing the bubbles supporting them." }
+        if !board.armor.isEmpty { return "Ice rings need two matches. Try clearing the bubbles supporting them." }
         if !board.blockers.isEmpty { return "Wooden blocks cannot be matched. Clear their supports or try a bomb." }
         switch goal.kind {
         case .lanterns, .charms:

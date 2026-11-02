@@ -62,6 +62,10 @@ struct PuzzleGoal: Codable, Equatable {
         let verb = kind == .lanterns ? "Rescue" : kind == .charms ? "Collect" : "Clear"
         return "\(verb) \(total) \(kind.targetNoun(count: total)) to win.\nOther bubbles can stay."
     }
+    var briefingSummary: String {
+        guard kind != .clear, remaining.count < total else { return startSummary }
+        return "\(remaining.count) \(kind.targetNoun(count: remaining.count)) left out of \(total).\nOther bubbles can stay."
+    }
     func victorySummary(on board: BubbleBoard) -> String {
         guard kind != .clear else { return "Every bubble cleared!" }
         let verb = kind == .lanterns ? "rescued" : kind == .charms ? "collected" : "cleared"
@@ -86,7 +90,7 @@ extension GameLevel {
     var isMilestone: Bool { number.isMultiple(of: LevelCatalog.levelsPerArea) }
     var objective: PuzzleObjective {
         if index < 5 { return .clear }
-        if isMilestone { return .ceiling }
+        if number.isMultiple(of: 10) { return .ceiling }
         switch index % 10 {
         case 4: return .lanterns
         case 6: return .charms

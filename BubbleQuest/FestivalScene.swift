@@ -118,6 +118,14 @@ final class FestivalScene: SKScene {
     private var hasStartedPuzzle = false
     private var freeRainbow = true
     private var freeBomb = true
+    private var dailyPuzzle: DailyFestivalPuzzle?
+    private var playingDailyKey: String?
+    private var earnedDailyReward = false
+    private var gardenSelection: GardenDecoration? = .blossoms
+    private var attemptCheckpoint: GameCheckpoint? {
+        if let dailyPuzzle { return progress.activities.checkpoint(for: dailyPuzzle) }
+        return progress.checkpoint
+    }
     private var challengeMode = false
     private var playingChallenge = false
     private var specialToLearn: SpecialBubble?
@@ -469,17 +477,20 @@ final class FestivalScene: SKScene {
     }
 
     private func startLevel(restoring: Bool = false) {
-        let saved = restoring ? progress.checkpoint : nil
+        let saved = restoring ? attemptCheckpoint : nil
         if let saved { level = saved.level; challengeMode = saved.challenge ?? false }
         playingChallenge = challengeMode
+        playingDailyKey = dailyPuzzle?.day
         if let saved {
             layoutSeed = saved.layoutSeed
             generatedLevel = saved.layoutSeed.map { LevelCatalog.level(level).randomized(seed: $0) } ?? LevelCatalog.level(level)
+        } else if let dailyPuzzle {
+            generatedLevel = dailyPuzzle.definition; layoutSeed = dailyPuzzle.seed
         } else {
             let fresh = progress.freshLayout(for: level)
             generatedLevel = fresh.level; layoutSeed = fresh.seed
         }
-        pressureSeed = saved.map { $0.pressureSeed ?? 0 } ?? UInt64.random(in: 1...UInt64.max)
+        pressureSeed = saved.map { $0.pressureSeed ?? 0 } ?? dailyPuzzle?.seed ?? UInt64.random(in: 1...UInt64.max)
         pressureBalanceVersion = saved.map { $0.balanceVersion ?? 3 } ?? GameLevel.balanceVersion
         shotsFired = saved?.shotsFired ?? 0
         ceilingOffset = saved?.ceilingOffset ?? 0
@@ -501,6 +512,7 @@ final class FestivalScene: SKScene {
         puzzleGoal = activeLevel.goal
         shotBankCount = 0; bankMatches = 0; boosterShots = 0; warnedLowBoard = false
         earnedMedals = []; earnedCourtyardSouvenir = false; revealedArea = nil
+        earnedDailyReward = false
         shots = activeLevel.shots
         rainbowLeft = 1 + progress.adventure.rainbowGifts
         bombLeft = 1 + progress.adventure.bombGifts
@@ -666,6 +678,7 @@ final class FestivalScene: SKScene {
     }
 
     private func showTitle() {
+        leaveDailyPuzzle()
         menuKind = "title"
         let overlay = makeMenu(background: "festival-day")
         let portrait = SKSpriteNode(imageNamed: "festival-title-group-logo")
@@ -717,6 +730,8 @@ final class FestivalScene: SKScene {
         saveCheckpoint()
         guard profiles.select(id) else { return }
         progress = profiles.makeProgress()
+        dailyPuzzle = nil; playingDailyKey = nil; earnedDailyReward = false
+        gardenSelection = .blossoms
         hasStartedPuzzle = false
         challengeMode = false
         level = progress.currentLevel
@@ -868,6 +883,7 @@ final class FestivalScene: SKScene {
     }
 
     private func showLevels(allowWelcome: Bool = false) {
+        leaveDailyPuzzle()
         menuKind = "map"
         let overlay = makeMenu(background: LevelCatalog.areas[min(mapArea, LevelCatalog.areas.count - 1)].background)
         journeyTextures.removeAll(); journeyImages.removeAll()
@@ -1078,12 +1094,12 @@ final class FestivalScene: SKScene {
     private func showMapExtras() {
         menuKind = "map-extras"
         let overlay = makeMenu(background: LevelCatalog.areas[mapArea].background)
-        panel(width: 342, height: 460, point: CGPoint(x: 195, y: 456), parent: overlay)
-        label("Festival extras", size: 29, point: CGPoint(x: 195, y: 635), parent: overlay)
-        for (index, entry) in [("Friends", "friends"), ("Album & keepsakes", "album-open"), ("Prizes", "open-wheel"), ("Side quests", "map-objective")].enumerated() {
-            menuButton(entry.0, name: entry.1, point: CGPoint(x: 195, y: 560 - CGFloat(index) * 74), parent: overlay, height: 48)
+        panel(width: 342, height: 556, point: CGPoint(x: 195, y: 440), parent: overlay)
+        label("Festival extras", size: 29, point: CGPoint(x: 195, y: 674), parent: overlay)
+        for (index, entry) in [("Daily puzzle", "daily-open"), ("My festival garden", "garden-open"), ("Friends", "friends"), ("Album & keepsakes", "album-open"), ("Prizes", "open-wheel"), ("Side quests", "map-objective")].enumerated() {
+            menuButton(entry.0, name: entry.1, point: CGPoint(x: 195, y: 607 - CGFloat(index) * 74), parent: overlay, height: 48)
         }
-        menuButton("Back to the map", name: "map-extras-close", point: CGPoint(x: 195, y: 157), parent: overlay, height: 48)
+        menuButton("Back to the map", name: "map-extras-close", point: CGPoint(x: 195, y: 94), parent: overlay, height: 48)
     }
 
     private func addCourtyardResident(to overlay: SKNode) {
@@ -1172,6 +1188,10 @@ final class FestivalScene: SKScene {
     }
 
     private func availableColor() -> Int {
+        if let dailyPuzzle {
+            var seeded = LayoutRandom(state: dailyPuzzle.seed &+ UInt64(shotsFired) &* 997 &+ UInt64(colorBag.count))
+            return BubbleColorQueue.draw(board: board, bag: &colorBag, using: &seeded)
+        }
         var random = SystemRandomNumberGenerator()
         return BubbleColorQueue.draw(board: board, bag: &colorBag, using: &random)
     }
@@ -1377,6 +1397,10 @@ final class FestivalScene: SKScene {
     internal func continueAfterResult(showBuddy: Bool = true) {
         guard finished else { return }
         dismissCelebrationEffects()
+        if dailyPuzzle != nil {
+            if won { showDailyPuzzle() } else { beginSelectedLevel() }
+            return
+        }
         // The result button promises the quest reward before any separate unlock notice.
         if let completedQuest { showQuest(completedQuest); return }
         if won && showBuddy, let buddy = progress.pendingBuddy { showBuddyWelcome(buddy); return }
@@ -1389,7 +1413,9 @@ final class FestivalScene: SKScene {
     internal func launchShot(angle: Double) {
         guard hasStartedPuzzle, !suspended, angle.isFinite, abs(angle) <= BubbleGeometry.maxAngle, !finished, projectile == nil, !loadingBubble, !ceilingMoving, levelMenu == nil, let shot = loaded else { return }
         if !attemptCounted && !ProcessInfo.processInfo.arguments.contains(where: { $0.hasSuffix("-preview") }) {
-            guard progress.takeTry(for: level, challenge: challengeMode) else { showLives(); return }
+            if dailyPuzzle == nil {
+                guard progress.takeTry(for: level, challenge: challengeMode) else { showLives(); return }
+            }
             if !challengeMode { progress.recordAttempt(level) }
             attemptCounted = true
             profiles.persistActive()
@@ -1532,13 +1558,14 @@ final class FestivalScene: SKScene {
         if success && !challengeMode && progress.stars(level) == 0, let stop = activeLevel.residentMilestone {
             let area = level / LevelCatalog.levelsPerArea
             let name = FestivalHost.all.first { $0.area == area }?.name ?? FestivalNeighbor.all.first { $0.area == area }?.name ?? "Your neighbor"
-            let cheer = stop == 20 ? "A whole courtyard of wonderful popping!" : "\(stop) levels cleared! The festival is coming alive!"
+            let cheer = FestivalMoments.message(area: area, stop: stop)
             residentMilestone = "\(name): \(cheer)"
         }
         let previousArea = progress.unlockedLevel / LevelCatalog.levelsPerArea
         let hadSouvenir = progress.hasSouvenir(area: level / LevelCatalog.levelsPerArea)
         for name in ["level-arrival", "target-feedback", "control-tip", "puzzle-coach"] { gameRoot.childNode(withName: name)?.removeFromParent() }
-        progress.clearCheckpoint()
+        if let dailyPuzzle { progress.activities.clearCheckpoint(for: dailyPuzzle) }
+        else { progress.clearCheckpoint() }
         if !challengeMode && !ProcessInfo.processInfo.arguments.contains(where: { $0.hasSuffix("-preview") }) {
             progress.recordOutcome(index: level, won: success, shotsRemaining: shots, shotsFired: shotsFired, bankMatches: bankMatches, boosterShots: boosterShots)
         }
@@ -1557,9 +1584,13 @@ final class FestivalScene: SKScene {
             if !challengeMode && !ProcessInfo.processInfo.arguments.contains(where: { $0.hasSuffix("-preview") }) {
                 earnedMedals = progress.recordCollection(level: level, stars: PuzzleRating.stars(shotsRemaining: shots, budget: attemptShotBudget), boosters: boosterShots, banks: bankMatches)
             }
-            if challengeMode && PuzzleRating.stars(shotsRemaining: shots, budget: attemptShotBudget) == PuzzleRating.maximumStars { progress.recordChallenge(level / LevelCatalog.levelsPerArea) }
+            if dailyPuzzle == nil && challengeMode && PuzzleRating.stars(shotsRemaining: shots, budget: attemptShotBudget) == PuzzleRating.maximumStars { progress.recordChallenge(level / LevelCatalog.levelsPerArea) }
+            if let dailyPuzzle {
+                earnedDailyReward = progress.activities.complete(dailyPuzzle, adventure: progress.adventure)
+                status.text = earnedDailyReward ? "Daily puzzle complete! A Rainbow is saved for your journey." : "Daily puzzle complete! Today's reward is already collected."
+            }
             score += shots * 25
-            status.text = level % 3 == 0 && FestivalHost.all.indices.contains(level / LevelCatalog.levelsPerArea) ? FestivalHost.all[level / LevelCatalog.levelsPerArea].encouragement : "Beautiful popping!"
+            if dailyPuzzle == nil { status.text = level % 3 == 0 && FestivalHost.all.indices.contains(level / LevelCatalog.levelsPerArea) ? FestivalHost.all[level / LevelCatalog.levelsPerArea].encouragement : "Beautiful popping!" }
             let unlocked = challengeMode ? [] : progress.recordVictory(index: level, score: score,
                                                    stars: PuzzleRating.stars(shotsRemaining: shots, budget: attemptShotBudget))
             earnedCourtyardSouvenir = !challengeMode && !hadSouvenir && progress.hasSouvenir(area: level / LevelCatalog.levelsPerArea)
@@ -1574,8 +1605,8 @@ final class FestivalScene: SKScene {
             }
             if !unlocked.isEmpty && completedQuest == nil { status.text = "New team member: \(unlocked.map { $0.name }.joined(separator: ", "))" }
             if progress.enabled(.vibration) { UINotificationFeedbackGenerator().notificationOccurred(.success) }
-            audio.effect(activeLevel.isMilestone ? "milestone" : "victory", enabled: progress.enabled(.effects), volume: progress.effectsVolume)
-            if activeLevel.isMilestone { celebrateArea() }
+            audio.effect(activeLevel.number.isMultiple(of: 10) ? "milestone" : "victory", enabled: progress.enabled(.effects), volume: progress.effectsVolume)
+            if activeLevel.number.isMultiple(of: 10) { celebrateArea() }
             for index in 0..<(UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled ? 0 : 1) {
                 gameRoot.childNode(withName: "companion-\(index)")?.run(.repeat(.sequence([.moveBy(x: 0, y: 10, duration: 0.15), .moveBy(x: 0, y: -10, duration: 0.15)]), count: 3))
             }
@@ -1827,7 +1858,7 @@ private extension FestivalScene {
                 option.strokeColor = .white; option.lineWidth = progress.adventure.style(quest) == index ? 5 : 1.5
                 overlay.addChild(option)
             }
-            menuButton("Visit the display", name: "quest-back", point: CGPoint(x: 195, y: 172), parent: overlay, height: 44)
+            menuButton("Decorate my garden", name: "quest-garden", point: CGPoint(x: 195, y: 172), parent: overlay, height: 44)
         } else {
             let step = progress.adventure.count(quest)
             label("\(step)/3 • \(quest.steps[step])", size: 15, point: CGPoint(x: 195, y: 343), parent: overlay)
@@ -1971,7 +2002,7 @@ private extension FestivalScene {
             label(requirement, size: 15, point: CGPoint(x: 195, y: 328), parent: overlay)
             if let words = overlay.children.last as? SKLabelNode { fitLabel(words, width: 302) }
         }
-        label(progress.unlocked(companion) ? "Choose from Team on the map" : companion.unlockDescription, size: 14, point: CGPoint(x: 195, y: 273), parent: overlay)
+        label(progress.unlocked(companion) ? "Choose from Friends in Extras" : companion.unlockDescription, size: 14, point: CGPoint(x: 195, y: 273), parent: overlay)
         if let words = overlay.children.last as? SKLabelNode { fitLabel(words, width: 302) }
         menuButton("Back", name: "preview-back", point: CGPoint(x: 195, y: 131), parent: overlay, height: 48)
     }
@@ -2025,7 +2056,7 @@ private extension FestivalScene {
         medallion.zPosition = 0.1; icon.zPosition = 0.2; medallion.fillColor = FestivalStyle.cream
         FestivalStyle.finish(medallion, as: .reward); overlay.addChild(medallion)
         deliverRewardArtwork(icon, on: overlay, to: CGPoint(x: 195, y: 299))
-        paragraph(prize == .rainbow || prize == .bomb ? "Saved to your booster supply. Use it from the bottom controls during a puzzle." : "Saved to your collection. Choose pins under Team on the map; bunting decorates each courtyard.", y: 400, parent: overlay)
+        paragraph(prize == .rainbow || prize == .bomb ? "Saved to your booster supply. Use it from the bottom controls during a puzzle." : (prize == .lanternColors ? "Saved to your garden collection. Place it in My festival garden, under Extras." : "Saved to your collection. Choose pins in Extras, then Friends, then Pins."), y: 400, parent: overlay)
         label("\(progress.adventure.rainbowGifts) extra rainbow • \(progress.adventure.bombGifts) extra bomb", size: 15, point: CGPoint(x: 195, y: 299), parent: overlay)
         menuButton("Back to the wheel", name: "wheel-return", point: CGPoint(x: 195, y: 185), parent: overlay, height: 48)
         menuButton("Festival map", name: "quest-back", point: CGPoint(x: 195, y: 115), parent: overlay, height: 48)
@@ -2036,7 +2067,7 @@ private extension FestivalScene {
         let overlay = makeMenu(background: activeLevel.background)
         panel(width: 330, height: 470, point: CGPoint(x: 195, y: 440), parent: overlay)
         label("Game paused", size: 28, point: CGPoint(x: 195, y: 624), parent: overlay)
-        label("Level \(level + 1) • " + puzzleGoal.progressText, size: 12, point: CGPoint(x: 195, y: 601), parent: overlay)
+        label((dailyPuzzle == nil ? "Level \(level + 1)" : "Daily puzzle") + " • " + puzzleGoal.progressText, size: 12, point: CGPoint(x: 195, y: 601), parent: overlay)
         if let goal = overlay.children.last as? SKLabelNode { fitLabel(goal, width: 290) }
         menuButton("Keep playing", name: "game-resume", point: CGPoint(x: 195, y: 560), parent: overlay, height: 50)
         let musicPlaying = progress.enabled(.music) && progress.musicVolume > 0
@@ -2053,7 +2084,7 @@ private extension FestivalScene {
         let overlay = makeMenu(background: activeLevel.background)
         panel(width: 340, height: 260, point: CGPoint(x: 195, y: 434), parent: overlay)
         label("Restart this puzzle?", size: 24, point: CGPoint(x: 195, y: 515), parent: overlay)
-        let detail = attemptCounted ? "This try is already used. Your first shot after restarting uses another try." : "Your first shot uses one try. Each level has five tries. One returns every five minutes."
+        let detail = dailyPuzzle != nil ? "Daily puzzles have free retries. Restart with the same layout and bubble sequence." : attemptCounted ? "This try is already used. Your first shot after restarting uses another try." : "Your first shot uses one try. Each level has five tries. One returns every five minutes."
         let explanation = paragraph(detail, y: 456, parent: overlay)
         explanation.fontSize = 15
         menuButton("Restart", name: "retry-confirm", point: CGPoint(x: 195, y: 392), parent: overlay, height: 44)
@@ -2118,17 +2149,19 @@ private extension FestivalScene {
 
     func saveCheckpoint() {
         // A blocked selection must not save the previous board as the selected level.
-        guard generatedLevel?.index == level, playingChallenge == challengeMode else { return }
+        guard generatedLevel?.index == level, playingChallenge == challengeMode, playingDailyKey == dailyPuzzle?.day else { return }
         // Finish an already committed shot before pausing or leaving the puzzle.
         if let shot = projectile, let flight = pendingFlight {
             shot.removeAllActions()
             settle(shot, landing: flight.landing, kind: flight.kind)
         }
         guard hasStartedPuzzle, !finished, projectile == nil, !board.bubbles.isEmpty, !ProcessInfo.processInfo.arguments.contains(where: { $0.hasSuffix("-preview") }) else { return }
-        progress.save(GameCheckpoint(level: level, board: board, shots: shots, score: score,
+        let checkpoint = GameCheckpoint(level: level, board: board, shots: shots, score: score,
                                      current: currentColor, next: nextColor, bag: colorBag,
                                      rainbow: rainbowLeft, bomb: bombLeft, play: questPlay, challenge: challengeMode,
-                                     freeRainbow: freeRainbow, freeBomb: freeBomb, ceilingOffset: ceilingOffset, shotsFired: shotsFired, pressureSeed: pressureSeed, layoutSeed: layoutSeed, goal: puzzleGoal, bankMatches: bankMatches, boosterShots: boosterShots, balanceVersion: pressureBalanceVersion, shotBudget: attemptShotBudget, tryStarted: attemptCounted, timedCeilingElapsed: timedPressure.elapsed, timedCeilingDrops: timedPressure.drops))
+                                     freeRainbow: freeRainbow, freeBomb: freeBomb, ceilingOffset: ceilingOffset, shotsFired: shotsFired, pressureSeed: pressureSeed, layoutSeed: layoutSeed, goal: puzzleGoal, bankMatches: bankMatches, boosterShots: boosterShots, balanceVersion: pressureBalanceVersion, shotBudget: attemptShotBudget, tryStarted: attemptCounted, timedCeilingElapsed: timedPressure.elapsed, timedCeilingDrops: timedPressure.drops)
+        if let dailyPuzzle { progress.activities.save(checkpoint, for: dailyPuzzle) }
+        else { progress.save(checkpoint) }
         profiles.persistActive()
     }
 
@@ -2146,6 +2179,7 @@ private extension FestivalScene {
 
     func addQuestMarker() {
         questMarkers.removeAll()
+        guard !challengeMode else { return }
         let quests = FestivalQuest.all.filter { $0.area == level / LevelCatalog.levelsPerArea && progress.adventure.accepted($0) && !progress.adventure.completed($0) && !questPlay.collected.contains($0.id) }
         let cells = board.bubbles.keys.filter { board.specials[$0] == nil && !board.blockers.contains($0) && !puzzleGoal.remaining.contains($0) }
             .sorted { $0.row == $1.row ? $0.column < $1.column : $0.row > $1.row }
@@ -2461,7 +2495,7 @@ private extension FestivalScene {
         instructions.verticalAlignmentMode = .top
         instructions.name = "objective-instructions"
         var cursor = instructions.frame.minY - 30
-        let quests = FestivalQuest.all.filter { $0.area == level / LevelCatalog.levelsPerArea && progress.adventure.accepted($0) && !progress.adventure.completed($0) }
+        let quests = challengeMode ? [] : FestivalQuest.all.filter { $0.area == level / LevelCatalog.levelsPerArea && progress.adventure.accepted($0) && !progress.adventure.completed($0) }
         if !quests.isEmpty {
             label("Optional side quests", size: 16, point: CGPoint(x: 195, y: cursor), parent: overlay)
             cursor -= 32
@@ -2485,7 +2519,7 @@ private extension FestivalScene {
     func showObstacleIntroduction() {
         guard !finished, levelMenu == nil, gameRoot.childNode(withName: "control-tip") == nil else { return }
         let lesson: (String, String)?
-        if !board.armor.isEmpty && !progress.hasLearnedObstacle("armor") { lesson = ("armor", "Silver rings need two matching hits") }
+        if !board.armor.isEmpty && !progress.hasLearnedObstacle("armor") { lesson = ("armor", "Ice rings need two matching hits") }
         else if !board.blockers.isEmpty && !progress.hasLearnedObstacle("wood") { lesson = ("wood", "Drop wooden blocks by clearing their supports") }
         else if activeLevel.isPrecision && !progress.hasLearnedObstacle("precision") { lesson = ("precision", "Small board, fewer shots. Plan each match") }
         else { lesson = nil }
@@ -2577,7 +2611,7 @@ private extension FestivalScene {
         let ribbon = SKShapeNode(rectOf: CGSize(width: 354, height: 51), cornerRadius: 12)
         ribbon.position.y = 200; ribbon.fillColor = FestivalStyle.coral
         FestivalStyle.finish(ribbon, as: .lacquer); card.addChild(ribbon)
-        feedbackText(success ? (earnedCourtyardSouvenir ? "Courtyard complete!" : "Level \(level + 1) complete!") : "Level \(level + 1) • Try again", size: 24, at: .zero, parent: ribbon, color: .white)
+        feedbackText(dailyPuzzle != nil ? (success ? "Daily puzzle complete!" : "Daily puzzle • Try again") : success ? (earnedCourtyardSouvenir ? "Courtyard complete!" : "Level \(level + 1) complete!") : "Level \(level + 1) • Try again", size: 24, at: .zero, parent: ribbon, color: .white)
         let objectiveSummary = feedbackText(success ? puzzleGoal.victorySummary(on: board) : "A fresh angle, a fresh chance", size: 13, at: CGPoint(x: 12, y: 158), parent: card)
         objectiveSummary.preferredMaxLayoutWidth = 268
         if success && puzzleGoal.kind != .clear {
@@ -2623,18 +2657,23 @@ private extension FestivalScene {
         let rewardSymbol = completedQuest?.rewardSymbol ?? (earnedCourtyardSouvenir ? FestivalCelebration.forArea(level / LevelCatalog.levelsPerArea).symbol : !earnedMedals.isEmpty ? "medal.fill" : "star.fill")
         let icon = questIcon(rewardSymbol, size: 28, color: .systemOrange)
         icon.position.x = -123; reward.addChild(icon)
-        let rewardTitle = !success ? "Another chance!" : completedQuest != nil ? "Side quest complete!" : earnedCourtyardSouvenir ? "Courtyard keepsake earned!" : !earnedMedals.isEmpty ? "Festival medal earned!" : "Saved-shot bonus +\(shots * 25)"
+        let rewardTitle = !success ? "Another chance!" : dailyPuzzle != nil ? "Daily puzzle complete!" : completedQuest != nil ? "Side quest complete!" : earnedCourtyardSouvenir ? "Courtyard keepsake earned!" : !earnedMedals.isEmpty ? "Festival medal earned!" : "Saved-shot bonus +\(shots * 25)"
         let rewardHeading = feedbackText(rewardTitle, size: 14, at: CGPoint(x: 12, y: 8), parent: reward)
         rewardHeading.numberOfLines = 1; fitLabel(rewardHeading, width: 232)
-        let rewardDetail = !success ? "Swap or try a wall bounce" : completedQuest?.rewardSummary ?? (earnedCourtyardSouvenir ? FestivalCelebration.forArea(level / LevelCatalog.levelsPerArea).souvenir : newBest ? "New best score!" : challengeMode ? "Challenge puzzle" : "Best \(progress.bestScore(level)) • \(shots) shots saved")
+        let rewardDetail = !success ? "Swap or try a wall bounce" : dailyPuzzle != nil ? (earnedDailyReward ? "Rainbow added to your saved boosters" : "Today's reward is already collected") : completedQuest?.rewardSummary ?? (earnedCourtyardSouvenir ? FestivalCelebration.forArea(level / LevelCatalog.levelsPerArea).souvenir : newBest ? "New best score!" : challengeMode ? "Challenge puzzle" : "Best \(progress.bestScore(level)) • \(shots) shots saved")
         let rewardCaption = feedbackText(rewardDetail, size: 12, at: CGPoint(x: 12, y: -11), parent: reward)
+        rewardCaption.name = "result-reward-caption"
         rewardCaption.numberOfLines = 1; fitLabel(rewardCaption, width: 232)
         let detail: String
-        if !success {
+        if !success, dailyPuzzle != nil {
+            detail = "Try the same puzzle again. Daily retries don't use your level tries."
+        }
+        else if !success {
             detail = activeLevel.retryHint(board: board, goal: puzzleGoal, consecutiveLosses: challengeMode ? 0 : progress.levelResults(level).consecutiveLosses)
                 ?? "Your next attempt starts with a fresh board."
         }
-        else if completedQuest != nil { detail = "Your reward is ready to view." }
+        else if dailyPuzzle != nil { detail = status.text ?? "Daily puzzle complete!" }
+        else if completedQuest != nil { detail = "Your decoration is ready for your festival garden." }
         else if let residentMilestone { detail = residentMilestone }
         else if challengeMode { detail = progress.challengeWon(level / LevelCatalog.levelsPerArea) ? "Challenge ribbon earned! View it on the map." : "Earn five stars to collect the challenge ribbon." }
         else if revealedArea != nil { detail = "Keep following the festival path!" }
@@ -2644,13 +2683,14 @@ private extension FestivalScene {
         let resultDetail = feedbackText(detail, size: 13, at: CGPoint(x: 0, y: -116), parent: card)
         resultDetail.name = "result-detail"
         let next: String
-        if !success { next = progress.lives(for: level, challenge: challengeMode).available > 0 ? "Try again" : "Wait for a try" }
+        if dailyPuzzle != nil { next = success ? "Daily puzzle" : "Try again" }
+        else if !success { next = progress.lives(for: level, challenge: challengeMode).available > 0 ? "Try again" : "Wait for a try" }
         else if completedQuest != nil { next = "Collect reward" }
         else if let buddy = progress.pendingBuddy { next = "Meet " + buddy.name }
         else if challengeMode { next = "Back to map" }
         else if level == LevelCatalog.levelCount - 1 { next = "Celebrate!" }
         else { next = "Next • Level \(level + 2)" }
-        if !success {
+        if !success && dailyPuzzle == nil {
             let state = progress.lives(for: level, challenge: challengeMode)
             let tries = feedbackText("\(state.available)/5 tries" + (state.available < 5 ? " • +1 in " + state.countdown(at: Date()) : ""), size: 12, at: CGPoint(x: 0, y: -146), parent: card)
             tries.name = "result-tries"
@@ -2864,9 +2904,9 @@ private extension FestivalScene {
                 node.addChild(block)
             } else if board.armor.contains(cell) {
                 let ring = SKShapeNode(circleOfRadius: 18)
-                ring.name = "puzzle-armor"; ring.fillColor = .clear; ring.strokeColor = .systemGray3
+                ring.name = "puzzle-armor"; ring.fillColor = UIColor.systemCyan.withAlphaComponent(0.22); ring.strokeColor = .systemCyan
                 ring.lineWidth = 5; ring.zPosition = 3; node.addChild(ring)
-                let shield = questIcon("shield.fill", size: 12, color: .white)
+                let shield = questIcon("snowflake", size: 12, color: .white)
                 shield.position = CGPoint(x: 12, y: 12); ring.addChild(shield)
             }
             if puzzleGoal.remaining.contains(cell) {
@@ -3120,16 +3160,18 @@ private extension FestivalScene {
 
     private func showLevelBriefing(restoring: Bool) {
         if menuKind != "map" {
+            let daily = dailyPuzzle
             mapArea = level / LevelCatalog.levelsPerArea
             showLevels()
+            dailyPuzzle = daily; if daily != nil { challengeMode = true }
         }
         scrollMap(to: FestivalMapLayout.focusedOffset(local: level))
         // A SpriteKit snapshot needs its artwork restored from the UIKit glass layer.
         glassHost?.reset()
         let walkingMap = levelMenu.flatMap { view?.texture(from: $0, crop: CGRect(origin: .zero, size: size)) }
         briefingRestores = restoring
-        let saved = restoring ? progress.checkpoint : nil
-        let definition = LevelCatalog.level(level)
+        let saved = restoring ? attemptCheckpoint : nil
+        let definition = dailyPuzzle?.definition ?? LevelCatalog.level(level)
         let goal = saved?.goal ?? definition.goal
         briefingGoal = goal.kind
         let budget = saved?.shotBudget ?? (challengeMode ? max(12, definition.shots * 3 / 4) : definition.shots)
@@ -3140,22 +3182,23 @@ private extension FestivalScene {
         veil.position = CGPoint(x: 195, y: 422); overlay.addChild(veil)
         let card = panel(width: 342, height: 520, point: CGPoint(x: 195, y: 440), parent: overlay)
         card.name = "level-briefing-card"
-        label("Level \(level + 1)", size: 32, point: CGPoint(x: 195, y: 652), parent: overlay)
+        label(dailyPuzzle == nil ? "Level \(level + 1)" : "Daily festival puzzle", size: 28, point: CGPoint(x: 195, y: 652), parent: overlay)
         let icon = rescueObject(kind: goal.kind); icon.name = "briefing-objective-icon"
         icon.position = CGPoint(x: 195, y: 566); icon.setScale(2.5); overlay.addChild(icon)
+        label(dailyPuzzle?.difficulty ?? definition.difficultyTitle, size: 13, point: CGPoint(x: 195, y: 617), parent: overlay)
         label(goal.kind.hudTitle, size: 23, point: CGPoint(x: 195, y: 502), parent: overlay)
-        let summary = paragraph(goal.startSummary, y: 450, parent: overlay)
+        let summary = paragraph(goal.briefingSummary, y: 450, parent: overlay)
         summary.name = "briefing-objective-summary"
         label("\(saved?.shots ?? budget) shots • Up to 5 stars", size: 16, point: CGPoint(x: 195, y: 390), parent: overlay)
         label(PuzzleRating.fiveStarHint(budget: budget), size: 13, point: CGPoint(x: 195, y: 358), parent: overlay)
-        label("Your first bubble uses one try.", size: 12, point: CGPoint(x: 195, y: 332), parent: overlay)
+        label(dailyPuzzle == nil ? "Your first bubble uses one try." : "Free retries • No boosters • Resets at midnight UTC", size: 11, point: CGPoint(x: 195, y: 332), parent: overlay)
         menuButton("Play", name: "briefing-play", point: CGPoint(x: 195, y: 278), parent: overlay, height: 54)
-        menuButton("Back to the map", name: "briefing-back", point: CGPoint(x: 195, y: 216), parent: overlay, height: 44)
+        menuButton(dailyPuzzle == nil ? "Back to the map" : "Back to daily puzzle", name: "briefing-back", point: CGPoint(x: 195, y: 216), parent: overlay, height: 44)
     }
 
     func beginSelectedLevel(confirmed: Bool = false) {
         if !confirmed { showLevelBriefing(restoring: false); return }
-        if !ProcessInfo.processInfo.arguments.contains(where: { $0.hasSuffix("-preview") }),
+        if dailyPuzzle == nil, !ProcessInfo.processInfo.arguments.contains(where: { $0.hasSuffix("-preview") }),
            progress.lives(for: level, challenge: challengeMode).available == 0 { showLives(); return }
         hasStartedPuzzle = true
         closeMenu()
@@ -3164,11 +3207,11 @@ private extension FestivalScene {
     }
 
     private func resumeSavedPuzzle(confirmed: Bool = false) {
-        guard let saved = progress.checkpoint else { showLevels(); return }
+        guard let saved = attemptCheckpoint else { showLevels(); return }
         level = saved.level
         challengeMode = saved.challenge ?? false
         if !saved.hasStartedTry && !confirmed { showLevelBriefing(restoring: true); return }
-        if !saved.hasStartedTry && progress.lives(for: level, challenge: challengeMode).available == 0 { showLives(); return }
+        if dailyPuzzle == nil && !saved.hasStartedTry && progress.lives(for: level, challenge: challengeMode).available == 0 { showLives(); return }
         hasStartedPuzzle = true
         closeMenu()
         startLevel(restoring: true)
@@ -3273,7 +3316,7 @@ private extension FestivalScene {
         let overlay = makeMenu(background: "festival-courtyard")
         let titles = ["Aim and pop", "Try a wall bounce", "A little extra help", "Festival surprises"]
         let bodies = ["Drag above the launcher to aim. Release to shoot. Drag back down toward the launcher to cancel. Match three bubbles with the same color and symbol.",
-                      "Use the walls to reach tricky spots. Pop a supporting group to drop the bubbles below it. Finish the objective shown above the board to win. Tap the bubble your buddy holds to swap it with the loaded bubble.",
+                      "Use the walls to reach tricky spots. Pop a supporting group to drop the bubbles below it. Finish the objective shown before the level to win. Tap the bubble your buddy holds to swap it with the loaded bubble.",
                       "Rainbow pops the largest neighboring color group. Bomb clears nearby bubbles. Their badges show how many you have. Tap one to prepare it, then shoot to use it. Tap it again to cancel. Hold an icon for help!",
                       "Lanterns clear a row. River pearls return a shot. Blossom sparks pop nearby bubbles. Each keeps its usual matching color."]
         panel(width: 342, height: 440, point: CGPoint(x: 195, y: 465), parent: overlay)
@@ -3363,6 +3406,7 @@ private extension FestivalScene {
     }
 
     internal func handleMenu(_ incomingNames: [String]) {
+        if handleActivityMenu(incomingNames) { return }
         if menuKind == "level-briefing" {
             if incomingNames.contains("briefing-play") {
                 progress.markObjectiveSeen(briefingGoal); progress.hasSeenTriesHelp = true
@@ -3370,7 +3414,8 @@ private extension FestivalScene {
                 if briefingRestores { resumeSavedPuzzle(confirmed: true) }
                 else { beginSelectedLevel(confirmed: true) }
             } else if incomingNames.contains("briefing-back") {
-                mapArea = level / LevelCatalog.levelsPerArea; showLevels()
+                if dailyPuzzle != nil { showDailyPuzzle() }
+                else { mapArea = level / LevelCatalog.levelsPerArea; showLevels() }
             }
             return
         }
@@ -3516,7 +3561,7 @@ private extension FestivalScene {
         }
         if names.contains("resume-play") { resumeSavedPuzzle(); return }
         if names.contains("retry-confirm") {
-            if progress.lives(for: level, challenge: challengeMode).available == 0 { showLives(); return }
+            if dailyPuzzle == nil && progress.lives(for: level, challenge: challengeMode).available == 0 { showLives(); return }
             beginSelectedLevel(); return
         }
         if names.contains("retry-cancel") { closeMenu(); return }
@@ -3610,5 +3655,97 @@ private extension FestivalScene {
                 resumeSavedPuzzle()
             } else { beginSelectedLevel() }
         }
+    }
+}
+
+
+private extension FestivalScene {
+    func leaveDailyPuzzle() {
+        guard dailyPuzzle != nil else { return }
+        saveCheckpoint()
+        dailyPuzzle = nil; challengeMode = false; hasStartedPuzzle = false
+    }
+
+    func showDailyPuzzle() {
+        saveCheckpoint()
+        leaveDailyPuzzle()
+        let puzzle = progress.activities.daily(unlocked: progress.unlockedLevel)
+        let complete = progress.activities.completed(puzzle)
+        let saved = progress.activities.checkpoint(for: puzzle)
+        menuKind = "daily-puzzle"
+        let overlay = makeMenu(background: puzzle.definition.background)
+        let card = panel(width: 342, height: 490, point: CGPoint(x: 195, y: 463), parent: overlay)
+        card.name = "daily-puzzle-card"
+        label("Daily festival puzzle", size: 26, point: CGPoint(x: 195, y: 657), parent: overlay)
+        label(puzzle.difficulty, size: 17, point: CGPoint(x: 195, y: 611), parent: overlay)
+        let icon = shotNode(.rainbow); icon.position = CGPoint(x: 195, y: 550); icon.setScale(1.4); overlay.addChild(icon)
+        paragraph(complete ? "Today's reward is collected. Play again just for fun!" : "Win today's puzzle to save one Rainbow for your journey.", y: 477, parent: overlay)
+        label("Free retries • Boosters are disabled", size: 14, point: CGPoint(x: 195, y: 383), parent: overlay)
+        label("New puzzle at midnight UTC", size: 12, point: CGPoint(x: 195, y: 353), parent: overlay)
+        menuButton(saved == nil ? (complete ? "Play again" : "See today's puzzle") : "Resume daily puzzle", name: "daily-play", point: CGPoint(x: 195, y: 284), parent: overlay, height: 50)
+        menuButton("Back to the map", name: "activity-back", point: CGPoint(x: 195, y: 155), parent: overlay, height: 48)
+    }
+
+    func showGarden() {
+        menuKind = "festival-garden"
+        let overlay = makeMenu(background: "festival-courtyard")
+        panel(width: 350, height: 100, point: CGPoint(x: 195, y: 668), parent: overlay)
+        let meadow = panel(width: 350, height: 252, point: CGPoint(x: 195, y: 488), parent: overlay)
+        meadow.name = "garden-plots"; meadow.fillColor = UIColor(red: 0.19, green: 0.39, blue: 0.27, alpha: 0.98)
+        panel(width: 350, height: 200, point: CGPoint(x: 195, y: 245), parent: overlay)
+        label("My festival garden", size: 28, point: CGPoint(x: 195, y: 671), parent: overlay)
+        label("Choose a decoration, then tap a spot.", size: 14, point: CGPoint(x: 195, y: 633), parent: overlay)
+        let available = progress.activities.availableDecorations(adventure: progress.adventure)
+        if let selected = gardenSelection, !available.contains(selected) { gardenSelection = .blossoms }
+        for slot in 0..<6 {
+            let x = CGFloat(83 + slot % 3 * 112), y = CGFloat(551 - slot / 3 * 128)
+            let spot = SKShapeNode(circleOfRadius: 38)
+            spot.name = "garden-slot-\(slot)"; spot.position = CGPoint(x: x, y: y)
+            spot.fillColor = UIColor(red: 0.17, green: 0.35, blue: 0.26, alpha: 1)
+            spot.strokeColor = FestivalStyle.cream; spot.lineWidth = 2
+            overlay.addChild(spot)
+            let decoration = progress.activities.decoration(at: slot)
+            let quest = decoration?.questID.flatMap { id in FestivalQuest.all.first { $0.id == id } }
+            let style = quest.map { progress.adventure.style($0) } ?? 0
+            let tint = decoration == nil ? FestivalStyle.cream : [UIColor.systemPink, .systemYellow, .systemTeal][style]
+            spot.addChild(questIcon(decoration?.symbol ?? "plus", size: decoration == nil ? 22 : 40, color: tint))
+            label(decoration?.title ?? "Empty spot", size: 10, point: CGPoint(x: x, y: y - 54), parent: overlay)
+        }
+        label("Selected: " + (gardenSelection?.title ?? "Remove decoration"), size: 16, point: CGPoint(x: 195, y: 314), parent: overlay)
+        menuButton("Next decoration", name: "garden-next", point: CGPoint(x: 134, y: 277), parent: overlay, width: 184, height: 46)
+        menuButton("Remove", name: "garden-clear", point: CGPoint(x: 288, y: 277), parent: overlay, width: 104, height: 46)
+        label("Earn more decorations from side quests.", size: 13, point: CGPoint(x: 195, y: 219), parent: overlay)
+        label("Saved automatically for " + profiles.active.name, size: 11, point: CGPoint(x: 195, y: 183), parent: overlay)
+        menuButton("Back to the map", name: "activity-back", point: CGPoint(x: 195, y: 94), parent: overlay, height: 48)
+    }
+
+    func handleActivityMenu(_ names: [String]) -> Bool {
+        if menuKind == "map-extras", names.contains("daily-open") { showDailyPuzzle(); return true }
+        if menuKind == "quest-detail", names.contains("quest-garden"), let selectedQuest, progress.adventure.completed(selectedQuest) { showGarden(); return true }
+        if menuKind == "map-extras", names.contains("garden-open") { showGarden(); return true }
+        if menuKind == "daily-puzzle" {
+            if names.contains("activity-back") { showLevels() }
+            else if names.contains("daily-play") {
+                let puzzle = progress.activities.daily(unlocked: progress.unlockedLevel)
+                dailyPuzzle = puzzle; level = puzzle.level; challengeMode = true
+                // Always show the objective and require an explicit Play tap.
+                showLevelBriefing(restoring: progress.activities.checkpoint(for: puzzle) != nil)
+            }
+            return true
+        }
+        if menuKind == "festival-garden" {
+            if names.contains("activity-back") { showLevels() }
+            else if names.contains("garden-next") {
+                let choices = progress.activities.availableDecorations(adventure: progress.adventure)
+                let index = gardenSelection.flatMap { choices.firstIndex(of: $0) } ?? -1
+                gardenSelection = choices[(index + 1) % choices.count]; showGarden()
+            } else if names.contains("garden-clear") { gardenSelection = nil; showGarden() }
+            else if let name = names.first(where: { $0.hasPrefix("garden-slot-") }), let slot = Int(name.dropFirst(12)) {
+                progress.activities.place(gardenSelection, at: slot, adventure: progress.adventure)
+                profiles.persistActive(); showGarden()
+            }
+            return true
+        }
+        return false
     }
 }

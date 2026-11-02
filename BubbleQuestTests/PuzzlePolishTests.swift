@@ -84,12 +84,12 @@ final class PuzzlePolishTests: XCTestCase {
         let rescue = PuzzleGoal(kind: .lanterns, targets: [Cell(row: 0, column: 0)])
         XCTAssertTrue(level.retryHint(board: plain, goal: rescue, consecutiveLosses: 2)!.contains("Only the glowing objects"))
         let help = level.objectiveHelp(board: plain, goal: rescue)
-        XCTAssertFalse(help.contains("Silver rings"))
+        XCTAssertFalse(help.contains("Ice rings"))
         XCTAssertFalse(help.contains("Wooden blocks"))
         XCTAssertTrue(help.contains("1 of 1"))
         var protected = plain
         protected.armor = [Cell(row: 0, column: 0)]
-        XCTAssertTrue(level.objectiveHelp(board: protected, goal: rescue).contains("Silver rings"))
+        XCTAssertTrue(level.objectiveHelp(board: protected, goal: rescue).contains("Ice rings"))
         XCTAssertTrue(level.retryHint(board: protected, goal: rescue, consecutiveLosses: 3)!.contains("two matches"))
     }
 

@@ -1559,7 +1559,7 @@ final class FestivalScene: SKScene {
             let area = level / LevelCatalog.levelsPerArea
             let name = FestivalHost.all.first { $0.area == area }?.name ?? FestivalNeighbor.all.first { $0.area == area }?.name ?? "Your neighbor"
             let cheer = FestivalMoments.message(area: area, stop: stop)
-            residentMilestone = "\(name): \(cheer)"
+            residentMilestone = "\(name): \(stop) levels cleared! \(cheer)"
         }
         let previousArea = progress.unlockedLevel / LevelCatalog.levelsPerArea
         let hadSouvenir = progress.hasSouvenir(area: level / LevelCatalog.levelsPerArea)

@@ -140,7 +140,7 @@ enum FestivalMoments {
         switch stop {
         case 5: return ["The stalls are buzzing thanks to you!", "Our pinwheels are dancing!", "Look at those lanterns glow!", "The picnic crowd is cheering!", "That's a sparkling start!"][max(0, area) % 5]
         case 10: return ["Halfway there! Let's bring the whole market to life.", "A clever finish! The courtyard is cheering.", "Ten bright stops! The lantern makers send their thanks.", "What a splash! Our river friends are celebrating.", "Ten stops lit up! Ready for the next surprise?"][max(0, area) % 5]
-        default: return "A whole neighborhood of wonderful popping! See you on the festival path."
+        default: return "Your whole neighborhood is cheering!"
         }
     }
 }

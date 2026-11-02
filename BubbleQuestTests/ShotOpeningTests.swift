@@ -49,6 +49,23 @@ final class ShotOpeningTests: XCTestCase {
     }
 
 
+    func testBankShotUsesTheClearDiagonalLaneBetweenStaggeredRows() throws {
+        let opening = Set((0..<8).map { Cell(row: 0, column: $0) }).union([
+            Cell(row: 1, column: 2), Cell(row: 1, column: 4), Cell(row: 1, column: 6),
+            Cell(row: 2, column: 2), Cell(row: 2, column: 4), Cell(row: 3, column: 3),
+            Cell(row: 4, column: 3), Cell(row: 5, column: 3), Cell(row: 5, column: 4), Cell(row: 5, column: 5)
+        ])
+        for mirrored in [false, true] {
+            let cells = opening.map { Cell(row: $0.row, column: mirrored ? 7 - $0.row % 2 - $0.column : $0.column) }
+            let board = BubbleBoard(bubbles: Dictionary(uniqueKeysWithValues: cells.map { ($0, 0) }))
+            let path = BubbleGeometry.flight(angle: mirrored ? 0.65 : -0.65, board: board)
+            XCTAssertEqual(path.bounces.count, 1)
+            let landing = try XCTUnwrap(path.landing)
+            XCTAssertEqual(landing.row, 1, "The visible diagonal lane must reach the upper supports rather than catching row 3")
+            XCTAssertNil(board.bubbles[landing])
+        }
+    }
+
     func testIsolatedBubbleKeepsItsNormalContactDistance() throws {
         let cell = Cell(row: 0, column: 4)
         let board = BubbleBoard(bubbles: [cell: 0])

@@ -147,8 +147,7 @@ final class AdventureProgress {
     var rainbowGifts: Int { state.rainbowGifts }
     var bombGifts: Int { state.bombGifts }
     var equippedPin: FestivalPrize? { state.equippedPin }
-    var dailyRewards: Set<String>?
-        var lastPrize: FestivalPrize? { state.lastPrize }
+    var lastPrize: FestivalPrize? { state.lastPrize }
     // Draw converts owned keepsakes into a 50/50 booster reward. Show those
     // same effective odds on the wheel instead of six equal-looking sectors.
     var wheelPrizes: [FestivalPrize] { FestivalPrize.allCases.filter { wheelWeight($0) > 0 } }

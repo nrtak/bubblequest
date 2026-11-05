@@ -60,6 +60,27 @@ final class FestivalGlassTests: XCTestCase {
     }
 
     @MainActor
+    func testStartupAndMenuTransitionsKeepNativeArtworkUncovered() throws {
+        try withHost { scene, host, _ in
+            // didMove(to:) runs during host startup, after its initial setup.
+            // Counting loaded images alone misses an opaque scene covering them.
+            for action in [nil, "start-adventure", "settings", "home"] as [String?] {
+                if let action { scene.handleMenu([action]) }
+                scene.refreshGlassPresentation()
+                XCTAssertEqual(scene.backgroundColor.cgColor.alpha, 0,
+                               "The scene must not paint over native menu artwork")
+                XCTAssertTrue(host.spriteView.allowsTransparency)
+                XCTAssertFalse(host.spriteView.isOpaque)
+                XCTAssertGreaterThan(host.artworkCount, 0)
+                let artwork = try XCTUnwrap(host.subviews.first)
+                let visibleImages = artwork.subviews.compactMap { $0 as? UIImageView }
+                    .filter { !$0.isHidden && $0.image != nil && !$0.frame.isEmpty }
+                XCTAssertFalse(visibleImages.isEmpty)
+            }
+        }
+    }
+
+    @MainActor
     func testGlassSwitchPersistsAndRestoresClassicArtworkAndPanels() throws {
         try withHost { scene, host, profiles in
             XCTAssertTrue(profiles.makeProgress().enabled(.glass))

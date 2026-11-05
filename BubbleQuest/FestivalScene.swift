@@ -154,7 +154,9 @@ final class FestivalScene: SKScene {
         guard children.isEmpty else { return }
         view.preferredFramesPerSecond = 60
         powerObserver = NotificationCenter.default.addObserver(forName: .NSProcessInfoPowerStateDidChange, object: nil, queue: .main) { [weak self] _ in self?.updateControlLayout() }
-        backgroundColor = UIColor(red: 0.12, green: 0.14, blue: 0.28, alpha: 1)
+        // Native menu artwork sits behind the transparent SpriteKit view.
+        // Keep startup from covering it with an opaque scene background.
+        backgroundColor = glassHost == nil ? UIColor(red: 0.12, green: 0.14, blue: 0.28, alpha: 1) : .clear
         addChild(gameRoot)
         decorate()
         progress.adventure.synchronize(completedLevels: progress.completedCount)

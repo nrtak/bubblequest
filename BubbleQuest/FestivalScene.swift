@@ -2520,7 +2520,7 @@ private extension FestivalScene {
         ])), withKey: "expression")
     }
 
-    func characterReaction(_ text: String, quiet: Bool) {
+    internal func characterReaction(_ text: String, quiet: Bool) {
         let now = ProcessInfo.processInfo.systemUptime
         guard now - lastCharacterReactionTime >= 3 else { return }
         lastCharacterReactionTime = now
@@ -2676,7 +2676,7 @@ private extension FestivalScene {
         }
     }
 
-    func showTargetFeedback() {
+    internal func showTargetFeedback() {
         clearShotFeedback()
         // Leave space on the left for the rescued object and on the right for the ceiling hanger.
         let banner = SKShapeNode(rectOf: CGSize(width: 218, height: 38), cornerRadius: 18)

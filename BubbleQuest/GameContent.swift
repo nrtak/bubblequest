@@ -248,7 +248,7 @@ enum LevelCatalog {
             cells = challengeBubbles(index: index, template: cells)
         }
         if let event = FestivalEvent.forLevel(index) {
-            return GameLevel(index: index, area: area, shots: event.shotBudget, initialBubbles: event.bubbles)
+            return GameLevel(index: index, area: area, shots: event.shotBudget, initialBubbles: event.startingBubbles(for: index))
         }
         let budgetColors = Set(cells.values).count
         let shots: Int

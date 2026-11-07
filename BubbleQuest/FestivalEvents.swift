@@ -41,6 +41,17 @@ enum FestivalEvent: String, CaseIterable {
         case .picnic, .fireworks: return .charms
         }
     }
+    /// Repeated event families keep their authored routes but start with a distinct palette.
+    func startingBubbles(for index: Int) -> [Cell: Int] {
+        let original = bubbles
+        guard Self.forLevel(index) == self else { return original }
+        let palette = Set(original.values).sorted()
+        guard !palette.isEmpty else { return original }
+        let rotation = stride(from: 19, to: index, by: 20).filter { Self.forLevel($0) == self }.count
+        return original.mapValues { color in
+            palette[(palette.firstIndex(of: color)! + rotation) % palette.count]
+        }
+    }
     var goal: PuzzleGoal {
         let cells: [Cell]
         switch self {

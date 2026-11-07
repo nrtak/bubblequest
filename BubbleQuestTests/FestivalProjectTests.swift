@@ -64,6 +64,8 @@ final class FestivalProjectTests: XCTestCase {
                 XCTAssertLessThanOrEqual(artFrame.maxY, 638)
                 XCTAssertLessThan(summary.calculateAccumulatedFrame().maxY, 450, "Leave room for the mission heading")
                 XCTAssertGreaterThan(summary.calculateAccumulatedFrame().minY, 366, "Keep instructions above the shot count")
+                let budget = try XCTUnwrap(scene.childNode(withName: "//briefing-shot-budget"))
+                XCTAssertGreaterThan(summary.calculateAccumulatedFrame().minY, budget.calculateAccumulatedFrame().maxY + 4)
                 XCTAssertNotNil(scene.childNode(withName: "//briefing-play"))
                 XCTAssertNil(scene.childNode(withName: "//flying-bubble"))
                 XCTAssertEqual(profiles.makeProgress().lives(for: project.finaleLevel).available, 5)

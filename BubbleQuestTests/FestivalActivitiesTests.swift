@@ -84,8 +84,13 @@ final class FestivalActivitiesTests: XCTestCase {
         }
     }
 
-    func testEveryTenthLevelIsASpecialTargetPuzzleAndMilestoneDialogueVaries() {
+    func testTenLevelMilestonesUseTargetsOrAuthoredEventsAndMilestoneDialogueVaries() {
         for level in LevelCatalog.levels where level.number.isMultiple(of: 10) {
+            if let event = FestivalEvent.forLevel(level.index) {
+                XCTAssertEqual(level.goal, event.goal)
+                XCTAssertTrue(level.goal.isValid(on: level.board))
+                continue
+            }
             XCTAssertEqual(level.objective, .ceiling)
             XCTAssertTrue(level.goal.isValid(on: level.board))
             XCTAssertFalse(level.goal.remaining.isEmpty)

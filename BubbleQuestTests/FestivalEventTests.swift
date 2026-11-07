@@ -51,7 +51,12 @@ final class FestivalEventTests: XCTestCase {
         for index in stride(from: 19, to: LevelCatalog.levelCount, by: 20) {
             let event = try XCTUnwrap(FestivalEvent.forLevel(index))
             let base = LevelCatalog.level(index)
-            XCTAssertEqual(base.initialBubbles, event.bubbles)
+            XCTAssertEqual(Set(base.initialBubbles.keys), Set(event.bubbles.keys))
+            XCTAssertEqual(Set(base.initialBubbles.values).count, Set(event.bubbles.values).count)
+            for color in Set(event.bubbles.values) {
+                let groupColors = Set(base.initialBubbles.filter { event.bubbles[$0.key] == color }.values)
+                XCTAssertEqual(groupColors.count, 1, "Keep authored color groups intact when varying a later finale.")
+            }
             XCTAssertEqual(base.goal, event.goal)
             XCTAssertTrue(base.goal.isValid(on: base.board))
             XCTAssertTrue(base.initialArmor.isDisjoint(with: base.goal.remaining))

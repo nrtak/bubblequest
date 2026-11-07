@@ -3300,14 +3300,15 @@ private extension FestivalScene {
         label(event?.mission ?? goal.kind.hudTitle, size: 23, point: CGPoint(x: 195, y: illustrated ? 462 : 502), parent: overlay)
         if let heading = overlay.children.last as? SKLabelNode { fitLabel(heading, width: 306) }
         let remaining = saved != nil && goal.kind != .clear ? "\(goal.remaining.count) still to free. " : ""
-        let summary = paragraph(event.map { remaining + $0.instruction } ?? goal.briefingSummary, y: illustrated ? 410 : 450, parent: overlay)
+        let summary = paragraph(event.map { remaining + $0.instruction } ?? goal.briefingSummary, y: illustrated ? 408 : 450, parent: overlay)
         if event != nil { summary.fontSize = 14 }
         summary.name = "briefing-objective-summary"
-        label("\(saved?.shots ?? budget) shots • Up to 5 stars", size: 16, point: CGPoint(x: 195, y: illustrated ? 356 : 390), parent: overlay)
-        label(mastery.map { "Optional medal: " + $0.title } ?? PuzzleRating.fiveStarHint(budget: budget), size: 13, point: CGPoint(x: 195, y: illustrated ? 331 : 358), parent: overlay)
+        label("\(saved?.shots ?? budget) shots • Up to 5 stars", size: 16, point: CGPoint(x: 195, y: illustrated ? 343 : 390), parent: overlay)
+        overlay.children.last?.name = "briefing-shot-budget"
+        label(mastery.map { "Optional medal: " + $0.title } ?? PuzzleRating.fiveStarHint(budget: budget), size: 13, point: CGPoint(x: 195, y: illustrated ? 320 : 358), parent: overlay)
         let trySummary = dailyPuzzle != nil ? "Free retries • No boosters • Resets at midnight UTC" :
             saved?.hasStartedTry == true ? "Continue your current try. No extra try is used." : "Your first bubble uses one try."
-        label(trySummary, size: 11, point: CGPoint(x: 195, y: illustrated ? 309 : 332), parent: overlay)
+        label(trySummary, size: 11, point: CGPoint(x: 195, y: illustrated ? 298 : 332), parent: overlay)
         menuButton("Play", name: "briefing-play", point: CGPoint(x: 195, y: illustrated ? 258 : 278), parent: overlay, height: 54)
         menuButton(dailyPuzzle == nil ? "Back to the map" : "Back to daily puzzle", name: "briefing-back", point: CGPoint(x: 195, y: illustrated ? 200 : 216), parent: overlay, height: 44)
     }

@@ -21,7 +21,7 @@ struct FestivalArea {
 }
 
 struct GameLevel {
-    static let balanceVersion = 6
+    static let balanceVersion = 7
     let index: Int
     let area: Int
     let shots: Int
@@ -46,6 +46,7 @@ struct GameLevel {
     }
     var board: BubbleBoard { BubbleBoard(bubbles: initialBubbles, specials: initialSpecials, armor: initialArmor, blockers: initialBlockers) }
     var initialSpecials: [Cell: SpecialBubble] {
+        if let event = FestivalEvent.forLevel(index) { return event.specials }
         guard index % 10 >= 2, area >= 2 else { return [:] }
         let style = area < 5 ? area : 2 + area % 3
         let kind: SpecialBubble = style == 2 ? .lantern : style == 3 ? .riverPearl : .blossomSpark
@@ -68,9 +69,20 @@ struct GameLevel {
         if area % 5 == 1 && index % 10 >= 4 { return "festival-tea-fields" }
         return LevelCatalog.areas[area].background
     }
+    /// All playfields use quiet paintings; the background key still identifies their scenery.
+    var hasCalmGameplayArtwork: Bool { FestivalArtwork.gameplayName(for: background) != nil }
+    var gameplayBackground: String {
+        FestivalArtwork.gameplayName(for: background) ?? background
+    }
     /// Seeded generation keeps the level's depth, row populations, palette and budget.
     func randomized(seed: UInt64) -> GameLevel {
         var random = LayoutRandom(state: seed)
+        if FestivalEvent.forLevel(index) != nil {
+            let palette = Set(initialBubbles.values).sorted()
+            let shuffled = palette.shuffled(using: &random)
+            let mapping = Dictionary(uniqueKeysWithValues: zip(palette, shuffled))
+            return GameLevel(index: index, area: area, shots: shots, initialBubbles: initialBubbles.mapValues { mapping[$0] ?? $0 })
+        }
         var values: [Cell: Int] = [:]
         let palette = Array(Set(initialBubbles.values)).sorted()
         var colorBag = palette.shuffled(using: &random)
@@ -234,6 +246,9 @@ enum LevelCatalog {
             // Keep authored shapes, but stop carrying large, ready-made color clusters
             // through the campaign. Later boards use independently colored pairs.
             cells = challengeBubbles(index: index, template: cells)
+        }
+        if let event = FestivalEvent.forLevel(index) {
+            return GameLevel(index: index, area: area, shots: event.shotBudget, initialBubbles: event.bubbles)
         }
         let budgetColors = Set(cells.values).count
         let shots: Int

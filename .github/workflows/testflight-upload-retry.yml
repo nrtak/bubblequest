@@ -1,6 +1,11 @@
-name: Retry signed TestFlight upload
+name: Retry selected signed TestFlight upload
 on:
   workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: iOS workflow run containing the already signed IPA to retry (does not build new changes)
+        type: string
+        required: true
 permissions:
   contents: read
   actions: read
@@ -9,12 +14,20 @@ jobs:
     runs-on: macos-26
     environment: testflight
     steps:
-      # Build 199 already passed all 171 tests and was signed successfully.
-      # Reuse its immutable artifact instead of compiling another copy.
+      # Require an explicit artifact source; never silently retry an obsolete build.
+      - name: Validate selected artifact run
+        env:
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+        run: |
+          if [[ ! "$SOURCE_RUN_ID" =~ ^[1-9][0-9]*$ ]]; then
+            echo 'Select the numeric iOS workflow run ID containing the signed IPA.'
+            exit 1
+          fi
+      # Reuse that run's immutable signed artifact instead of compiling another copy.
       - uses: actions/download-artifact@v4
         with:
           name: BubbleQuest-ipa
-          run-id: '40376484368'
+          run-id: ${{ inputs.source_run_id }}
           github-token: ${{ github.token }}
           path: build/export
       - uses: Apple-Actions/upload-testflight-build@v5

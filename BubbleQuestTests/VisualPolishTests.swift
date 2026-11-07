@@ -5,6 +5,28 @@ import UIKit
 
 final class VisualPolishTests: XCTestCase {
     @MainActor
+    func testEveryQuietGameplayPaintingFillsTheScreenWithoutStretching() throws {
+        try withScene { scene, _, profiles in
+            let progress = profiles.makeProgress()
+            progress.recordVictory(index: LevelCatalog.levelCount - 1, score: 100, stars: 1)
+            for kind in [SpecialBubble.lantern, .riverPearl, .blossomSpark] { progress.markLearned(kind) }
+            var seen = Set<String>()
+            for level in LevelCatalog.levels where seen.insert(level.gameplayBackground).inserted {
+                scene.handleMenu(["start-adventure"])
+                scene.handleMenu(["level-\(level.index)"])
+                scene.handleMenu(["briefing-play"])
+                let backdrop = try XCTUnwrap(scene.childNode(withName: "//gameplay-background") as? SKSpriteNode)
+                let texture = try XCTUnwrap(backdrop.texture)
+                let image = try XCTUnwrap(UIImage(named: level.gameplayBackground))
+                XCTAssertEqual(texture.size().width / texture.size().height, image.size.width / image.size.height, accuracy: 0.001)
+                XCTAssertEqual(backdrop.size.width / backdrop.size.height, image.size.width / image.size.height, accuracy: 0.001)
+                XCTAssertTrue(backdrop.frame.insetBy(dx: -0.01, dy: -0.01).contains(CGRect(origin: .zero, size: scene.size)), "No empty borders for \(level.gameplayBackground)")
+            }
+            XCTAssertEqual(seen.count, 9)
+        }
+    }
+
+    @MainActor
     func testNeighborListStaysInTheAreaOfTheCharacterJustMet() throws {
         try withScene { scene, _, profiles in
             let progress = profiles.makeProgress()

@@ -78,6 +78,40 @@ final class ShotOpeningTests: XCTestCase {
         XCTAssertLessThanOrEqual(BubbleGeometry.distance(contact, center), BubbleGeometry.collisionDistance)
     }
 
+    func testFullSizeClearCorridorsReachUpperSupportsAcrossAnglesAndCeilingPositions() throws {
+        func distance(_ p: BubblePoint, to a: BubblePoint, _ b: BubblePoint) -> Double {
+            let dx = b.x - a.x, dy = b.y - a.y
+            let length = dx * dx + dy * dy
+            guard length > 0 else { return BubbleGeometry.distance(p, a) }
+            let t = min(1, max(0, ((p.x - a.x) * dx + (p.y - a.y) * dy) / length))
+            return hypot(p.x - a.x - t * dx, p.y - a.y - t * dy)
+        }
+        for offset in [0.0, 40, 80, 120] {
+            for angle in [-1.2, -0.8, -0.65, -0.2, 0, 0.2, 0.65, 0.8, 1.2] {
+                let path = Array(BubbleGeometry.flight(angle: angle, board: BubbleBoard(), ceilingOffset: offset).points.dropLast())
+                var cells = Dictionary(uniqueKeysWithValues: (0..<8).map { (Cell(row: 0, column: $0), 0) })
+                for row in 1..<8 {
+                    for column in -1..<8 {
+                        let cell = Cell(row: row, column: column)
+                        let center = BubbleGeometry.point(cell, ceilingOffset: offset)
+                        guard BubbleBoard.valid(cell), center.y > BubbleGeometry.lossLine + BubbleGeometry.radius else { continue }
+                        let clearance = zip(path, path.dropFirst()).map { distance(center, to: $0.0, $0.1) }.min() ?? 0
+                        if clearance > BubbleGeometry.radius * 2 + 0.1 { cells[cell] = column % 3 == 0 ? 1 : 0 }
+                    }
+                }
+                var board = BubbleBoard(bubbles: cells)
+                let anchored = (0..<8).reduce(into: Set<Cell>()) { result, column in
+                    result.formUnion(board.connected(from: Cell(row: 0, column: column), matchingColor: false))
+                }
+                board.bubbles = board.bubbles.filter { anchored.contains($0.key) }
+                let flight = BubbleGeometry.flight(angle: angle, board: board, ceilingOffset: offset)
+                let landing = try XCTUnwrap(flight.landing, "A genuinely open full-size lane must not fail.")
+                XCTAssertLessThanOrEqual(landing.row, 1, "Open lane at angle \(angle), ceiling \(offset)")
+                XCTAssertNil(board.bubbles[landing])
+            }
+        }
+    }
+
     func testForgivingEdgesStillBlockAnUnbrokenRowAtDifferentCeilingHeights() throws {
         let row = Dictionary(uniqueKeysWithValues: (0..<8).map { (Cell(row: 0, column: $0), $0 % 3) })
         let board = BubbleBoard(bubbles: row)

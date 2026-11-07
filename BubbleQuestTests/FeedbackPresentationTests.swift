@@ -24,6 +24,29 @@ final class FeedbackPresentationTests: XCTestCase {
     }
 
     @MainActor
+    func testShotMessagesUseClearHUDSpaceAndDoNotStackOrSurviveOpeningTheMenu() throws {
+        try withTargetPuzzle(targets: [Cell(row: 0, column: 7)]) { scene, _ in
+            scene.characterReaction("Let's find a fresh angle!", quiet: true)
+            let reaction = try XCTUnwrap(scene.childNode(withName: "//character-reaction"))
+            XCTAssertGreaterThan(reaction.calculateAccumulatedFrame().minY, 725)
+            XCTAssertLessThan(reaction.calculateAccumulatedFrame().maxX, 344)
+            scene.showTargetFeedback()
+            XCTAssertNil(scene.childNode(withName: "//character-reaction"))
+            let banner = try XCTUnwrap(scene.childNode(withName: "//target-feedback"))
+            let frame = banner.calculateAccumulatedFrame()
+            XCTAssertGreaterThan(frame.minY, 725, "Keep messages above the ceiling rail and every playable bubble.")
+            XCTAssertLessThan(frame.maxY, 780, "Keep clear of the phone status area.")
+            XCTAssertGreaterThan(frame.minX, GameplayHUDLayout.rescueDestination.x + 18)
+            XCTAssertLessThan(frame.maxX, 344, "Keep clear of the right ceiling hanger.")
+            let gear = try XCTUnwrap(scene.childNode(withName: "//game-menu"))
+            XCTAssertFalse(frame.intersects(gear.calculateAccumulatedFrame()))
+            scene.showGameMenu()
+            XCTAssertNil(scene.childNode(withName: "//target-feedback"))
+            XCTAssertNil(scene.childNode(withName: "//character-reaction"))
+        }
+    }
+
+    @MainActor
     func testRescueFeedbackAndSavedCounterAgreeWithoutWinningEarly() throws {
         try withTargetPuzzle(targets: [Cell(row: 0, column: 3), Cell(row: 0, column: 7)]) { scene, profiles in
             scene.launchShot(angle: 0)

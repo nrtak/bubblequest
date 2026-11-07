@@ -89,6 +89,7 @@ extension GameLevel {
     var isBankRoute: Bool { index >= 10 && index % 10 == 3 }
     var isMilestone: Bool { number.isMultiple(of: LevelCatalog.levelsPerArea) }
     var objective: PuzzleObjective {
+        if let event = FestivalEvent.forLevel(index) { return event.objective }
         if index < 5 { return .clear }
         if number.isMultiple(of: 10) { return .ceiling }
         switch index % 10 {
@@ -99,6 +100,7 @@ extension GameLevel {
         }
     }
     var goal: PuzzleGoal {
+        if let event = FestivalEvent.forLevel(index) { return event.goal }
         guard objective != .clear else { return PuzzleGoal() }
         let ordered = initialBubbles.keys.sorted {
             if $0.row != $1.row { return $0.row < $1.row }
@@ -132,6 +134,7 @@ extension GameLevel {
         return PuzzleGoal(kind: objective, targets: targets)
     }
     var initialArmor: Set<Cell> {
+        if let event = FestivalEvent.forLevel(index) { return event.armor }
         guard index >= 20, ([2, 9].contains(index % 10) || [.lanterns, .charms].contains(objective)) else { return [] }
         let excluded = Set(initialSpecials.keys).union(goal.remaining)
         let targetRow = goal.remaining.map(\.row).max() ?? 0
@@ -146,6 +149,7 @@ extension GameLevel {
         return Set(candidates.prefix(min(armorLimit, 1 + index / 45)))
     }
     var initialBlockers: Set<Cell> {
+        if let event = FestivalEvent.forLevel(index) { return event.blockers }
         guard index >= 40, [3, 8, 9].contains(index % 10) else { return [] }
         let excluded = Set(initialSpecials.keys).union(initialArmor).union(goal.remaining)
         let candidates = initialBubbles.keys.filter { $0.row > 1 && !excluded.contains($0) }.sorted { $0.row == $1.row ? $0.column < $1.column : $0.row < $1.row }

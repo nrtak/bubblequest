@@ -51,6 +51,47 @@ final class JourneyMapTests: XCTestCase {
     }
 
     @MainActor
+    func testMapControlsStayClearOfVisibleMarkersVisitorsAndProjectSitesWhileScrolling() throws {
+        let suite = "JourneyClearance-\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
+        defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: directory) }
+        let profiles = GameProfiles(registry: defaults, directory: directory, namespace: suite)
+        let progress = profiles.makeProgress()
+        progress.recordVictory(index: LevelCatalog.levelCount - 1, score: 100, stars: 1)
+        let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
+        let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
+        view.presentScene(scene); defer { view.presentScene(nil) }
+        scene.handleMenu(["start-adventure"])
+        func frame(_ node: SKNode) -> CGRect {
+            guard let parent = node.parent else { return .zero }
+            let box = node.calculateAccumulatedFrame()
+            let a = parent.convert(CGPoint(x: box.minX, y: box.minY), to: scene)
+            let b = parent.convert(CGPoint(x: box.maxX, y: box.maxY), to: scene)
+            return CGRect(x: a.x, y: a.y, width: b.x - a.x, height: b.y - a.y)
+        }
+        var checked = 0
+        for level in stride(from: 0, to: LevelCatalog.levelCount, by: 3) {
+            scene.scrollMap(to: FestivalMapLayout.focusedOffset(local: level) + 37)
+            let reserved = ["map-current-level", "map-side-quests"].compactMap { scene.childNode(withName: "//" + $0) }.map(frame)
+            scene.enumerateChildNodes(withName: "//*") { node, _ in
+                guard !node.isHidden, let name = node.name,
+                      name == "journey-visitor" || name == "locked" || name.hasPrefix("level-") || name.hasPrefix("project-site-") else { return }
+                // Menu controls use separate names; level-* here identifies route markers.
+                guard name == "journey-visitor" || node.parent?.name == "map-route" else { return }
+                checked += 1
+                for control in reserved {
+                    XCTAssertFalse(frame(node).intersects(control), "Keep \(name) clear at viewed level \(level + 1).")
+                }
+            }
+        }
+        XCTAssertGreaterThan(checked, 100)
+        scene.scrollMap(to: FestivalMapLayout.focusedOffset(local: 0))
+        let untouched = try XCTUnwrap(scene.childNode(withName: "//level-0"))
+        XCTAssertNil(untouched.childNode(withName: "map-complete-mark"), "An unlocked but uncleared level is not completed.")
+    }
+
+    @MainActor
     func testSideQuestsStayFixedWhileSceneryScrollsAndNeverAcceptThemselves() throws {
         let suite = "JourneyInteraction-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!

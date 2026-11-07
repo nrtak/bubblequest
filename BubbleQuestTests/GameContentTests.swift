@@ -151,8 +151,8 @@ final class GameContentTests: XCTestCase {
         XCTAssertLessThan(averageAllowance(50..<100), averageAllowance(10..<30))
         XCTAssertLessThan(averageAllowance(150..<200), averageAllowance(50..<100))
         XCTAssertLessThan(averageGroupSize(50..<100), averageGroupSize(0..<10))
-        XCTAssertTrue(LevelCatalog.levels[50..<100].allSatisfy { Set($0.initialBubbles.values).count == 5 })
-        XCTAssertTrue(LevelCatalog.levels[150..<LevelCatalog.levelCount].filter { !$0.isPrecision }.allSatisfy { $0.initialBubbles.keys.map(\.row).max() == 6 })
+        XCTAssertTrue(LevelCatalog.levels[50..<100].filter { !$0.isMilestone }.allSatisfy { Set($0.initialBubbles.values).count == 5 })
+        XCTAssertTrue(LevelCatalog.levels[150..<LevelCatalog.levelCount].filter { !$0.isPrecision && !$0.isMilestone }.allSatisfy { $0.initialBubbles.keys.map(\.row).max() == 6 })
         // The same depth can have different routes, not just a new color permutation.
         let shapes = Set(LevelCatalog.levels[50..<100].map { Set($0.initialBubbles.keys) })
         XCTAssertGreaterThan(shapes.count, 5)
@@ -168,7 +168,7 @@ final class GameContentTests: XCTestCase {
     }
 
     func testEveryRuntimeImageAndAudioCueIsBundled() {
-        let images = Set(LevelCatalog.levels.map(\.background)).union([
+        let images = Set(LevelCatalog.levels.map(\.background) + LevelCatalog.levels.map(\.gameplayBackground) + FestivalArtwork.mapNames).union([
             "festival-title-cast", "festival-title-group-logo", "festival-hosts", "festival-companion-atlas",
             "festival-companion-motion", "festival-companion-glance", "festival-new-human-motion", "festival-special-bubbles",
             "festival-neighbors", "festival-neighbors-extra", "festival-operator-rig",
@@ -176,6 +176,13 @@ final class GameContentTests: XCTestCase {
             "festival-summer-map-atlas", "festival-hill-map", "festival-summer-neighbors", "festival-summer-buddy-motion"
         ])
         for name in images { XCTAssertNotNil(UIImage(named: name), "Missing image \(name)") }
+        XCTAssertTrue(LevelCatalog.levels.allSatisfy(\.hasCalmGameplayArtwork), "Every campaign playfield needs its quiet painting.")
+        XCTAssertEqual(FestivalArtwork.mapNames.count, LevelCatalog.areas.count)
+        for name in FestivalArtwork.mapNames {
+            if let image = UIImage(named: name) {
+                XCTAssertEqual(image.size.width / image.size.height, 390 / 704.0, accuracy: 0.002, "Keep the painted road aligned: \(name)")
+            }
+        }
         for name in ["pop", "launch", "load", "bomb", "victory", "music-day", "music-evening", "armor-crack", "rescue", "big-drop", "milestone", "stick", "music-menu", "music-map", "music-water", "music-countryside", "music-challenge", "music-story", "map-chime", "map-water", "buddy-hello"] {
             XCTAssertNotNil(Bundle.main.url(forResource: name, withExtension: "wav"), "Missing audio \(name)")
         }

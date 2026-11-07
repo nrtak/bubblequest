@@ -116,6 +116,7 @@ final class AdventureProgress {
         var rainbowGifts = 0
         var bombGifts = 0
         var dailyRewards: Set<String>?
+        var projectRewards: Set<Int>?
         var lastPrize: FestivalPrize?
     }
     private let defaults: UserDefaults
@@ -178,6 +179,15 @@ final class AdventureProgress {
         guard !(state.dailyRewards ?? []).contains(day) else { return }
         state.dailyRewards = (state.dailyRewards ?? []).union([day])
         state.rainbowGifts += 1; save()
+    }
+    func hasProjectReward(_ area: Int) -> Bool { (state.projectRewards ?? []).contains(area) }
+    @discardableResult
+    func awardProjectReward(area: Int) -> Bool {
+        guard FestivalProject.forArea(area) != nil, !hasProjectReward(area) else { return false }
+        state.projectRewards = (state.projectRewards ?? []).union([area])
+        state.rainbowGifts += 1; state.bombGifts += 1
+        save()
+        return true
     }
     func consumeGift(_ shot: BubbleShot) {
         if shot == .rainbow { state.rainbowGifts = max(0, state.rainbowGifts - 1) }

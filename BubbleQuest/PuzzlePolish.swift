@@ -6,10 +6,14 @@ extension GameLevel {
         return [5, 10, LevelCatalog.levelsPerArea].contains(stop) ? stop : nil
     }
 
-    func objectiveHelp(board: BubbleBoard, goal: PuzzleGoal) -> String {
-        var parts = [goal.kind.instruction]
-        if goal.kind != .clear { parts.append("\(goal.remaining.count) of \(goal.total) objects still need freeing.") }
-        if !board.armor.isEmpty { parts.append("Ice rings need two matches.") }
+    func objectiveHelp(board: BubbleBoard, goal: PuzzleGoal, event: FestivalEvent? = nil) -> String {
+        var parts = [event?.instruction ?? goal.kind.instruction]
+        if goal.kind != .clear {
+            let noun = event?.targetNoun(count: goal.total) ?? "objects"
+            parts.append("\(goal.remaining.count) of \(goal.total) \(noun) still need freeing.")
+        }
+        // Authored event instructions already explain their ice rings.
+        if event == nil && !board.armor.isEmpty { parts.append("Ice rings need two matches.") }
         if !board.blockers.isEmpty { parts.append("Wooden blocks can be dropped or bombed.") }
         parts.append("The ceiling also descends over time after your first shot. Menus pause it.")
         parts.append("Bank-shot matches earn 50 extra points.")

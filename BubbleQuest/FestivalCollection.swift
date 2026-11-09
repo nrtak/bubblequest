@@ -134,14 +134,10 @@ enum FestivalMapLayout {
         let index = min(xs.count - 2, Int(value))
         return (xs[index] + (xs[index + 1] - xs[index]) * (value - CGFloat(index))) * 390
     }
+    /// A world-space curve keeps both pavement edges smooth across painting boundaries.
+    /// Match the offline world compiler; scenery blends never change the walking route.
     static func roadX(at height: CGFloat) -> CGFloat {
-        let segment = max(0, Int(floor((height + blendHeight / 2) / segmentHeight)))
-        let lower = CGFloat(segment) * segmentHeight - blendHeight / 2
-        let current = roadX(area: artworkArea(segment: segment), fraction: (height - lower) / tileHeight)
-        guard segment > 0 else { return current }
-        let previous = roadX(area: artworkArea(segment: segment - 1), fraction: (height - lower + segmentHeight) / tileHeight)
-        let blend = sceneryBlend(fromBottom: height - lower, x: (previous + current) / 2)
-        return previous + (current - previous) * blend
+        215 + 48 * sin((height - 292) * 2 * .pi / 1152)
     }
     static func position(_ level: Int) -> CGPoint {
         let y = 292 + CGFloat(level) * 96

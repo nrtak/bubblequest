@@ -480,6 +480,10 @@ final class FestivalScene: SKScene {
         if menuKind == "map", let label = levelMenu?.childNode(withName: "//map-tries") as? SKLabelNode {
             label.text = "♥ \(progress.lives(for: progress.unlockedLevel).available)"
         }
+        if menuKind == "map", let route = levelMenu?.childNode(withName: "//map-route") {
+            // Also honor Reduce Motion/Low Power changes while the map is standing still.
+            updateRoadMomentMotion(in: route)
+        }
         if finished, let label = gameRoot.childNode(withName: "//result-tries") as? SKLabelNode {
             let state = progress.lives(for: level, challenge: challengeMode)
             label.text = "\(state.available)/5 tries" + (state.available < 5 ? " • +1 in " + state.countdown(at: Date()) : "")
@@ -927,6 +931,11 @@ final class FestivalScene: SKScene {
             stop.fillColor = current ? .systemPink : progress.stars(index) > 0 ? .systemOrange : UIColor(red: 0.39, green: 0.47, blue: 0.51, alpha: 1)
             stop.strokeColor = current ? .systemYellow : .white; stop.lineWidth = current ? 4 : 2
             stop.zPosition = 5; route.addChild(stop)
+            if FestivalEvent.forLevel(index) != nil {
+                if !current { stop.strokeColor = FestivalStyle.brass; stop.lineWidth = 3 }
+                let finale = questIcon("sparkles", size: 12, color: .systemYellow)
+                finale.name = "map-finale-mark"; finale.position = CGPoint(x: -19, y: 18); stop.addChild(finale)
+            }
             label("\(index + 1)", size: current ? 28 : 22, point: .zero, parent: stop)
             if let number = stop.children.last as? SKLabelNode {
                 number.name = "map-level-number"; number.verticalAlignmentMode = .center
@@ -952,7 +961,6 @@ final class FestivalScene: SKScene {
                 tries.fontSize = 11; tries.position = CGPoint(x: 0, y: -45); stop.addChild(tries)
             }
         }
-        addProjectSites(to: route)
         let heading = panel(width: 350, height: 56, point: CGPoint(x: 195, y: 754), parent: overlay)
         heading.name = "map-journey-header"; heading.fillColor = FestivalStyle.ink
         let saved = progress.checkpoint
@@ -969,9 +977,11 @@ final class FestivalScene: SKScene {
         if !preservingMomentum { mapMomentum.stop() }
         guard let route = levelMenu?.childNode(withName: "//map-route"), let overlay = levelMenu else { return }
         route.position.y = FestivalMapLayout.scrollOffset(offset)
-        for site in route.children where site.name?.hasPrefix("project-site-") == true {
-            let y = site.position.y + route.position.y
-            site.isHidden = y < FestivalMapLayout.viewport.minY + 34 || y > FestivalMapLayout.viewport.maxY - 100 || (site.position.x < 100 && y > 420)
+        addProjectSites(to: route)
+        for site in route.children where site.name?.hasPrefix("project-site-") == true || site.name == "journey-landmark" {
+            site.isHidden = false
+            let frame = site.calculateAccumulatedFrame().offsetBy(dx: route.position.x, dy: route.position.y)
+            site.isHidden = !FestivalMapLayout.viewport.contains(frame)
         }
         for stop in route.children where stop.name == "locked" || stop.name?.hasPrefix("level-") == true {
             let centerY = stop.position.y + route.position.y
@@ -991,11 +1001,19 @@ final class FestivalScene: SKScene {
             }
         } else { overlay.childNode(withName: "map-current-level")?.removeFromParent() }
         let reserved = mapControlFrames(in: overlay)
-        for stop in route.children where !stop.isHidden && (stop.name == "locked" || stop.name?.hasPrefix("level-") == true || stop.name?.hasPrefix("project-site-") == true) {
+        for stop in route.children where !stop.isHidden && (stop.name == "locked" || stop.name?.hasPrefix("level-") == true || stop.name?.hasPrefix("project-site-") == true || stop.name == "journey-landmark") {
             let frame = stop.calculateAccumulatedFrame().offsetBy(dx: route.position.x, dy: route.position.y)
             stop.isHidden = reserved.contains { $0.intersects(frame) }
         }
+        let markerFrames = route.children.filter { !$0.isHidden && ($0.name == "locked" || $0.name?.hasPrefix("level-") == true) }
+            .map { $0.calculateAccumulatedFrame().insetBy(dx: -3, dy: -3) }
+        for landmark in route.children where !landmark.isHidden && landmark.name == "journey-landmark" {
+            // In particular, leave the current level's life count unobstructed.
+            let frame = landmark.calculateAccumulatedFrame()
+            landmark.isHidden = markerFrames.contains { $0.intersects(frame) }
+        }
         updateJourneyScenery(route: route)
+        updateRoadMomentMotion(in: route)
     }
 
     private func mapControlFrames(in overlay: SKNode) -> [CGRect] {
@@ -1030,7 +1048,7 @@ final class FestivalScene: SKScene {
                       !FestivalProject.all.contains(where: { project in
                           (0..<4).contains { step in
                               let site = project.sitePosition(stage: step)
-                              return abs(foot.x - site.x) < 72 && foot.y > site.y - 45 && foot.y < site.y + 90
+                              return abs(foot.x - site.x) < 92 && foot.y > site.y - 55 && foot.y < site.y + 115
                           }
                       }) else { continue }
                 let roll = FestivalMapLayout.variant(segment, salt: slot + 1)
@@ -1054,12 +1072,23 @@ final class FestivalScene: SKScene {
                 let footY = route.position.y + segment.position.y + visitor.position.y
                 let frame = CGRect(x: visitor.position.x - 28, y: footY - 5, width: 56, height: 60)
                 visitor.isHidden = footY - 5 < FestivalMapLayout.viewport.minY || footY + 54 > FestivalMapLayout.viewport.maxY || reserved.contains { $0.intersects(frame) }
+                visitor.isPaused = visitor.isHidden || FestivalStyle.quiet
             }
         }
     }
 
     private func journeyTexture(segment: Int) -> SKTexture {
         if let cached = journeyTextures[segment] { return cached }
+        if let name = FestivalArtwork.journeyName(for: segment),
+           let path = Bundle.main.path(forResource: name, ofType: nil),
+           let image = UIImage(contentsOfFile: path) {
+            // These are windows from one continuous painting. No live crossfade can split its road.
+            // Bypass UIImage's global name cache so offscreen windows can be released.
+            journeyImages[segment] = image
+            let texture = SKTexture(image: image)
+            journeyTextures[segment] = texture
+            return texture
+        }
         let area = FestivalMapLayout.artworkArea(segment: segment)
         let scenery = FestivalMapLayout.mapScenery(area: area)
         let sourceName = scenery?.mapArtwork ?? (area == 2 || area == 4 ? "festival-map" : "festival-map-day")
@@ -3902,7 +3931,7 @@ private extension FestivalScene {
         }
     }
 
-    func projectDisplay(_ project: FestivalProject, stage: Int) -> SKNode {
+    func projectDisplay(_ project: FestivalProject, stage: Int, includeGuests: Bool = true) -> SKNode {
         let root = SKNode(); root.name = "project-construction-stage-\(stage)"
         let colors: [UIColor] = [.systemPink, .systemTeal, .systemOrange, .systemBlue, .systemPurple]
         let color = colors[project.area % colors.count]
@@ -3922,7 +3951,7 @@ private extension FestivalScene {
         }
         if project.displayStyle != .stall && project.displayStyle != .fireworks {
             addProjectFeature(project.displayStyle, stage: stage, color: color, to: root)
-            if stage >= 4 { addProjectGuests(to: root) }
+            if stage >= 4 && includeGuests { addProjectGuests(to: root) }
             return root
         }
         let path = CGMutablePath()
@@ -3955,7 +3984,7 @@ private extension FestivalScene {
                 sparkle.position = CGPoint(x: x, y: 122); root.addChild(sparkle)
             }
         }
-        if stage >= 4 { addProjectGuests(to: root) }
+        if stage >= 4 && includeGuests { addProjectGuests(to: root) }
         return root
     }
 
@@ -4020,21 +4049,31 @@ private extension FestivalScene {
     }
 
     func addProjectSites(to route: SKNode) {
-        for project in FestivalProject.all {
+        let nearby = FestivalRoadMoment.near(offset: route.position.y)
+        let wanted = Set(nearby.map(\.level))
+        for node in route.children where node.name?.hasPrefix("project-site-") == true || node.name == "journey-landmark" {
+            if let level = node.userData?["momentLevel"] as? Int, !wanted.contains(level) { node.removeFromParent() }
+        }
+        for moment in nearby {
+            let project = moment.project, step = moment.step
+            let name = "project-site-\(project.area)-\(step)"
+            guard route.childNode(withName: name) == nil else { continue }
             guard let status = progress.festivalProject(area: project.area) else { continue }
-            for step in 0..<4 {
-                let site = SKShapeNode(rect: CGRect(x: -48, y: -18, width: 96, height: 84), cornerRadius: 4)
-                site.fillColor = .clear; site.strokeColor = .clear
-                site.name = "project-site-\(project.area)-\(step)"
-                site.position = project.sitePosition(stage: step); site.zPosition = 2
-                let display = projectDisplay(project, stage: status.stage > step ? step + 1 : 0)
-                display.setScale(0.48); site.addChild(display)
-                let sign = SKShapeNode(rectOf: CGSize(width: 88, height: 18), cornerRadius: 4)
-                sign.position.y = -11; sign.fillColor = FestivalStyle.ink; sign.strokeColor = FestivalStyle.cream; site.addChild(sign)
-                label("\(FestivalProject.thresholds[step]) • \(status.stage > step ? "Ready!" : "Preparing")", size: 9,
-                      point: CGPoint(x: 0, y: -14), parent: site)
-                route.addChild(site)
-            }
+            addRoadLandmark(moment, ready: moment.isReady(cleared: status.cleared), to: route)
+            let site = SKShapeNode(rect: CGRect(x: -56, y: -29, width: 112, height: 113), cornerRadius: 8)
+            site.fillColor = .clear; site.strokeColor = .clear
+            site.name = name
+            site.position = project.sitePosition(stage: step); site.zPosition = 2
+            let display = projectDisplay(project, stage: moment.constructionStage(cleared: status.cleared), includeGuests: false)
+            display.setScale(0.56); display.position.y = 8; site.addChild(display)
+            addRoadActivity(moment, ready: moment.isReady(cleared: status.cleared), to: site)
+            let sign = SKShapeNode(rectOf: CGSize(width: 112, height: 22), cornerRadius: 6)
+            sign.name = "journey-scene-sign"; sign.position.y = -17
+            sign.fillColor = FestivalStyle.ink; sign.strokeColor = step == 3 ? .systemYellow : FestivalStyle.cream; site.addChild(sign)
+            label(moment.caption(cleared: status.cleared), size: 10, point: CGPoint(x: 0, y: -20), parent: site)
+            if let caption = site.children.last as? SKLabelNode { fitLabel(caption, width: 104) }
+            site.userData = ["momentLevel": moment.level, "finaleLevel": project.finaleLevel] as NSMutableDictionary
+            route.addChild(site)
         }
     }
 
@@ -4140,5 +4179,165 @@ private extension FestivalScene {
             else { beginSelectedLevel() }
         }
         return true
+    }
+}
+
+private extension FestivalScene {
+    func updateRoadMomentMotion(in route: SKNode) {
+        let quiet = FestivalStyle.quiet
+        for site in route.children where site.name?.hasPrefix("project-site-") == true || site.name == "journey-landmark" {
+            site.isPaused = site.isHidden || quiet
+        }
+        if let scenery = route.childNode(withName: "journey-scenery") {
+            for segment in scenery.children {
+                for visitor in segment.children where visitor.name == "journey-visitor" {
+                    visitor.isPaused = visitor.isHidden || quiet
+                }
+            }
+        }
+    }
+
+    func addRoadActivity(_ moment: FestivalRoadMoment, ready: Bool, to site: SKNode) {
+        let group = SKNode(); group.name = "journey-activity-\(String(describing: moment.activity))"
+        group.zPosition = 2; site.addChild(group)
+        let humans = Companion.all.filter { $0.kind == .human }
+        let animals = Companion.all.filter { $0.kind == .animal }
+        let cast = [humans[(moment.project.area + moment.step) % humans.count],
+                    animals[(moment.project.area * 2 + moment.step) % animals.count]]
+        for (index, friend) in cast.prefix(ready ? 2 : 1).enumerated() {
+            let x: CGFloat = index == 0 ? -27 : 26
+            let shadow = SKShapeNode(ellipseOf: CGSize(width: 27, height: 7))
+            shadow.position = CGPoint(x: x, y: 6); shadow.fillColor = .black.withAlphaComponent(0.16)
+            shadow.strokeColor = .clear; group.addChild(shadow)
+            let actor = SKSpriteNode(texture: companionTexture(friend, frame: 0), size: CGSize(width: 44, height: 44))
+            actor.name = "journey-scene-friend"; actor.position = CGPoint(x: x, y: 28)
+            actor.xScale = index == 0 ? 1 : -1; group.addChild(actor)
+            // The scene root pauses offscreen and in Reduce Motion/Low Power mode.
+            let breathe = SKAction.sequence([.scaleY(to: 1.015, duration: 2), .scaleY(to: 1, duration: 2)])
+            actor.run(.sequence([.wait(forDuration: Double(moment.step + index) * 0.7), .repeatForever(breathe)]), withKey: "road-idle")
+        }
+        func shape(_ size: CGSize, at point: CGPoint, color: UIColor) -> SKShapeNode {
+            let node = SKShapeNode(rectOf: size, cornerRadius: 3)
+            node.position = point; node.fillColor = color; node.strokeColor = FestivalStyle.cream
+            node.lineWidth = 1; group.addChild(node); return node
+        }
+        switch moment.activity {
+        case .snacks:
+            let table = shape(CGSize(width: 32, height: 6), at: CGPoint(x: 0, y: 24), color: .brown)
+            FestivalStyle.finish(table, as: .wood)
+            _ = shape(CGSize(width: 5, height: 17), at: CGPoint(x: 0, y: 14), color: .brown)
+            for x in [CGFloat(-8), 7] {
+                _ = shape(CGSize(width: 9, height: 9), at: CGPoint(x: x, y: 32), color: x < 0 ? FestivalStyle.coral : .systemTeal)
+            }
+        case .drums:
+            _ = shape(CGSize(width: 25, height: 19), at: CGPoint(x: 0, y: 23), color: FestivalStyle.coral)
+            let top = SKShapeNode(ellipseOf: CGSize(width: 27, height: 10))
+            top.position.y = 33; top.fillColor = FestivalStyle.cream; top.strokeColor = .brown; group.addChild(top)
+            for direction in [CGFloat(-1), 1] {
+                let pivot = SKNode(); pivot.position = CGPoint(x: direction * 11, y: 36); pivot.zRotation = direction * 0.6
+                group.addChild(pivot)
+                let stick = SKShapeNode(rectOf: CGSize(width: 3, height: 16), cornerRadius: 1)
+                stick.position.y = 7; stick.fillColor = FestivalStyle.brass; stick.strokeColor = .clear; pivot.addChild(stick)
+                let beat = SKAction.sequence([.rotate(byAngle: direction * 0.4, duration: 0.25),
+                                              .rotate(byAngle: -direction * 0.4, duration: 0.25), .wait(forDuration: 1.6)])
+                pivot.run(.sequence([.wait(forDuration: direction < 0 ? 0 : 0.25), .repeatForever(beat)]))
+            }
+        case .kites:
+            let string = CGMutablePath(); string.move(to: CGPoint(x: 0, y: 18))
+            string.addQuadCurve(to: CGPoint(x: 10, y: 57), control: CGPoint(x: -5, y: 39))
+            let line = SKShapeNode(path: string); line.strokeColor = FestivalStyle.cream; line.lineWidth = 1; group.addChild(line)
+            let outline = CGMutablePath(); outline.move(to: CGPoint(x: 0, y: 15))
+            outline.addLine(to: CGPoint(x: 11, y: 0)); outline.addLine(to: CGPoint(x: 0, y: -15))
+            outline.addLine(to: CGPoint(x: -11, y: 0)); outline.closeSubpath()
+            let kite = SKShapeNode(path: outline); kite.position = CGPoint(x: 10, y: 67)
+            kite.fillColor = .systemTeal; kite.strokeColor = FestivalStyle.cream; kite.lineWidth = 2; group.addChild(kite)
+            let sway = SKAction.sequence([.rotate(toAngle: 0.12, duration: 1.8), .rotate(toAngle: -0.12, duration: 1.8)])
+            sway.timingMode = .easeInEaseOut; kite.run(.repeatForever(sway))
+        case .greeting:
+            let fan = questIcon("fan.fill", size: 23, color: ready ? .systemYellow : FestivalStyle.cream)
+            fan.position = CGPoint(x: -4, y: 42); group.addChild(fan)
+            let wave = SKAction.sequence([.rotate(toAngle: 0.25, duration: 0.45), .rotate(toAngle: -0.2, duration: 0.45),
+                                         .rotate(toAngle: 0, duration: 0.3), .wait(forDuration: 3)])
+            fan.run(.repeatForever(wave))
+        }
+    }
+
+    func addRoadLandmark(_ moment: FestivalRoadMoment, ready: Bool, to route: SKNode) {
+        let root = SKNode(); root.name = "journey-landmark"; root.zPosition = -1
+        root.userData = ["momentLevel": moment.level] as NSMutableDictionary
+        root.position.y = moment.landmarkHeight; route.addChild(root)
+        func road(_ localY: CGFloat) -> CGFloat { FestivalMapLayout.roadX(at: root.position.y + localY) }
+        func rail(_ direction: CGFloat, color: UIColor) {
+            let path = CGMutablePath()
+            for row in stride(from: CGFloat(-14), through: 14, by: 2) {
+                let point = CGPoint(x: road(row) + direction * 76, y: row)
+                if row == -14 { path.move(to: point) } else { path.addLine(to: point) }
+            }
+            let edge = SKShapeNode(path: path); edge.strokeColor = color; edge.lineWidth = 4
+            edge.lineCap = .round; root.addChild(edge)
+            for y in [CGFloat(-12), 0, 12] {
+                let post = SKShapeNode(rectOf: CGSize(width: 6, height: 8), cornerRadius: 2)
+                post.position = CGPoint(x: road(y) + direction * 76, y: y)
+                post.fillColor = color; post.strokeColor = FestivalStyle.cream; root.addChild(post)
+            }
+        }
+        switch moment.landmark {
+        case .plaza:
+            // A small gathering spot sits beside the street, never over a level button.
+            root.position = moment.position; root.zPosition = 0
+            let paving = SKShapeNode(ellipseOf: CGSize(width: 116, height: 46))
+            paving.position.y = 10; paving.fillColor = FestivalStyle.cream.withAlphaComponent(0.9)
+            paving.strokeColor = FestivalStyle.brass; paving.lineWidth = 2; root.addChild(paving)
+            let crest = questIcon(moment.project.symbol, size: 18, color: FestivalStyle.brass)
+            crest.position.y = 8; root.addChild(crest)
+        case .bridge:
+            // A small inlet makes the crossing purposeful instead of a deck on grass.
+            let water = SKShapeNode(ellipseOf: CGSize(width: 216, height: 24))
+            water.name = "journey-bridge-water"
+            water.position.x = road(0)
+            water.fillColor = UIColor(red: 0.34, green: 0.65, blue: 0.70, alpha: 1)
+            water.strokeColor = FestivalStyle.cream.withAlphaComponent(0.5); water.lineWidth = 1
+            root.addChild(water)
+            for direction in [CGFloat(-1), 1] {
+                let ripple = SKShapeNode(ellipseOf: CGSize(width: 15, height: 4))
+                ripple.position = CGPoint(x: road(0) + direction * 94, y: 0)
+                ripple.strokeColor = FestivalStyle.cream.withAlphaComponent(0.45)
+                ripple.lineWidth = 1; root.addChild(ripple)
+            }
+            // Fit the deck and rails to the same world-space curve as the painted road.
+            let deck = CGMutablePath()
+            for (index, y) in stride(from: CGFloat(-14), through: 14, by: 2).enumerated() {
+                let point = CGPoint(x: road(y) - 70, y: y)
+                if index == 0 { deck.move(to: point) } else { deck.addLine(to: point) }
+            }
+            for y in stride(from: CGFloat(14), through: -14, by: -2) { deck.addLine(to: CGPoint(x: road(y) + 70, y: y)) }
+            deck.closeSubpath()
+            let wood = SKShapeNode(path: deck); wood.fillColor = UIColor(red: 0.72, green: 0.49, blue: 0.28, alpha: 1)
+            wood.strokeColor = FestivalStyle.brass; FestivalStyle.finish(wood, as: .wood); root.addChild(wood)
+            for y in stride(from: CGFloat(-8), through: 8, by: 8) {
+                let path = CGMutablePath(); path.move(to: CGPoint(x: road(y) - 69, y: y))
+                path.addLine(to: CGPoint(x: road(y) + 69, y: y))
+                let plank = SKShapeNode(path: path); plank.strokeColor = FestivalStyle.cream.withAlphaComponent(0.35)
+                plank.lineWidth = 1; root.addChild(plank)
+            }
+            rail(-1, color: .brown); rail(1, color: .brown)
+        case .lanternArch:
+            let center = road(0)
+            for direction in [CGFloat(-1), 1] {
+                let post = SKShapeNode(rectOf: CGSize(width: 6, height: 30), cornerRadius: 2)
+                post.position = CGPoint(x: center + direction * 78, y: 0)
+                post.fillColor = .brown; FestivalStyle.finish(post, as: .wood); root.addChild(post)
+            }
+            let beam = SKShapeNode(rectOf: CGSize(width: 170, height: 6), cornerRadius: 3)
+            beam.position = CGPoint(x: center, y: 12); beam.fillColor = .brown
+            FestivalStyle.finish(beam, as: .wood); root.addChild(beam)
+            for dx in [CGFloat(-54), 0, 54] {
+                let glow = SKShapeNode(circleOfRadius: 8)
+                glow.position = CGPoint(x: center + dx, y: 0); glow.fillColor = .systemYellow.withAlphaComponent(ready ? 0.22 : 0)
+                glow.strokeColor = .clear; root.addChild(glow)
+                let lantern = questIcon("lightbulb.fill", size: 16, color: ready ? .systemYellow : FestivalStyle.cream)
+                lantern.position = glow.position; root.addChild(lantern)
+            }
+        }
     }
 }

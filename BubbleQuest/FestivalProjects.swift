@@ -85,7 +85,10 @@ struct FestivalProject {
     func sitePosition(stage: Int) -> CGPoint {
         let level = levels.lowerBound + Self.thresholds[min(3, max(0, stage))] - 1
         let marker = FestivalMapLayout.position(level)
-        return CGPoint(x: marker.x >= 195 ? 72 : 318, y: marker.y - 20)
+        let y = marker.y - 20
+        let road = FestivalMapLayout.roadX(at: y)
+        let x = road >= 195 ? max(60, road - 138) : min(330, road + 138)
+        return CGPoint(x: x, y: y)
     }
 }
 
@@ -100,8 +103,9 @@ struct FestivalProjectStatus {
     var nextReward: String {
         if complete { return rewardCollected ? "Festival ready! Tap to visit." : "Festival ready! Collect Rainbow + Bomb." }
         let left = nextThreshold - cleared
+        if stage == 3 { return "\(left) more \(left == 1 ? "level" : "levels") • finale at level \(project.finaleLevel + 1)" }
         let milestone = FestivalProject.stageNames[min(3, stage)].lowercased()
-        return "\(left) more \(left == 1 ? "level" : "levels") " + (stage == 3 ? "until " : "to ") + milestone
+        return "\(left) more \(left == 1 ? "level" : "levels") to " + milestone
     }
 }
 

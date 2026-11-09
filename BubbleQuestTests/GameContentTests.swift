@@ -168,7 +168,7 @@ final class GameContentTests: XCTestCase {
     }
 
     func testEveryRuntimeImageAndAudioCueIsBundled() {
-        let images = Set(LevelCatalog.levels.map(\.background) + LevelCatalog.levels.map(\.gameplayBackground) + FestivalArtwork.mapNames).union([
+        let images = Set(LevelCatalog.levels.map(\.background) + LevelCatalog.levels.map(\.gameplayBackground) + FestivalArtwork.mapNames + FestivalArtwork.journeyNames).union([
             "festival-title-cast", "festival-title-group-logo", "festival-hosts", "festival-companion-atlas",
             "festival-companion-motion", "festival-companion-glance", "festival-new-human-motion", "festival-special-bubbles",
             "festival-neighbors", "festival-neighbors-extra", "festival-operator-rig",

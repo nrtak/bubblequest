@@ -1,8 +1,32 @@
 import XCTest
 import SpriteKit
+import UIKit
 @testable import BubbleQuest
 
 final class JourneyMapTests: XCTestCase {
+    func testCompiledWorldWindowsCoverEveryScrollableLevel() throws {
+        for level in 0..<LevelCatalog.levelCount {
+            let offset = FestivalMapLayout.focusedOffset(local: level)
+            for segment in FestivalMapLayout.visibleSegments(offset: offset) {
+                let name = try XCTUnwrap(FestivalArtwork.journeyName(for: segment))
+                let image = try XCTUnwrap(UIImage(named: name))
+                let pixels = try XCTUnwrap(image.cgImage)
+                XCTAssertEqual(pixels.width, 780)
+                XCTAssertEqual(pixels.height, segment == 0 ? 1792 : 1408)
+            }
+        }
+    }
+
+    func testRoadHasNoKinksOrJumpsAtPaintingBoundaries() {
+        for height in stride(from: CGFloat(-256), through: 22528, by: 1) {
+            let a = FestivalMapLayout.roadX(at: height - 1)
+            let b = FestivalMapLayout.roadX(at: height)
+            let c = FestivalMapLayout.roadX(at: height + 1)
+            XCTAssertLessThan(abs(c - b), 0.27)
+            XCTAssertLessThan(abs(c - 2 * b + a), 0.0015)
+        }
+    }
+
     func testBriefingKeepsTheWalkingMapMusicUntilPlayBegins() {
         XCTAssertEqual(FestivalAudio.track(menu: "level-briefing", area: 0, challenge: false), "music-map")
         XCTAssertEqual(FestivalAudio.track(menu: "level-briefing", area: 10, challenge: true), "music-map")
@@ -76,7 +100,7 @@ final class JourneyMapTests: XCTestCase {
             let reserved = ["map-current-level", "map-side-quests"].compactMap { scene.childNode(withName: "//" + $0) }.map(frame)
             scene.enumerateChildNodes(withName: "//*") { node, _ in
                 guard !node.isHidden, let name = node.name,
-                      name == "journey-visitor" || name == "locked" || name.hasPrefix("level-") || name.hasPrefix("project-site-") else { return }
+                      name == "journey-visitor" || name == "journey-landmark" || name == "locked" || name.hasPrefix("level-") || name.hasPrefix("project-site-") else { return }
                 // Menu controls use separate names; level-* here identifies route markers.
                 guard name == "journey-visitor" || node.parent?.name == "map-route" else { return }
                 checked += 1

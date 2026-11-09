@@ -30,6 +30,14 @@ enum FestivalArtwork {
 
     static func gameplayName(for background: String) -> String? { gameplayNames[background] }
 
+    /// Overlapping windows from a single painted world; their shared pixels match.
+    static let journeyNames = (0..<39).map { String(format: "festival-world-v2-%02d.jpg", $0) }
+
+    static func journeyName(for segment: Int) -> String? {
+        guard journeyNames.indices.contains(segment) else { return nil }
+        return journeyNames[segment]
+    }
+
     static func mapName(for area: Int) -> String? {
         guard mapNames.indices.contains(area) else { return nil }
         return mapNames[area]

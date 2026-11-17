@@ -37,7 +37,7 @@ final class FestivalGlassTests: XCTestCase {
     func testNativeGlassDoesNotReplaceSharpTextOrExistingTouchTargets() throws {
         try withHost { scene, host, _ in
             XCTAssertTrue(host.isPresentingGlass)
-            XCTAssertEqual(host.surfaceCount, 4)
+            XCTAssertEqual(host.surfaceCount, 3, "One play card plus separate account and settings controls")
             XCTAssertEqual(host.artworkCount, 1)
             let panel = try XCTUnwrap(scene.childNode(withName: "//continue-panel") as? SKShapeNode)
             XCTAssertEqual(panel.fillColor.cgColor.alpha, 0)
@@ -50,7 +50,7 @@ final class FestivalGlassTests: XCTestCase {
             let hit = host.hitTest(CGPoint(x: 195, y: 434), with: nil)
             XCTAssertTrue(hit === host.spriteView || hit?.isDescendant(of: host.spriteView) == true)
             let native = host.subviews.flatMap(\.subviews).compactMap { $0 as? UIVisualEffectView }
-            XCTAssertEqual(native.count, 4)
+            XCTAssertEqual(native.count, 3)
             if #available(iOS 26.0, *) { XCTAssertTrue(native.allSatisfy { $0.effect is UIGlassEffect }) }
             else { XCTAssertTrue(native.allSatisfy { $0.effect is UIBlurEffect }) }
             scene.refreshGlassPresentation()

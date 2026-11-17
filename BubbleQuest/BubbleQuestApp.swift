@@ -25,13 +25,13 @@ struct GameView: View {
                     namingPlayer = true
                 }
             }
-            .alert("Name your player save", isPresented: $namingPlayer) {
-                TextField("Player / save name", text: $saveName)
+            .alert("Name your saved game", isPresented: $namingPlayer) {
+                TextField("Your name", text: $saveName)
                     .textInputAutocapitalization(.words)
                 Button("Save") { nameCompletion?(saveName); nameCompletion = nil }
                 Button("Cancel", role: .cancel) { nameCompletion?(nil); nameCompletion = nil }
             } message: {
-                Text("Use up to 24 letters, numbers, spaces, hyphens or underscores. Each player keeps separate progress on this iPhone.")
+                Text("Use up to 24 letters, numbers, spaces, hyphens or underscores. Each name keeps separate progress on this device.")
             }
             .onChange(of: scenePhase) { _, phase in scene.setActive(phase == .active) }
     }

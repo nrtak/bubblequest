@@ -54,7 +54,7 @@ struct FestivalProject {
         case .stall:
             lines = ["Our stall is standing! Let's add some color.", "The decorations are up. Let's light the lanterns.", "The lights are on! Our first visitors are nearly here.", "We're open! Look at everyone you've brought together."]
         case .pinwheels:
-            lines = ["Our first pinwheels are spinning!", "The parade route is full of color.", "Our neighbors are gathering. The parade is almost ready!", "Here comes our parade! You gave it a wonderful start."]
+            lines = ["The pavilion is ready for its first pinwheels.", "The parade route is full of color.", "The lanterns are glowing. Our neighbors are gathering!", "Here comes our parade! You gave it a wonderful start."]
         case .lanternWalk:
             lines = ["The arch is ready for its first lanterns.", "The lanterns are hung. Let's bring them to life.", "Look at that glow! One last stretch to light.", "The whole walkway is glowing. Our friends can follow it home."]
         case .picnic:
@@ -62,7 +62,7 @@ struct FestivalProject {
         case .fireworks:
             lines = ["Our festival stage is standing!", "The colors are ready for rehearsal.", "Just a few more preparations before the big show.", "What a show! Everyone helped make this moment happen."]
         case .kites:
-            lines = ["Our first kite is ready for the sea breeze.", "The ribbons are dancing above the coast.", "The parade is nearly ready to take flight!", "Look up! Our kites are flying for the whole neighborhood."]
+            lines = ["Our kite stand is ready for its first colors.", "The kites and ribbons are ready for the coast.", "The lanterns are on. The parade is nearly ready!", "Our kite gathering is ready for the whole neighborhood."]
         }
         return lines[min(3, stage - 1)]
     }

@@ -1,5 +1,22 @@
 import Foundation
 
+extension SpecialBubble {
+    var compactPreviewHint: String {
+        switch self {
+        case .lantern: return "Match striped lanterns to clear a row."
+        case .riverPearl: return "Match river pearls for one extra shot."
+        case .blossomSpark: return "Match blossom sparks to pop neighbors."
+        }
+    }
+    var previewHint: String {
+        switch self {
+        case .lantern: return "Match a striped lantern to clear its row."
+        case .riverPearl: return "Match a river pearl to return one shot."
+        case .blossomSpark: return "Match a blossom spark to pop nearby bubbles."
+        }
+    }
+}
+
 extension GameLevel {
     var residentMilestone: Int? {
         let stop = index % LevelCatalog.levelsPerArea + 1

@@ -84,7 +84,7 @@ final class ChallengeVarietyTests: XCTestCase {
 
     func testOldPressureScheduleAndNewScheduleSurviveSaving() throws {
         let level = LevelCatalog.level(99)
-        for version in [3, LevelPlayResults.balanceVersion] {
+        for version in [3, 4, 7, GameLevel.balanceVersion] {
             let checkpoint = GameCheckpoint(level: 99, board: level.board, shots: 20, score: 0,
                                             current: 0, next: 1, bag: [], rainbow: 1, bomb: 1,
                                             play: QuestPlay(), balanceVersion: version)

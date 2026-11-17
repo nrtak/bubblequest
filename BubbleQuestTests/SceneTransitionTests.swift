@@ -99,7 +99,7 @@ final class SceneTransitionTests: XCTestCase {
             scene.handleMenu(["players"])
             let overlay = try XCTUnwrap(scene.children.last)
             let labels = overlay.children.compactMap { ($0 as? SKLabelNode)?.text }
-            XCTAssertTrue(labels.contains("1 • Saved on this iPhone"))
+            XCTAssertTrue(labels.contains("1 • Saved on this device"))
             let card = try XCTUnwrap(overlay.childNode(withName: "player-original"))
             let title = try XCTUnwrap(card.children.first as? SKLabelNode)
             let font = UIFont(name: title.fontName!, size: title.fontSize)!
@@ -235,10 +235,13 @@ final class SceneTransitionTests: XCTestCase {
                                      current: 0, next: 1, bag: [0, 1], rainbow: 1, bomb: 1, play: QuestPlay()))
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         scene.didMove(to: SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844)))
-        scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
-        let ready = try XCTUnwrap(scene.childNode(withName: "//special-ready"))
-        XCTAssertTrue(ready.parent!.children.compactMap { ($0 as? SKLabelNode)?.text }.contains(SpecialBubble.riverPearl.explanation))
-        scene.handleMenu(["special-ready"])
+        scene.handleMenu(["start-continue"])
+        let summary = try XCTUnwrap(scene.childNode(withName: "//briefing-objective-summary") as? SKLabelNode)
+        XCTAssertTrue(summary.text?.contains(SpecialBubble.riverPearl.previewHint) == true)
+        XCTAssertFalse(profiles.makeProgress().hasLearned(.riverPearl), "Opening the preview alone does not acknowledge a lesson")
+        scene.handleMenu(["briefing-play"])
+        XCTAssertNil(scene.childNode(withName: "//special-ready"), "No second instruction sheet after Play")
+        XCTAssertNil(scene.childNode(withName: "//flying-bubble"))
         XCTAssertTrue(profiles.makeProgress().hasLearned(.riverPearl))
     }
 

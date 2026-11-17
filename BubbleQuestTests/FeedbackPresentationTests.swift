@@ -4,7 +4,7 @@ import SpriteKit
 
 final class FeedbackPresentationTests: XCTestCase {
     @MainActor
-    private func withTargetPuzzle(targets: Set<Cell>, goalKind: PuzzleObjective = .ceiling, level: Int = 17, cleared: Int = 17, challenge: Bool = false, shots: Int = 20, color: Int = 0, check: (FestivalScene, GameProfiles) throws -> Void) throws {
+    private func withTargetPuzzle(targets: Set<Cell>, goalKind: PuzzleObjective = .ceiling, level: Int = 17, cleared: Int = 17, challenge: Bool = false, shots: Int = 20, color: Int = 0, start: Bool = true, check: (FestivalScene, GameProfiles) throws -> Void) throws {
         let suite = "Feedback-\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(suite)
@@ -19,7 +19,8 @@ final class FeedbackPresentationTests: XCTestCase {
         let scene = FestivalScene(size: CGSize(width: 390, height: 844), profiles: profiles)
         let view = SKView(frame: CGRect(x: 0, y: 0, width: 390, height: 844))
         view.presentScene(scene); defer { view.presentScene(nil) }
-        scene.handleMenu(["start-continue"]); scene.handleMenu(["briefing-play"])
+        scene.handleMenu(["start-continue"])
+        if start { scene.handleMenu(["briefing-play"]) }
         try check(scene, profiles)
     }
 
@@ -201,11 +202,21 @@ final class FeedbackPresentationTests: XCTestCase {
 
     @MainActor
     func testReadingTheLevelBriefingDoesNotPrematurelyLearnAnObstacle() throws {
-        try withTargetPuzzle(targets: [Cell(row: 0, column: 7)], level: 15) { scene, profiles in
+        try withTargetPuzzle(targets: [Cell(row: 0, column: 7)], level: 15, start: false) { scene, profiles in
+            let progress = profiles.makeProgress()
+            let summary = try XCTUnwrap(scene.childNode(withName: "//briefing-objective-summary") as? SKLabelNode)
+            XCTAssertTrue(summary.text?.contains("Fewer shots: plan each match.") == true)
+            XCTAssertFalse(progress.hasLearnedObstacle("precision"), "Reading alone does not acknowledge a lesson")
+            scene.handleMenu(["briefing-back"])
+            XCTAssertFalse(progress.hasLearnedObstacle("precision"), "Backing out leaves the lesson unacknowledged")
+            scene.handleMenu(["level-15"])
+            XCTAssertFalse(progress.hasLearnedObstacle("precision"))
+            scene.handleMenu(["briefing-play"])
+            XCTAssertTrue(progress.hasLearnedObstacle("precision"), "Play explicitly acknowledges the preview")
             XCTAssertNil(scene.childNode(withName: "//puzzle-coach"))
-            XCTAssertFalse(profiles.makeProgress().hasLearnedObstacle("precision"))
+            XCTAssertEqual(progress.checkpoint?.shotsFired, 0)
             scene.launchShot(angle: 0); scene.setActive(false)
-            XCTAssertTrue(profiles.makeProgress().hasLearnedObstacle("precision"))
+            XCTAssertTrue(progress.hasLearnedObstacle("precision"))
         }
     }
 

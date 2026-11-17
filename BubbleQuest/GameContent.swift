@@ -21,7 +21,7 @@ struct FestivalArea {
 }
 
 struct GameLevel {
-    static let balanceVersion = 7
+    static let balanceVersion = 8
     let index: Int
     let area: Int
     let shots: Int
@@ -267,8 +267,9 @@ enum LevelCatalog {
         // Obstacles should add decisions rather than refund their entire cost.
         let protectionAllowance = index < 20 ? draft.initialArmor.count + draft.initialBlockers.count :
             (draft.initialArmor.count + draft.initialBlockers.count + 1) / 2
+        let proposed = max(12, budget + objectiveAllowance + protectionAllowance + (draft.isMilestone ? 1 : 0) - (index < 20 ? 0 : index < 60 ? 1 : 2))
         return GameLevel(index: index, area: area,
-                         shots: max(12, budget + objectiveAllowance + protectionAllowance + (draft.isMilestone ? 1 : 0) - (index < 20 ? 0 : index < 60 ? 1 : 2)),
+                         shots: OpeningFestival.shots(for: index, proposed: proposed),
                          initialBubbles: cells)
     }
 

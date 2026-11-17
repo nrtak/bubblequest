@@ -49,7 +49,17 @@ final class LevelReplayTests: XCTestCase {
         }
     }
 
-    private func hasClearingRoute(level: GameLevel, pressureSeed: UInt64, specialPenalty: Int, targetPriority: Int, angleStep: Double = 0.04, includeEdgeSlots: Bool = true) -> Bool {
+    func testIntroductoryLevelsHaveNormalBubbleRoutesWithoutBoosters() {
+        for index in 0..<5 {
+            for seed in [UInt64(1), 7, 42] {
+                let level = LevelCatalog.level(index).randomized(seed: seed)
+                XCTAssertTrue(hasClearingRoute(level: level, pressureSeed: seed, specialPenalty: 0, targetPriority: 0, boostersAllowed: false),
+                              "Teach basic matches before any booster is needed: level \(index + 1)")
+            }
+        }
+    }
+
+    private func hasClearingRoute(level: GameLevel, pressureSeed: UInt64, specialPenalty: Int, targetPriority: Int, angleStep: Double = 0.04, includeEdgeSlots: Bool = true, boostersAllowed: Bool = true) -> Bool {
         var random = SeededRandom(state: UInt64(level.number))
         var board = level.board
         var goal = level.goal
@@ -59,8 +69,8 @@ final class LevelReplayTests: XCTestCase {
         }
         var current = draw()
         var next = draw()
-        var rainbow = true
-        var bomb = true
+        var rainbow = boostersAllowed
+        var bomb = boostersAllowed
         for shotNumber in 0..<level.shots {
             if goal.completed(on: board) { return true }
             var landings = Set<Cell>()

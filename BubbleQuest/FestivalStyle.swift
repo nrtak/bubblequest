@@ -9,6 +9,10 @@ enum FestivalStyle {
     static let cream = UIColor(red: 1, green: 0.94, blue: 0.79, alpha: 1)
     static let brass = UIColor(red: 0.90, green: 0.73, blue: 0.43, alpha: 1)
     static let coral = UIColor(red: 0.96, green: 0.40, blue: 0.33, alpha: 1)
+    /// Darker coral keeps small white action labels readable in the classic style.
+    static let actionCoral = UIColor(red: 0.80, green: 0.25, blue: 0.20, alpha: 1)
+    static let teal = UIColor(red: 0.18, green: 0.39, blue: 0.42, alpha: 1)
+    static let shadow = UIColor(red: 0.12, green: 0.16, blue: 0.22, alpha: 0.16)
     static var quiet: Bool { UIAccessibility.isReduceMotionEnabled || ProcessInfo.processInfo.isLowPowerModeEnabled }
 
     private static let smooth = texture(wood: false)
@@ -46,7 +50,7 @@ enum FestivalStyle {
         node.fillTexture = material == .wood ? grain : smooth
         node.isAntialiased = true
         switch material {
-        case .panel: node.strokeColor = cream.withAlphaComponent(0.65); node.lineWidth = 1.25
+        case .panel: node.strokeColor = cream.withAlphaComponent(0.45); node.lineWidth = 1
         case .wood: node.strokeColor = brass; node.lineWidth = 1.5
         case .lacquer: node.strokeColor = brass; node.lineWidth = 1.75
         case .brass: node.strokeColor = UIColor(red: 0.47, green: 0.32, blue: 0.15, alpha: 1); node.lineWidth = 1

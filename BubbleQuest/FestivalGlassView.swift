@@ -54,7 +54,7 @@ final class FestivalGlassHost: UIView {
             self.node = node; fill = node.fillColor; stroke = node.strokeColor
             texture = node.fillTexture; lineWidth = node.lineWidth
             let role = node.userData?["glassRole"] as? String ?? "panel"
-            let tint = role == "light" ? FestivalStyle.cream : role == "primary" ? FestivalStyle.coral : FestivalStyle.ink
+            let tint = role == "light" ? FestivalStyle.cream : role == "primary" ? FestivalStyle.actionCoral : role == "secondary" ? FestivalStyle.teal : FestivalStyle.ink
             if #available(iOS 26.0, *) {
                 let glass = UIGlassEffect(style: .regular)
                 glass.tintColor = tint.withAlphaComponent(role == "primary" ? 0.86 : 0.68)
@@ -66,7 +66,7 @@ final class FestivalGlassHost: UIView {
             }
             effect.overrideUserInterfaceStyle = role == "light" ? .light : .dark
             effect.isUserInteractionEnabled = false
-            effect.layer.borderColor = UIColor.white.withAlphaComponent(0.32).cgColor
+            effect.layer.borderColor = FestivalStyle.cream.withAlphaComponent(0.32).cgColor
             effect.layer.borderWidth = 0.7
             effect.clipsToBounds = true
             // Limit the brightest possible backdrop under small white labels.

@@ -85,7 +85,7 @@ enum FestivalEvent: String, CaseIterable {
     }
     var shotBudget: Int {
         switch self {
-        case .market: return 16
+        case .market: return 14
         case .parade, .picnic: return 12
         case .lanternWalk, .fireworks: return 14
         }
@@ -102,7 +102,7 @@ enum FestivalEvent: String, CaseIterable {
     var instruction: String {
         switch self {
         case .market: return "Clear every bubble to open the market. Match the blossom spark to start a bigger pop."
-        case .parade: return "Free all four marked flags. Wooden gates leave side routes for wall bounces. The other bubbles can stay."
+        case .parade: return "Free all four flags. Wooden gates cannot be matched. Clear their supports or bounce around them. Other bubbles can stay."
         case .lanternWalk: return "Free all four glowing lanterns. Match a striped lantern to clear its row and set off the next lantern. Ice rings need two matches."
         case .picnic: return "Free all four marked baskets. Pop the narrow supports to bring a whole picnic branch down. Matching a basket also frees it. The ice anchor needs two matches."
         case .fireworks: return "Free all four marked fireworks. Match the sparkling bubbles to set off neighboring sparks in a chain. Ice rings need two matches."

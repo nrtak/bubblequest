@@ -64,7 +64,7 @@ final class SideQuestNavigationTests: XCTestCase {
         let quest = FestivalQuest.all[0]
         scene.showQuest(quest)
         let back = try XCTUnwrap(scene.childNode(withName: "//quest-dialogue-back"))
-        XCTAssertNotNil(back.parent?.children.compactMap { $0 as? SKLabelNode }.first { $0.text == "Optional Side Quest" })
+        XCTAssertNotNil(back.parent?.children.compactMap { $0 as? SKLabelNode }.first { $0.text == "Optional side quest" })
         scene.handleMenu(["quest-dialogue-back"])
         XCTAssertFalse(profiles.makeProgress().adventure.accepted(quest))
         XCTAssertEqual(progress.unlockedLevel, 3)

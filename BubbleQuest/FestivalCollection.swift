@@ -168,14 +168,31 @@ enum FestivalMapLayout {
         let index = min(LevelCatalog.levelCount - 2, max(0, Int(floor((target - 292) / 96))))
         let a = position(index), b = position(index + 1)
         let middleY = (a.y + b.y) / 2
-        let centerX = roadX(at: middleY)
-        let options = [max(116, centerX - 34), min(350, centerX + 34)]
+        let footY = middleY - 24
+        let centerX = roadX(at: footY)
+        let options = [max(116, centerX - 52), min(350, centerX + 52)]
         func clearance(_ x: CGFloat) -> CGFloat {
-            min(hypot(x - a.x, middleY - a.y), hypot(x - b.x, middleY - b.y))
+            let foot = CGPoint(x: x, y: footY)
+            return min(visitorClearance(at: foot, from: a), visitorClearance(at: foot, from: b))
         }
         let x = options.max { clearance($0) < clearance($1) }!
-        guard clearance(x) >= 50 else { return nil }
-        return CGPoint(x: x, y: middleY - 24)
+        guard clearance(x) >= 29 else { return nil }
+        return CGPoint(x: x, y: footY)
+    }
+
+    static func visitorBody(at foot: CGPoint) -> CGRect {
+        CGRect(x: foot.x - 24, y: foot.y, width: 48, height: 48)
+    }
+    static func visitorShadow(at foot: CGPoint) -> CGRect {
+        CGRect(x: foot.x - 16, y: foot.y - 4, width: 32, height: 8)
+    }
+    /// Circle-to-artwork clearance is stricter than comparing the two centers.
+    static func visitorClearance(at foot: CGPoint, from marker: CGPoint) -> CGFloat {
+        [visitorBody(at: foot), visitorShadow(at: foot)].map { rect in
+            let dx = max(0, max(rect.minX - marker.x, marker.x - rect.maxX))
+            let dy = max(0, max(rect.minY - marker.y, marker.y - rect.maxY))
+            return hypot(dx, dy)
+        }.min() ?? 0
     }
 
     static func souvenirPosition(markers: [CGPoint]) -> CGPoint? {

@@ -101,7 +101,7 @@ struct FestivalProjectStatus {
     var complete: Bool { cleared == project.levels.count }
     var nextThreshold: Int { FestivalProject.thresholds.first { $0 > cleared } ?? project.levels.count }
     var nextReward: String {
-        if complete { return rewardCollected ? "Festival ready! Tap to visit." : "Festival ready! Collect Rainbow + Bomb." }
+        if complete { return rewardCollected ? "Festival complete • view progress" : "Festival complete • collect Rainbow + Bomb" }
         let left = nextThreshold - cleared
         if stage == 3 { return "\(left) more \(left == 1 ? "level" : "levels") • finale at level \(project.finaleLevel + 1)" }
         let milestone = FestivalProject.stageNames[min(3, stage)].lowercased()

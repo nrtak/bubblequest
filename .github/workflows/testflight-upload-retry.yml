@@ -11,7 +11,7 @@ permissions:
   actions: read
 jobs:
   testflight:
-    runs-on: macos-26
+    runs-on: xcode-27
     environment: testflight
     steps:
       # Require an explicit artifact source; never silently retry an obsolete build.

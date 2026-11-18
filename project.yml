@@ -13,6 +13,18 @@ targets:
     type: application
     platform: iOS
     sources: [BubbleQuest]
+    preBuildScripts:
+      - name: Verify iOS SDK
+        basedOnDependencyAnalysis: false
+        script: |
+          case "${SDK_VERSION%%.*}" in
+            ''|*[!0-9]*) echo "error: Cannot determine iOS SDK version from '$SDK_VERSION'"; exit 1 ;;
+          esac
+          if [ "${SDK_VERSION%%.*}" -lt 27 ]; then
+            echo "error: Bubble Quest requires iOS SDK 27 or newer. Found $SDK_VERSION."
+            exit 1
+          fi
+          echo "Building Bubble Quest with $SDK_NAME"
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.bubbleadventure.app

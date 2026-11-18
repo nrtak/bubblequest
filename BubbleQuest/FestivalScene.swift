@@ -3382,7 +3382,7 @@ private extension FestivalScene {
         veil.position = CGPoint(x: 195, y: 422); overlay.addChild(veil)
         let card = panel(width: 342, height: expanded ? 644 : 564, point: CGPoint(x: 195, y: expanded ? 430 : 440), parent: overlay)
         card.name = "level-briefing-card"
-        label(dailyPuzzle == nil ? "Level \(level + 1)" : "Daily festival puzzle", size: 28, point: CGPoint(x: 195, y: expanded ? 705 : 677), parent: overlay)
+        label(dailyPuzzle == nil ? (mastery == nil ? "Level \(level + 1)" : "Replay level \(level + 1)") : "Daily festival puzzle", size: 28, point: CGPoint(x: 195, y: expanded ? 705 : 677), parent: overlay)
         if let storyArt {
             storyArt.name = "briefing-story-illustration"
             storyArt.position = CGPoint(x: 195, y: 563); overlay.addChild(storyArt)
@@ -4164,7 +4164,7 @@ private extension FestivalScene {
         header.name = "project-detail-header"
         label(celebrating ? "Festival ready!" : status.project.title, size: 25, point: CGPoint(x: 195, y: 731), parent: overlay)
         if let title = overlay.children.last as? SKLabelNode { fitLabel(title, width: 318) }
-        label(status.complete ? "You brought this neighborhood to life." : "A look ahead at opening day", size: 13, point: CGPoint(x: 195, y: 698), parent: overlay)
+        label(status.complete ? "Built with your regular level wins" : "New level wins build this festival", size: 13, point: CGPoint(x: 195, y: 698), parent: overlay)
         let host = FestivalHost.all.first { $0.area == area }
         let neighbor = FestivalNeighbor.all.first { $0.area == area }
         if let texture = host.map({ atlasTexture("festival-hosts", index: $0.portraitIndex) }) ?? neighbor.map({ neighborTexture($0) }) {
@@ -4187,19 +4187,28 @@ private extension FestivalScene {
         label(status.nextReward, size: 13, point: CGPoint(x: 195, y: 326), parent: overlay)
         if let next = overlay.children.last as? SKLabelNode { fitLabel(next, width: 330) }
         let mastery = panel(width: 350, height: 82, point: CGPoint(x: 195, y: 258), parent: overlay)
-        mastery.name = "project-mastery"
+        mastery.name = "project-mastery"; mastery.userData?["isControl"] = true
         let earned = status.project.levels.filter { progress.medals(for: $0).contains(projectMastery) }.count
-        label("Optional mastery • tap to choose", size: 12, point: CGPoint(x: 163, y: 280), parent: overlay)
-        label(projectMastery.title, size: 15, point: CGPoint(x: 163, y: 256), parent: overlay)
-        label("\(earned)/20 badges • No effect on your project", size: 10, point: CGPoint(x: 163, y: 234), parent: overlay)
+        label("Optional replay goal • tap to change", size: 12, point: CGPoint(x: 153, y: 280), parent: overlay)
+        overlay.children.last?.name = "project-replay-heading"
+        if let heading = overlay.children.last as? SKLabelNode { fitLabel(heading, width: 224) }
+        label(projectMastery.title + " • \(earned)/20", size: 15, point: CGPoint(x: 153, y: 256), parent: overlay)
+        overlay.children.last?.name = "project-replay-goal"
+        if let goal = overlay.children.last as? SKLabelNode { fitLabel(goal, width: 224) }
+        label("Replays do not add festival progress", size: 11, point: CGPoint(x: 153, y: 234), parent: overlay)
+        overlay.children.last?.name = "project-replay-caption"
+        if let caption = overlay.children.last as? SKLabelNode { fitLabel(caption, width: 224) }
         let replay = projectMasteryLevel(status.project)
-        menuButton(replay == nil ? (status.cleared == 0 ? "Soon" : "Done") : "Try", name: "project-mastery-play", point: CGPoint(x: 128, y: 0), parent: mastery, width: 64, height: 44)
+        menuButton(replay == nil ? (status.cleared == 0 ? "Soon" : "Done") : "Replay", name: "project-mastery-play", point: CGPoint(x: 118, y: 0), parent: mastery, width: 84, height: 44)
         mastery.childNode(withName: "project-mastery-play")?.alpha = replay == nil ? 0.45 : 1
-        let available = area <= progress.unlockedLevel / LevelCatalog.levelsPerArea
-        let title = status.complete ? (status.rewardCollected ? "Continue journey" : "Collect Rainbow + Bomb") : available ? "Play level \(nextProjectLevel(status.project) + 1)" : "Keep following the path"
-        menuButton(title, name: status.complete ? (status.rewardCollected ? "project-continue" : "project-claim") : available ? "project-play" : "project-back",
-                   point: CGPoint(x: 195, y: 177), parent: overlay, width: 320, height: 50)
-        menuButton("Back to the map", name: "project-back", point: CGPoint(x: 195, y: 100), parent: overlay, height: 44)
+        let canClaim = status.complete && !status.rewardCollected
+        let canContinueCelebration = status.complete && status.rewardCollected && celebrating
+        let title = canClaim ? "Collect Rainbow + Bomb" : canContinueCelebration ? "Continue journey" : "Back to level map"
+        let action = canClaim ? "project-claim" : canContinueCelebration ? "project-continue" : "project-back"
+        menuButton(title, name: action, point: CGPoint(x: 195, y: 177), parent: overlay, width: 320, height: 50)
+        if action != "project-back" {
+            menuButton("Back to level map", name: "project-back", point: CGPoint(x: 195, y: 100), parent: overlay, height: 44)
+        }
         if celebrating && !FestivalStyle.quiet {
             for index in 0..<16 {
                 let piece = SKShapeNode(circleOfRadius: 3)
@@ -4251,10 +4260,7 @@ private extension FestivalScene {
             let options = ChallengeMedal.allCases
             let index = options.firstIndex(of: projectMastery) ?? 0
             projectMastery = options[(index + 1) % options.count]; showFestivalProject(area: projectArea)
-        } else if names.contains("project-play"), projectArea <= progress.unlockedLevel / LevelCatalog.levelsPerArea {
-            level = nextProjectLevel(project); challengeMode = false
-            if let saved = progress.checkpoint, saved.level == level, saved.challenge != true { resumeSavedPuzzle() }
-            else { beginSelectedLevel() }
+
         }
         return true
     }

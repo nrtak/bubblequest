@@ -21,10 +21,12 @@ final class FestivalRoadMomentTests: XCTestCase {
             let road = FestivalMapLayout.roadX(at: moment.position.y)
             XCTAssertGreaterThan(abs(moment.position.x - road), 130, "Gatherings stay beside the road")
             XCTAssertTrue((60...330).contains(moment.position.x))
+            XCTAssertFalse(moment.caption(cleared: threshold).contains("Tap to visit"))
+            if moment.step != 3 { XCTAssertEqual(moment.caption(cleared: threshold), "Festival progress") }
             if moment.step == 3 {
                 XCTAssertNotNil(FestivalEvent.forLevel(moment.level))
                 XCTAssertTrue(moment.caption(cleared: 0).contains("\(moment.level + 1)"))
-                XCTAssertEqual(moment.caption(cleared: 20), "Festival open!")
+                XCTAssertEqual(moment.caption(cleared: 20), "Festival built!")
             }
         }
     }

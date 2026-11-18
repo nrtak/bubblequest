@@ -136,18 +136,52 @@ final class FestivalProjectTests: XCTestCase {
     }
 
     @MainActor
-    func testMapProjectLeadsToExplicitPlayAndDoesNotAcceptSideQuests() throws {
+    func testProjectProgressReturnsToMapBeforeRegularLevelSelection() throws {
         try withScene { scene, profiles in
             scene.handleMenu(["start-adventure"])
             let header = try XCTUnwrap(scene.childNode(withName: "//map-journey-header"))
             XCTAssertTrue(scene.interactionNames(at: header.position).contains("map-journey-header"))
             scene.handleMenu(["map-journey-header"])
             XCTAssertNotNil(scene.childNode(withName: "//project-story-illustration"))
-            XCTAssertNotNil(scene.childNode(withName: "//project-play"))
+            XCTAssertNil(scene.childNode(withName: "//project-play"))
+            XCTAssertNil(scene.childNode(withName: "//level-briefing-card"))
             scene.handleMenu(["project-play"])
+            XCTAssertNotNil(scene.childNode(withName: "//project-detail-header"), "An old shortcut cannot launch a level")
+            scene.handleMenu(["project-back"])
+            XCTAssertNotNil(scene.childNode(withName: "//map-route"))
+            scene.handleMenu(["level-0"])
             XCTAssertNotNil(scene.childNode(withName: "//level-briefing-card"))
             XCTAssertFalse(profiles.makeProgress().adventure.accepted(FestivalQuest.all[0]))
             XCTAssertEqual(profiles.makeProgress().lives(for: 0).available, 5)
+        }
+    }
+
+    @MainActor
+    func testLevel37StaysOnTheMapAndClearedLevelsAreExplicitOptionalReplays() throws {
+        try withScene(configure: { progress in
+            for index in 0..<36 { progress.recordVictory(index: index, score: 100, stars: 1) }
+        }) { scene, profiles in
+            scene.handleMenu(["start-adventure"])
+            scene.handleMenu(["project-site-1-2"])
+            XCTAssertNil(scene.childNode(withName: "//project-play"))
+            XCTAssertNil(scene.childNode(withName: "//project-continue"))
+            let mastery = try XCTUnwrap(scene.childNode(withName: "//project-mastery"))
+            let replay = try XCTUnwrap(mastery.childNode(withName: "project-mastery-play"))
+            let title = try XCTUnwrap(replay.children.compactMap { $0 as? SKLabelNode }.first)
+            XCTAssertEqual(title.text, "Replay")
+            let buttonFrame = replay.calculateAccumulatedFrame().offsetBy(dx: mastery.position.x, dy: mastery.position.y)
+            for name in ["project-replay-heading", "project-replay-goal", "project-replay-caption"] {
+                let words = try XCTUnwrap(scene.childNode(withName: "//" + name))
+                XCTAssertLessThan(words.calculateAccumulatedFrame().maxX, buttonFrame.minX - 4)
+            }
+            scene.handleMenu(["project-mastery-play"])
+            let card = try XCTUnwrap(scene.childNode(withName: "//level-briefing-card"))
+            let headings = card.parent?.children.compactMap { ($0 as? SKLabelNode)?.text } ?? []
+            XCTAssertTrue(headings.contains("Replay level 21"), "Optional replays use already-cleared regular levels")
+            XCTAssertEqual(profiles.makeProgress().lives(for: 20).available, 5)
+            scene.handleMenu(["briefing-back"])
+            let play = try XCTUnwrap(scene.childNode(withName: "//continue-stop"))
+            XCTAssertTrue(play.children.compactMap { ($0 as? SKLabelNode)?.text }.contains("Play level 37"))
         }
     }
 

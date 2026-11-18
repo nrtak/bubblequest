@@ -29,8 +29,8 @@ struct FestivalRoadMoment {
         return FestivalProject.thresholds.filter { cleared >= $0 }.count
     }
     func caption(cleared: Int) -> String {
-        if step == 3 { return isReady(cleared: cleared) ? "Festival open!" : "Finale • Level \(level + 1)" }
-        return isReady(cleared: cleared) ? "Ready! Tap to visit" : "Prepare • Level \(level + 1)"
+        if step == 3 { return isReady(cleared: cleared) ? "Festival built!" : "Finale • Level \(level + 1)" }
+        return isReady(cleared: cleared) ? "Festival progress" : "Unlocks at level \(level + 1)"
     }
     static let all: [FestivalRoadMoment] = FestivalProject.all.flatMap { project in
         (0..<4).map { FestivalRoadMoment(project: project, step: $0) }
